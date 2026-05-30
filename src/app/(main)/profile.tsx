@@ -126,6 +126,18 @@ export default function ProfileScreen() {
 
           {/* Menu List */}
           <View style={styles.menuSection}>
+            {user?.role === 'customer' && (
+              <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/vehicles' as any)}>
+                <View style={styles.menuItemLeft}>
+                  <Text style={styles.menuIcon}>🚗</Text>
+                  <View style={styles.menuItemContent}>
+                    <Text style={styles.menuTitle}>Xe của tôi</Text>
+                    <Text style={styles.menuSubtitle}>{user.vehicles.length}/5 xe đã đăng ký</Text>
+                  </View>
+                </View>
+                <Text style={styles.menuChevron}>›</Text>
+              </TouchableOpacity>
+            )}
             {menuItems.map((item, index) => (
               <TouchableOpacity key={index} style={styles.menuItem}>
                 <View style={styles.menuItemLeft}>

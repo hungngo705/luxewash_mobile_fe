@@ -15,6 +15,8 @@ interface AuthState {
 interface AuthContextType extends AuthState {
   login: (credentials: LoginCredentials) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
+  addVehicle: (vehicle: Vehicle) => boolean;
+  removeVehicle: (vehicleId: string) => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -64,8 +66,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setState({ user: null, isLoading: false, isAuthenticated: false });
   };
 
+  const addVehicle = (vehicle: Vehicle): boolean => {
+    if (!state.user) return false;
+
+    // Check max 5 vehicles
+    if (state.user.vehicles.length >= 5) return false;
+
+    // Check duplicate license plate
+    const exists = state.user.vehicles.some(v => v.licensePlate === vehicle.licensePlate);
+    if (exists) return false;
+
+    const updatedVehicles = [...state.user.vehicles, vehicle];
+    setState({ ...state, user: { ...state.user, vehicles: updatedVehicles } });
+    return true;
+  };
+
+  const removeVehicle = (vehicleId: string): boolean => {
+    if (!state.user) return false;
+
+    const updatedVehicles = state.user.vehicles.filter(v => v.id !== vehicleId);
+    setState({ ...state, user: { ...state.user, vehicles: updatedVehicles } });
+    return true;
+  };
+
   return (
-    <AuthContext.Provider value={{ ...state, login, logout }}>
+    <AuthContext.Provider value={{ ...state, login, logout, addVehicle, removeVehicle }}>
       {children}
     </AuthContext.Provider>
   );

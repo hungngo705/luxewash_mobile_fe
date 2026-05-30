@@ -1,6 +1,6 @@
 /**
- * Advance Booking Flow - Step 1: Select Vehicle
- * Allows user to select a vehicle for booking
+ * Advance Booking Flow - Step 1: Select Vehicle(s)
+ * Allows user to select 1-5 vehicles for booking
  */
 
 import React, { useState } from 'react';
@@ -11,53 +11,63 @@ import {
   ScrollView,
   TouchableOpacity,
   Image,
-  Dimensions,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { LuxeColors, LuxeSpacing, LuxeBorderRadius } from '@/constants/luxeTheme';
-import { mockVehicles, Vehicle } from '@/data/types';
+import { useAuth } from '@/contexts/AuthContext';
+import { Vehicle } from '@/data/types';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const MAX_VEHICLES = 5;
 
-interface SelectVehicleScreenProps {
-  onSelect?: (vehicle: Vehicle) => void;
-  onBack?: () => void;
-}
-
-export default function SelectVehicleScreen({ onSelect, onBack }: SelectVehicleScreenProps) {
+export default function SelectVehicleScreen() {
   const router = useRouter();
-  const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(mockVehicles[0]);
+  const { user } = useAuth();
+  const [selectedVehicles, setSelectedVehicles] = useState<Vehicle[]>([]);
 
-  const handleContinue = () => {
-    if (selectedVehicle) {
-      if (onSelect) {
-        onSelect(selectedVehicle);
+  const vehicles = user?.vehicles || [];
+
+  const toggleVehicle = (vehicle: Vehicle) => {
+    const isSelected = selectedVehicles.some(v => v.id === vehicle.id);
+    if (isSelected) {
+      setSelectedVehicles(selectedVehicles.filter(v => v.id !== vehicle.id));
+    } else {
+      if (selectedVehicles.length >= MAX_VEHICLES) {
+        Alert.alert('Giới hạn', `Tối đa ${MAX_VEHICLES} xe mỗi lần đặt lịch`);
+        return;
       }
-      router.push({
-        pathname: '/booking/select-date',
-        params: { vehicleId: selectedVehicle.id },
-      });
+      setSelectedVehicles([...selectedVehicles, vehicle]);
     }
   };
 
+  const handleContinue = () => {
+    if (selectedVehicles.length === 0) {
+      Alert.alert('Thông báo', 'Vui lòng chọn ít nhất 1 xe');
+      return;
+    }
+
+    const vehicleIds = selectedVehicles.map(v => v.id).join(',');
+    router.push({
+      pathname: '/booking/select-date',
+      params: { vehicleIds },
+    });
+  };
+
   const handleAddVehicle = () => {
-    // Navigate to add vehicle screen - placeholder
-    console.log('Add vehicle pressed');
+    router.push('/vehicles/add-vehicle');
   };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => onBack ? onBack() : router.back()}>
+        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
           <Text style={styles.backIcon}>←</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Đặt lịch rửa xe</Text>
         <View style={styles.placeholder} />
       </View>
 
-      {/* Progress Steps */}
       <View style={styles.progressContainer}>
         <View style={styles.progressStep}>
           <View style={[styles.progressDot, styles.progressDotActive]} />
@@ -69,55 +79,82 @@ export default function SelectVehicleScreen({ onSelect, onBack }: SelectVehicleS
       </View>
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-        {/* Section: Select Vehicle */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Chọn xe của bạn</Text>
-            <TouchableOpacity style={styles.addVehicleBtn} onPress={handleAddVehicle}>
-              <Text style={styles.addVehicleText}>Thêm xe mới</Text>
-              <Text style={styles.addVehicleIcon}>+</Text>
-            </TouchableOpacity>
+            <Text style={styles.sectionTitle}>Chọn xe ({selectedVehicles.length}/{MAX_VEHICLES})</Text>
+            {vehicles.length < MAX_VEHICLES && (
+              <TouchableOpacity style={styles.addVehicleBtn} onPress={handleAddVehicle}>
+                <Text style={styles.addVehicleText}>Thêm xe mới</Text>
+                <Text style={styles.addVehicleIcon}>+</Text>
+              </TouchableOpacity>
+            )}
           </View>
 
-          <View style={styles.vehicleList}>
-            {mockVehicles.map((vehicle, index) => {
-              const isSelected = selectedVehicle?.id === vehicle.id;
-              return (
-                <TouchableOpacity
-                  key={vehicle.id}
-                  style={[styles.vehicleCard, isSelected && styles.vehicleCardSelected]}
-                  onPress={() => setSelectedVehicle(vehicle)}
-                >
-                  {isSelected && (
-                    <View style={styles.selectedBadge}>
-                      <Text style={styles.selectedIcon}>✓</Text>
+          {vehicles.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyIcon}>🚗</Text>
+              <Text style={styles.emptyText}>Bạn chưa có xe nào</Text>
+              <TouchableOpacity style={styles.emptyAddBtn} onPress={handleAddVehicle}>
+                <Text style={styles.emptyAddBtnText}>+ Thêm xe mới</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={styles.vehicleList}>
+              {vehicles.map((vehicle) => {
+                const isSelected = selectedVehicles.some(v => v.id === vehicle.id);
+                return (
+                  <TouchableOpacity
+                    key={vehicle.id}
+                    style={[styles.vehicleCard, isSelected && styles.vehicleCardSelected]}
+                    onPress={() => toggleVehicle(vehicle)}
+                  >
+                    {isSelected && (
+                      <View style={styles.selectedBadge}>
+                        <Text style={styles.selectedIcon}>✓</Text>
+                      </View>
+                    )}
+                    <View style={styles.vehicleImageContainer}>
+                      {vehicle.imageUrl ? (
+                        <Image source={{ uri: vehicle.imageUrl }} style={styles.vehicleImage} />
+                      ) : (
+                        <View style={styles.vehicleImagePlaceholder}>
+                          <Text style={styles.vehicleImagePlaceholderText}>🚗</Text>
+                        </View>
+                      )}
                     </View>
-                  )}
-                  <View style={styles.vehicleImageContainer}>
-                    <Image
-                      source={{ uri: vehicle.imageUrl || 'https://via.placeholder.com/64' }}
-                      style={styles.vehicleImage}
-                    />
-                  </View>
-                  <View style={styles.vehicleInfo}>
-                    <Text style={styles.vehicleName}>{vehicle.brand} {vehicle.model}</Text>
-                    <Text style={styles.vehiclePlate}>{vehicle.licensePlate}</Text>
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
+                    <View style={styles.vehicleInfo}>
+                      <Text style={styles.vehicleName}>{vehicle.brand} {vehicle.model}</Text>
+                      <Text style={styles.vehiclePlate}>{vehicle.licensePlate}</Text>
+                      <Text style={styles.vehicleColor}>{vehicle.color}</Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          )}
         </View>
+
+        {selectedVehicles.length > 0 && (
+          <View style={styles.selectedSummary}>
+            <Text style={styles.selectedSummaryTitle}>Xe đã chọn:</Text>
+            {selectedVehicles.map((v) => (
+              <Text key={v.id} style={styles.selectedSummaryItem}>
+                • {v.licensePlate} - {v.brand} {v.model}
+              </Text>
+            ))}
+          </View>
+        )}
       </ScrollView>
 
-      {/* Bottom Action */}
       <View style={styles.bottomAction}>
         <TouchableOpacity
-          style={[styles.continueBtn, !selectedVehicle && styles.continueBtnDisabled]}
+          style={[styles.continueBtn, selectedVehicles.length === 0 && styles.continueBtnDisabled]}
           onPress={handleContinue}
-          disabled={!selectedVehicle}
+          disabled={selectedVehicles.length === 0}
         >
-          <Text style={styles.continueBtnText}>TIẾP TỤC</Text>
+          <Text style={styles.continueBtnText}>
+            TIẾP TỤC ({selectedVehicles.length} xe)
+          </Text>
           <Text style={styles.continueBtnIcon}>→</Text>
         </TouchableOpacity>
       </View>
@@ -222,6 +259,35 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: LuxeColors.primaryContainer,
   },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: LuxeSpacing.xl * 2,
+    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+    borderRadius: LuxeBorderRadius.xl,
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    borderColor: LuxeColors.outlineVariant,
+  },
+  emptyIcon: {
+    fontSize: 48,
+    marginBottom: LuxeSpacing.md,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: LuxeColors.onSurfaceVariant,
+    marginBottom: LuxeSpacing.md,
+  },
+  emptyAddBtn: {
+    backgroundColor: LuxeColors.primaryContainer,
+    paddingHorizontal: LuxeSpacing.lg,
+    paddingVertical: LuxeSpacing.sm,
+    borderRadius: LuxeBorderRadius.md,
+  },
+  emptyAddBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#ffffff',
+  },
   vehicleList: {
     gap: LuxeSpacing.md,
   },
@@ -279,6 +345,15 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
+  vehicleImagePlaceholder: {
+    width: '100%',
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  vehicleImagePlaceholderText: {
+    fontSize: 28,
+  },
   vehicleInfo: {
     flex: 1,
     marginLeft: LuxeSpacing.md,
@@ -290,6 +365,29 @@ const styles = StyleSheet.create({
   },
   vehiclePlate: {
     fontSize: 14,
+    fontWeight: '600',
+    color: LuxeColors.primaryContainer,
+    marginTop: 2,
+  },
+  vehicleColor: {
+    fontSize: 13,
+    color: LuxeColors.onSurfaceVariant,
+    marginTop: 2,
+  },
+  selectedSummary: {
+    marginTop: LuxeSpacing.lg,
+    backgroundColor: LuxeColors.primaryContainer + '10',
+    borderRadius: LuxeBorderRadius.md,
+    padding: LuxeSpacing.md,
+  },
+  selectedSummaryTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: LuxeColors.onSurface,
+    marginBottom: LuxeSpacing.xs,
+  },
+  selectedSummaryItem: {
+    fontSize: 13,
     color: LuxeColors.onSurfaceVariant,
     marginTop: 2,
   },
