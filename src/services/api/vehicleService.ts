@@ -5,12 +5,21 @@
 
 import { apiClient, ApiResponse } from './client';
 
+export interface VehicleType {
+  id: number;
+  name: string;
+}
+
 export interface VehicleResponse {
   licensePlate: string;
   vehicleType: string;
 }
 
 export const vehicleService = {
+  getVehicleTypes: async (): Promise<ApiResponse<VehicleType[]>> => {
+    return apiClient.get<VehicleType[]>('/admin/vehicle-types');
+  },
+
   getMyVehicles: async (): Promise<ApiResponse<VehicleResponse[]>> => {
     return apiClient.get<VehicleResponse[]>('/vehicles');
   },
@@ -18,8 +27,10 @@ export const vehicleService = {
   addVehicle: async (data: {
     licensePlate: string;
     vehicleTypeId: number;
-  }): Promise<ApiResponse<VehicleResponse>> => {
-    return apiClient.post<VehicleResponse>('/vehicles', data);
+    registrationPhotoUrl?: string;
+    userNote?: string;
+  }): Promise<ApiResponse<void>> => {
+    return apiClient.post<void>('/vehicles', data);
   },
 
   deleteVehicle: async (licensePlate: string): Promise<ApiResponse<void>> => {

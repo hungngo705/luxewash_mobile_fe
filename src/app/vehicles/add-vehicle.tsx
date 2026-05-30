@@ -1,9 +1,10 @@
 /**
  * Add Vehicle Screen
- * Allows customers to add a new vehicle to their account
+ * POST /api/v1/vehicles
+ * CreateVehicleDTO: { licensePlate, vehicleTypeId, registrationPhotoUrl?, userNote? }
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,69 +13,139 @@ import {
   TextInput,
   TouchableOpacity,
   Alert,
+  ActivityIndicator,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import * as ImagePicker from 'expo-image-picker';
 import { LuxeColors, LuxeSpacing, LuxeBorderRadius } from '@/constants/luxeTheme';
 import { useAuth } from '@/contexts/AuthContext';
-import { Vehicle } from '@/data/types';
+import { vehicleService, VehicleType } from '@/services/api/vehicleService';
+import { uploadImage } from '@/services/api/uploadService';
 
-const CAR_BRANDS = [
-  { label: 'Mercedes-Benz', value: 'Mercedes-Benz' },
-  { label: 'BMW', value: 'BMW' },
-  { label: 'Audi', value: 'Audi' },
-  { label: 'Porsche', value: 'Porsche' },
-  { label: 'Lexus', value: 'Lexus' },
-  { label: 'Toyota', value: 'Toyota' },
-  { label: 'Honda', value: 'Honda' },
-  { label: 'Ford', value: 'Ford' },
-  { label: 'Mazda', value: 'Mazda' },
-  { label: 'Hyundai', value: 'Hyundai' },
-  { label: 'Kia', value: 'Kia' },
-  { label: 'VinFast', value: 'VinFast' },
-  { label: 'Other', value: 'Other' },
-];
-
-const CAR_COLORS = [
-  { label: 'Đen', value: 'Đen' },
-  { label: 'Trắng', value: 'Trắng' },
-  { label: 'Xám', value: 'Xám' },
-  { label: 'Bạc', value: 'Bạc' },
-  { label: 'Đỏ', value: 'Đỏ' },
-  { label: 'Xanh', value: 'Xanh' },
-  { label: 'Nâu', value: 'Nâu' },
-  { label: 'Vàng', value: 'Vàng' },
-  { label: 'Cam', value: 'Cam' },
-  { label: 'Khác', value: 'Khác' },
-];
+const VEHICLE_TYPE_ICONS: Record<string, string> = {
+  Sedan: '🚗',
+  SUV: '🚙',
+  Pickup: '🛻',
+  Van: '🚐',
+  Motorcycle: '🏍️',
+  Khác: '🚘',
+  Other: '🚘',
+};
 
 export default function AddVehicleScreen() {
   const router = useRouter();
-  const { user, addVehicle } = useAuth();
+  const { addVehicle } = useAuth();
+
+  const OTHER_TYPE_ID = -1;
 
   const [licensePlate, setLicensePlate] = useState('');
-  const [brand, setBrand] = useState('');
-  const [model, setModel] = useState('');
-  const [color, setColor] = useState('');
+  const [selectedTypeId, setSelectedTypeId] = useState<number | null>(null);
+  const [otherVehicleType, setOtherVehicleType] = useState('');
+  const [registrationPhoto, setRegistrationPhoto] = useState<string | null>(null);
+  const [vehicleTypes, setVehicleTypes] = useState<VehicleType[]>([]);
+  const [loadingTypes, setLoadingTypes] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showBrandPicker, setShowBrandPicker] = useState(false);
-  const [showColorPicker, setShowColorPicker] = useState(false);
+  const [showTypePicker, setShowTypePicker] = useState(false);
 
-  const validateLicensePlate = (plate: string): boolean => {
-    const pattern = /^[0-9]{2}[A-Z]-[0-9]{3,4}\.[0-9]{2}$/;
-    return pattern.test(plate);
+  const selectedType = vehicleTypes.find(t => t.id === selectedTypeId);
+  const isOtherType = selectedType?.name.toLowerCase().includes('khác') || selectedType?.name.toLowerCase().includes('other');
+
+  useEffect(() => {
+    const loadTypes = async () => {
+      try {
+        const res = await vehicleService.getVehicleTypes();
+        if (res.statusCode === 200 && res.data) {
+          const types = [...res.data, { id: OTHER_TYPE_ID, name: 'Khác' }];
+          setVehicleTypes(types);
+          if (types.length > 0) {
+            setSelectedTypeId(types[0].id);
+          }
+        }
+      } catch (e) {
+        console.error('Failed to load vehicle types:', e);
+        const fallback: VehicleType[] = [
+          { id: 1, name: 'Sedan' },
+          { id: 2, name: 'SUV' },
+          { id: 3, name: 'Pickup' },
+          { id: OTHER_TYPE_ID, name: 'Khác' },
+        ];
+        setVehicleTypes(fallback);
+        setSelectedTypeId(1);
+      } finally {
+        setLoadingTypes(false);
+      }
+    };
+    loadTypes();
+  }, []);
+
+  const normalizePlate = (text: string): string => {
+    const cleaned = text.toUpperCase().replace(/[^0-9A-Z]/g, '').slice(0, 8);
+    const hasLetterAfterProvince = /^[0-9]{2}[A-Z]/.test(cleaned);
+    const len = cleaned.length;
+
+    if (len <= 2) return cleaned;
+
+    // Plain numeric plates (no letter after province code)
+    if (!hasLetterAfterProvince) {
+      if (len === 3) return `${cleaned.slice(0, 2)}-${cleaned.slice(2)}`;
+      if (len === 4) return `${cleaned.slice(0, 2)}-${cleaned.slice(2)}`;
+      if (len === 5) return `${cleaned.slice(0, 2)}-${cleaned.slice(2)}`;
+      if (len === 6) return `${cleaned.slice(0, 2)}-${cleaned.slice(2, 4)}.${cleaned.slice(4)}`;
+      if (len === 7) return `${cleaned.slice(0, 2)}-${cleaned.slice(2, 5)}.${cleaned.slice(5)}`;
+      return `${cleaned.slice(0, 2)}-${cleaned.slice(2, 6)}.${cleaned.slice(6)}`;
+    }
+
+    // Plates with letter after province code (e.g., 51H, 50A)
+    const province = cleaned.slice(0, 2);
+    const letter = cleaned.slice(2, 3);
+    const afterLetter = cleaned.slice(3);
+    const afterLen = afterLetter.length;
+
+    if (afterLen === 3) return `${province}${letter}-${afterLetter}`;
+    if (afterLen === 4) return `${province}${letter}-${afterLetter.slice(0, 3)}.${afterLetter.slice(3)}`;
+    if (afterLen === 5) return `${province}${letter}-${afterLetter.slice(0, 3)}.${afterLetter.slice(3, 5)}`;
+    return `${province}${letter}-${afterLetter}`;
   };
 
-  const formatLicensePlate = (text: string): string => {
-    const cleaned = text.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
-    if (cleaned.length <= 2) return cleaned;
-    if (cleaned.length <= 5) return `${cleaned.slice(0, 2)}-${cleaned.slice(2)}`;
-    if (cleaned.length <= 9) return `${cleaned.slice(0, 2)}-${cleaned.slice(2, 5)}.${cleaned.slice(5)}`;
-    return `${cleaned.slice(0, 2)}-${cleaned.slice(2, 5)}.${cleaned.slice(5, 7)}`;
+  const isValidPlate = (plate: string): boolean => {
+    return /^[0-9]{2}[A-Z0-9]-[0-9]{3,5}(\.[0-9]{2})?$/.test(plate);
   };
 
   const handlePlateChange = (text: string) => {
-    setLicensePlate(formatLicensePlate(text));
+    const prevPlate = licensePlate;
+
+    if (text.length < prevPlate.length) {
+      const cleaned = text.replace(/[^0-9A-Z]/g, '').slice(0, 8);
+      if (cleaned.length <= 2) {
+        setLicensePlate(cleaned);
+      } else {
+        setLicensePlate(text);
+      }
+      return;
+    }
+
+    setLicensePlate(normalizePlate(text));
+  };
+
+  const handlePickImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Lỗi', 'Vui lòng cấp quyền truy cập thư viện ảnh');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets[0]) {
+      setRegistrationPhoto(result.assets[0].uri);
+    }
   };
 
   const handleSubmit = async () => {
@@ -82,50 +153,49 @@ export default function AddVehicleScreen() {
       Alert.alert('Lỗi', 'Vui lòng nhập biển số xe');
       return;
     }
-
-    if (!validateLicensePlate(licensePlate)) {
-      Alert.alert('Lỗi', 'Biển số không đúng định dạng (VD: 30A-888.88)');
+    if (!isValidPlate(licensePlate)) {
+      Alert.alert('Lỗi', 'Biển số xe không hợp lệ. Định dạng: 51H-123.45');
       return;
     }
-
-    if (!brand.trim()) {
-      Alert.alert('Lỗi', 'Vui lòng chọn hãng xe');
+    if (!selectedTypeId) {
+      Alert.alert('Lỗi', 'Vui lòng chọn loại xe');
       return;
     }
-
-    if (!model.trim()) {
-      Alert.alert('Lỗi', 'Vui lòng nhập dòng xe');
+    if (!registrationPhoto) {
+      Alert.alert('Lỗi', 'Vui lòng thêm ảnh thực tế của xe');
       return;
     }
-
-    if (!color.trim()) {
-      Alert.alert('Lỗi', 'Vui lòng chọn màu xe');
+    if (isOtherType && !otherVehicleType.trim()) {
+      Alert.alert('Lỗi', 'Vui lòng nhập loại xe khi chọn "Khác"');
       return;
     }
 
     setIsSubmitting(true);
 
-    const newVehicle: Vehicle = {
-      id: `veh_${Date.now()}`,
-      licensePlate: licensePlate.toUpperCase(),
-      brand,
-      model,
-      color,
-      userId: user!.id,
-      createdAt: new Date(),
-    };
+    try {
+      const note = isOtherType ? otherVehicleType.trim() : undefined;
+      let photoUrl: string | undefined;
 
-    const success = addVehicle(newVehicle);
-
-    if (success) {
-      Alert.alert('Thành công', 'Xe đã được thêm vào tài khoản', [
-        { text: 'OK', onPress: () => router.back() },
-      ]);
-    } else {
-      Alert.alert('Lỗi', 'Không thể thêm xe. Vui lòng thử lại.');
+      if (registrationPhoto) {
+        const uploadResult = await uploadImage(registrationPhoto);
+        if (!uploadResult.success) {
+          Alert.alert('Lỗi', uploadResult.error || 'Không thể tải ảnh lên. Vui lòng thử lại.');
+          setIsSubmitting(false);
+          return;
+        }
+        photoUrl = uploadResult.url;
+      }
+      const result = await addVehicle(licensePlate, selectedTypeId, photoUrl, note);
+      if (result.success) {
+        Alert.alert('Thành công', 'Xe đã được thêm vào tài khoản', [
+          { text: 'OK', onPress: () => router.back() },
+        ]);
+      } else {
+        Alert.alert('Lỗi', result.error || 'Không thể thêm xe. Vui lòng thử lại.');
+      }
+    } finally {
+      setIsSubmitting(false);
     }
-
-    setIsSubmitting(false);
   };
 
   return (
@@ -148,87 +218,100 @@ export default function AddVehicleScreen() {
               onChangeText={handlePlateChange}
               placeholder="VD: 30A-888.88"
               placeholderTextColor={LuxeColors.onSurfaceVariant}
-              maxLength={11}
+              maxLength={12}
               autoCapitalize="characters"
             />
-            <Text style={styles.hint}>Format: 00A-000.00</Text>
+            <Text style={styles.hint}>Định dạng: 51H-123 hoặc 51H-123.45</Text>
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Hãng xe *</Text>
-            <TouchableOpacity
-              style={styles.picker}
-              onPress={() => setShowBrandPicker(!showBrandPicker)}
-            >
-              <Text style={[styles.pickerText, !brand && styles.pickerPlaceholder]}>
-                {brand || 'Chọn hãng xe'}
-              </Text>
-              <Text style={styles.pickerArrow}>▼</Text>
-            </TouchableOpacity>
-            {showBrandPicker && (
-              <View style={styles.pickerList}>
-                {CAR_BRANDS.map((item) => (
-                  <TouchableOpacity
-                    key={item.value}
-                    style={[styles.pickerItem, brand === item.value && styles.pickerItemSelected]}
-                    onPress={() => {
-                      setBrand(item.value);
-                      setShowBrandPicker(false);
-                    }}
-                  >
-                    <Text style={[styles.pickerItemText, brand === item.value && styles.pickerItemTextSelected]}>
-                      {item.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+            <Text style={styles.label}>Loại xe *</Text>
+            {loadingTypes ? (
+              <View style={styles.loadingRow}>
+                <ActivityIndicator size="small" color={LuxeColors.primaryContainer} />
+                <Text style={styles.loadingText}>Đang tải loại xe...</Text>
               </View>
+            ) : (
+              <>
+                <TouchableOpacity
+                  style={styles.picker}
+                  onPress={() => setShowTypePicker(!showTypePicker)}
+                >
+                  <View style={styles.pickerLeft}>
+                    <Text style={styles.pickerIcon}>
+                      {VEHICLE_TYPE_ICONS[selectedType?.name || ''] || '🚗'}
+                    </Text>
+                    <Text style={[styles.pickerText, !selectedType && styles.pickerPlaceholder]}>
+                      {selectedType?.name || 'Chọn loại xe'}
+                    </Text>
+                  </View>
+                  <Text style={styles.pickerArrow}>{showTypePicker ? '▲' : '▼'}</Text>
+                </TouchableOpacity>
+                {showTypePicker && (
+                  <View style={styles.pickerList}>
+                    {vehicleTypes.map((type) => (
+                      <TouchableOpacity
+                        key={type.id}
+                        style={[
+                          styles.pickerItem,
+                          selectedTypeId === type.id && styles.pickerItemSelected,
+                        ]}
+                        onPress={() => {
+                          setSelectedTypeId(type.id);
+                          setShowTypePicker(false);
+                        }}
+                      >
+                        <Text style={styles.pickerItemIcon}>
+                          {VEHICLE_TYPE_ICONS[type.name] || '🚗'}
+                        </Text>
+                        <Text
+                          style={[
+                            styles.pickerItemText,
+                            selectedTypeId === type.id && styles.pickerItemTextSelected,
+                          ]}
+                        >
+                          {type.name}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+              </>
             )}
           </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Dòng xe / Model *</Text>
-            <TextInput
-              style={styles.input}
-              value={model}
-              onChangeText={setModel}
-              placeholder="VD: S500, X7, Civic"
-              placeholderTextColor={LuxeColors.onSurfaceVariant}
-            />
           </View>
 
+          {isOtherType && (
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Loại xe cụ thể *</Text>
+              <TextInput
+                style={styles.input}
+                value={otherVehicleType}
+                onChangeText={setOtherVehicleType}
+                placeholder="VD: Truck, Convertible, Limousine"
+                placeholderTextColor={LuxeColors.onSurfaceVariant}
+                maxLength={50}
+              />
+              <Text style={styles.hint}>Nhập loại xe để chúng tôi hỗ trợ cập nhật</Text>
+            </View>
+          )}
+
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Màu sắc *</Text>
-            <TouchableOpacity
-              style={styles.picker}
-              onPress={() => setShowColorPicker(!showColorPicker)}
-            >
-              <Text style={[styles.pickerText, !color && styles.pickerPlaceholder]}>
-                {color || 'Chọn màu xe'}
-              </Text>
-              <Text style={styles.pickerArrow}>▼</Text>
+            <Text style={styles.label}>Ảnh thực tế xe *</Text>
+            <TouchableOpacity style={styles.imagePickerBtn} onPress={handlePickImage}>
+              {registrationPhoto ? (
+                <Image source={{ uri: registrationPhoto }} style={styles.previewImage} />
+              ) : (
+                <View style={styles.imagePickerPlaceholder}>
+                  <Text style={styles.imagePickerIcon}>📷</Text>
+                  <Text style={styles.imagePickerText}>Thêm ảnh xe</Text>
+                </View>
+              )}
             </TouchableOpacity>
-            {showColorPicker && (
-              <View style={styles.pickerList}>
-                {CAR_COLORS.map((item) => (
-                  <TouchableOpacity
-                    key={item.value}
-                    style={[styles.pickerItem, color === item.value && styles.pickerItemSelected]}
-                    onPress={() => {
-                      setColor(item.value);
-                      setShowColorPicker(false);
-                    }}
-                  >
-                    <Text style={[styles.pickerItemText, color === item.value && styles.pickerItemTextSelected]}>
-                      {item.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            )}
+            <Text style={styles.hint}>Chụp hoặc chọn ảnh biển số xe để xác minh</Text>
           </View>
-        </View>
 
-        <View style={styles.note}>
+          <View style={styles.note}>
           <Text style={styles.noteIcon}>ℹ️</Text>
           <Text style={styles.noteText}>
             Bằng cách thêm xe, bạn đồng ý rằng biển số xe là chính chủ và thuộc quyền sở hữu của bạn.
@@ -238,12 +321,15 @@ export default function AddVehicleScreen() {
 
       <View style={styles.footer}>
         <TouchableOpacity
-          style={[styles.submitBtn, isSubmitting && styles.submitBtnDisabled]}
+          style={[
+            styles.submitBtn,
+            (isSubmitting || loadingTypes || !licensePlate.trim() || !selectedTypeId || !registrationPhoto || (isOtherType && !otherVehicleType.trim())) && styles.submitBtnDisabled,
+          ]}
           onPress={handleSubmit}
-          disabled={isSubmitting}
+          disabled={isSubmitting || loadingTypes || !licensePlate.trim() || !selectedTypeId || !registrationPhoto || (isOtherType && !otherVehicleType.trim())}
         >
           <Text style={styles.submitBtnText}>
-            {isSubmitting ? 'Đang xử lý...' : 'Thêm xe'}
+            {isSubmitting ? (registrationPhoto ? 'Đang tải ảnh...' : 'Đang xử lý...') : 'Thêm xe'}
           </Text>
         </TouchableOpacity>
       </View>
@@ -289,10 +375,10 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: LuxeSpacing.lg,
-    paddingBottom: 100,
+    paddingBottom: 120,
   },
   form: {
-    gap: LuxeSpacing.lg,
+    gap: LuxeSpacing.xl,
   },
   inputGroup: {
     gap: LuxeSpacing.xs,
@@ -307,15 +393,28 @@ const styles = StyleSheet.create({
     borderRadius: LuxeBorderRadius.md,
     paddingHorizontal: LuxeSpacing.md,
     paddingVertical: LuxeSpacing.md,
-    fontSize: 16,
-    color: LuxeColors.onSurface,
+    fontSize: 18,
+    fontWeight: '700',
+    letterSpacing: 2,
+    color: LuxeColors.primaryContainer,
     borderWidth: 1,
     borderColor: LuxeColors.outlineVariant,
+    textAlign: 'center',
   },
   hint: {
     fontSize: 12,
     color: LuxeColors.onSurfaceVariant,
     marginTop: 4,
+  },
+  loadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    padding: LuxeSpacing.md,
+  },
+  loadingText: {
+    fontSize: 14,
+    color: LuxeColors.onSurfaceVariant,
   },
   picker: {
     flexDirection: 'row',
@@ -327,6 +426,14 @@ const styles = StyleSheet.create({
     paddingVertical: LuxeSpacing.md,
     borderWidth: 1,
     borderColor: LuxeColors.outlineVariant,
+  },
+  pickerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: LuxeSpacing.sm,
+  },
+  pickerIcon: {
+    fontSize: 24,
   },
   pickerText: {
     fontSize: 16,
@@ -345,16 +452,22 @@ const styles = StyleSheet.create({
     marginTop: LuxeSpacing.xs,
     borderWidth: 1,
     borderColor: LuxeColors.outlineVariant,
-    maxHeight: 200,
+    overflow: 'hidden',
   },
   pickerItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: LuxeSpacing.sm,
     paddingHorizontal: LuxeSpacing.md,
-    paddingVertical: LuxeSpacing.sm,
+    paddingVertical: LuxeSpacing.md,
     borderBottomWidth: 1,
     borderBottomColor: LuxeColors.outlineVariant + '30',
   },
   pickerItemSelected: {
     backgroundColor: LuxeColors.primaryContainer + '20',
+  },
+  pickerItemIcon: {
+    fontSize: 24,
   },
   pickerItemText: {
     fontSize: 16,
@@ -369,7 +482,7 @@ const styles = StyleSheet.create({
     backgroundColor: LuxeColors.primaryContainer + '10',
     borderRadius: LuxeBorderRadius.md,
     padding: LuxeSpacing.md,
-    marginTop: LuxeSpacing.lg,
+    marginTop: LuxeSpacing.xl,
     gap: LuxeSpacing.sm,
   },
   noteIcon: {
@@ -380,6 +493,33 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: LuxeColors.onSurfaceVariant,
     lineHeight: 18,
+  },
+  imagePickerBtn: {
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: LuxeBorderRadius.md,
+    borderWidth: 1,
+    borderColor: LuxeColors.outlineVariant,
+    borderStyle: 'dashed',
+    overflow: 'hidden',
+    minHeight: 120,
+  },
+  imagePickerPlaceholder: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: LuxeSpacing.xl,
+  },
+  imagePickerIcon: {
+    fontSize: 32,
+    marginBottom: LuxeSpacing.xs,
+  },
+  imagePickerText: {
+    fontSize: 14,
+    color: LuxeColors.onSurfaceVariant,
+  },
+  previewImage: {
+    width: '100%',
+    height: 200,
+    resizeMode: 'cover',
   },
   footer: {
     position: 'absolute',
@@ -398,7 +538,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   submitBtnDisabled: {
-    opacity: 0.6,
+    opacity: 0.5,
   },
   submitBtnText: {
     fontSize: 16,

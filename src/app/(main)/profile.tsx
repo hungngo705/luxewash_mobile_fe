@@ -3,58 +3,63 @@
  * User profile, settings and logout
  */
 
-import React from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
+  LuxeBorderRadius,
+  LuxeColors,
+  LuxeSpacing,
+  MembershipConfig,
+} from "@/constants/luxeTheme";
+import { useAuth } from "@/contexts/AuthContext";
+import { mockVehicles } from "@/data/types";
+import { useRouter } from "expo-router";
+import React from "react";
+import {
   Alert,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import { LuxeColors, LuxeSpacing, LuxeBorderRadius, MembershipConfig } from '@/constants/luxeTheme';
-import { useAuth } from '@/contexts/AuthContext';
-import { mockVehicles } from '@/data/types';
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function ProfileScreen() {
   const { user, logout } = useAuth();
   const router = useRouter();
 
   const currentUser = user;
-  const membershipInfo = currentUser ? MembershipConfig[currentUser.membershipTier] : MembershipConfig.standard;
+  const membershipInfo = currentUser
+    ? MembershipConfig[currentUser.membershipTier]
+    : MembershipConfig.standard;
 
   const menuItems = [
-    { icon: '🚗', title: 'Quản lý xe', subtitle: `${currentUser?.vehicles?.length || mockVehicles.length} xe đã đăng ký` },
-    { icon: '📍', title: 'Địa chỉ giao hàng', subtitle: 'Cập nhật địa chỉ' },
-    { icon: '💳', title: 'Phương thức thanh toán', subtitle: 'Quản lý ví và thẻ' },
-    { icon: '🔔', title: 'Thông báo', subtitle: 'Cài đặt thông báo' },
-    { icon: '🔒', title: 'Bảo mật', subtitle: 'Đổi mật khẩu, PIN' },
-    { icon: '❓', title: 'Hỗ trợ', subtitle: 'Liên hệ, FAQ' },
+    {
+      icon: "💳",
+      title: "Phương thức thanh toán",
+      subtitle: "Quản lý ví và thẻ",
+    },
+    { icon: "🔔", title: "Thông báo", subtitle: "Cài đặt thông báo" },
+    { icon: "🔒", title: "Bảo mật", subtitle: "Đổi mật khẩu, PIN" },
+    { icon: "❓", title: "Hỗ trợ", subtitle: "Liên hệ, FAQ" },
   ];
 
   const handleLogout = () => {
-    Alert.alert(
-      'Đăng xuất',
-      'Bạn có chắc chắn muốn đăng xuất?',
-      [
-        { text: 'Hủy', style: 'cancel' },
-        {
-          text: 'Đăng xuất',
-          style: 'destructive',
-          onPress: async () => {
-            await logout();
-            router.replace('/login');
-          },
+    Alert.alert("Đăng xuất", "Bạn có chắc chắn muốn đăng xuất?", [
+      { text: "Hủy", style: "cancel" },
+      {
+        text: "Đăng xuất",
+        style: "destructive",
+        onPress: async () => {
+          await logout();
+          router.replace("/login");
         },
-      ]
-    );
+      },
+    ]);
   };
 
   return (
     <View style={styles.container}>
-      <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <SafeAreaView style={styles.safeArea} edges={["top"]}>
         <ScrollView
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
@@ -64,20 +69,32 @@ export default function ProfileScreen() {
           <View style={styles.profileCard}>
             <View style={styles.avatar}>
               <Text style={styles.avatarText}>
-                {currentUser?.name?.charAt(0) || 'U'}
+                {currentUser?.name?.charAt(0) || "U"}
               </Text>
             </View>
-            <Text style={styles.userName}>{currentUser?.name || 'Khách'}</Text>
-            <Text style={styles.userPhone}>{currentUser?.phoneNumber || ''}</Text>
-            <View style={[styles.membershipBadge, { backgroundColor: membershipInfo.color + '20' }]}>
-              <Text style={[styles.membershipBadgeText, { color: membershipInfo.color }]}>
+            <Text style={styles.userName}>{currentUser?.name || "Khách"}</Text>
+            <Text style={styles.userPhone}>
+              {currentUser?.phoneNumber || ""}
+            </Text>
+            <View
+              style={[
+                styles.membershipBadge,
+                { backgroundColor: membershipInfo.color + "20" },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.membershipBadgeText,
+                  { color: membershipInfo.color },
+                ]}
+              >
                 {membershipInfo.nameVi}
               </Text>
             </View>
             <View style={styles.userInfo}>
               <View style={styles.infoItem}>
                 <Text style={styles.infoValue}>
-                  {currentUser?.loyaltyPoints?.toLocaleString('vi-VN') || '0'}
+                  {currentUser?.loyaltyPoints?.toLocaleString("vi-VN") || "0"}
                 </Text>
                 <Text style={styles.infoLabel}>Điểm</Text>
               </View>
@@ -99,25 +116,45 @@ export default function ProfileScreen() {
           {/* Quick Actions */}
           <View style={styles.quickActions}>
             <TouchableOpacity style={styles.quickAction}>
-              <View style={[styles.quickActionIcon, { backgroundColor: LuxeColors.primaryContainer + '20' }]}>
+              <View
+                style={[
+                  styles.quickActionIcon,
+                  { backgroundColor: LuxeColors.primaryContainer + "20" },
+                ]}
+              >
                 <Text style={styles.quickActionIconText}>📅</Text>
               </View>
               <Text style={styles.quickActionText}>Lịch hẹn</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.quickAction}>
-              <View style={[styles.quickActionIcon, { backgroundColor: LuxeColors.tertiaryContainer + '30' }]}>
+              <View
+                style={[
+                  styles.quickActionIcon,
+                  { backgroundColor: LuxeColors.tertiaryContainer + "30" },
+                ]}
+              >
                 <Text style={styles.quickActionIconText}>🎫</Text>
               </View>
               <Text style={styles.quickActionText}>Voucher</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.quickAction}>
-              <View style={[styles.quickActionIcon, { backgroundColor: '#F59E0B20' }]}>
+              <View
+                style={[
+                  styles.quickActionIcon,
+                  { backgroundColor: "#F59E0B20" },
+                ]}
+              >
                 <Text style={styles.quickActionIconText}>⭐</Text>
               </View>
               <Text style={styles.quickActionText}>Đánh giá</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.quickAction}>
-              <View style={[styles.quickActionIcon, { backgroundColor: LuxeColors.secondaryContainer + '40' }]}>
+              <View
+                style={[
+                  styles.quickActionIcon,
+                  { backgroundColor: LuxeColors.secondaryContainer + "40" },
+                ]}
+              >
                 <Text style={styles.quickActionIconText}>📤</Text>
               </View>
               <Text style={styles.quickActionText}>Chia sẻ</Text>
@@ -126,13 +163,18 @@ export default function ProfileScreen() {
 
           {/* Menu List */}
           <View style={styles.menuSection}>
-            {user?.role === 'customer' && (
-              <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/vehicles' as any)}>
+            {user?.role === "customer" && (
+              <TouchableOpacity
+                style={styles.menuItem}
+                onPress={() => router.push("/vehicles" as any)}
+              >
                 <View style={styles.menuItemLeft}>
                   <Text style={styles.menuIcon}>🚗</Text>
                   <View style={styles.menuItemContent}>
                     <Text style={styles.menuTitle}>Xe của tôi</Text>
-                    <Text style={styles.menuSubtitle}>{user.vehicles.length}/5 xe đã đăng ký</Text>
+                    <Text style={styles.menuSubtitle}>
+                      {user.vehicles.length}/5 xe đã đăng ký
+                    </Text>
                   </View>
                 </View>
                 <Text style={styles.menuChevron}>›</Text>
@@ -150,8 +192,11 @@ export default function ProfileScreen() {
                 <Text style={styles.menuChevron}>›</Text>
               </TouchableOpacity>
             ))}
-            {user?.role === 'staff' && (
-              <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/staff/lpr-checkin' as any)}>
+            {user?.role === "staff" && (
+              <TouchableOpacity
+                style={styles.menuItem}
+                onPress={() => router.push("/staff/lpr-checkin" as any)}
+              >
                 <View style={styles.menuItemLeft}>
                   <Text style={styles.menuIcon}>🚗</Text>
                   <View style={styles.menuItemContent}>
@@ -195,10 +240,10 @@ const styles = StyleSheet.create({
     paddingBottom: 100,
   },
   profileCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.85)',
+    backgroundColor: "rgba(255, 255, 255, 0.85)",
     borderRadius: LuxeBorderRadius.xl,
     padding: LuxeSpacing.xl,
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: LuxeSpacing.lg,
     shadowColor: LuxeColors.primaryContainer,
     shadowOffset: { width: 0, height: 10 },
@@ -211,8 +256,8 @@ const styles = StyleSheet.create({
     height: 80,
     borderRadius: 40,
     backgroundColor: LuxeColors.primaryContainer,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginBottom: LuxeSpacing.md,
     shadowColor: LuxeColors.primaryContainer,
     shadowOffset: { width: 0, height: 4 },
@@ -222,12 +267,12 @@ const styles = StyleSheet.create({
   },
   avatarText: {
     fontSize: 32,
-    fontWeight: '700',
-    color: '#ffffff',
+    fontWeight: "700",
+    color: "#ffffff",
   },
   userName: {
     fontSize: 22,
-    fontWeight: '700',
+    fontWeight: "700",
     color: LuxeColors.onSurface,
     marginBottom: 4,
   },
@@ -244,24 +289,24 @@ const styles = StyleSheet.create({
   },
   membershipBadgeText: {
     fontSize: 14,
-    fontWeight: '700',
-    textTransform: 'uppercase',
+    fontWeight: "700",
+    textTransform: "uppercase",
   },
   userInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    width: '100%',
+    flexDirection: "row",
+    alignItems: "center",
+    width: "100%",
     paddingTop: LuxeSpacing.md,
     borderTopWidth: 1,
-    borderTopColor: LuxeColors.outlineVariant + '30',
+    borderTopColor: LuxeColors.outlineVariant + "30",
   },
   infoItem: {
     flex: 1,
-    alignItems: 'center',
+    alignItems: "center",
   },
   infoValue: {
     fontSize: 20,
-    fontWeight: '700',
+    fontWeight: "700",
     color: LuxeColors.onSurface,
   },
   infoLabel: {
@@ -272,25 +317,25 @@ const styles = StyleSheet.create({
   infoDivider: {
     width: 1,
     height: 30,
-    backgroundColor: LuxeColors.outlineVariant + '30',
+    backgroundColor: LuxeColors.outlineVariant + "30",
   },
   quickActions: {
-    flexDirection: 'row',
-    backgroundColor: 'rgba(255, 255, 255, 0.85)',
+    flexDirection: "row",
+    backgroundColor: "rgba(255, 255, 255, 0.85)",
     borderRadius: LuxeBorderRadius.lg,
     padding: LuxeSpacing.md,
     marginBottom: LuxeSpacing.lg,
   },
   quickAction: {
     flex: 1,
-    alignItems: 'center',
+    alignItems: "center",
   },
   quickActionIcon: {
     width: 40,
     height: 40,
     borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginBottom: 6,
   },
   quickActionIconText: {
@@ -299,25 +344,25 @@ const styles = StyleSheet.create({
   quickActionText: {
     fontSize: 11,
     color: LuxeColors.onSurfaceVariant,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   menuSection: {
-    backgroundColor: 'rgba(255, 255, 255, 0.85)',
+    backgroundColor: "rgba(255, 255, 255, 0.85)",
     borderRadius: LuxeBorderRadius.lg,
     marginBottom: LuxeSpacing.lg,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     padding: LuxeSpacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: LuxeColors.outlineVariant + '20',
+    borderBottomColor: LuxeColors.outlineVariant + "20",
   },
   menuItemLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     flex: 1,
   },
   menuIcon: {
@@ -329,7 +374,7 @@ const styles = StyleSheet.create({
   },
   menuTitle: {
     fontSize: 15,
-    fontWeight: '500',
+    fontWeight: "500",
     color: LuxeColors.onSurface,
   },
   menuSubtitle: {
@@ -342,10 +387,10 @@ const styles = StyleSheet.create({
     color: LuxeColors.onSurfaceVariant,
   },
   logoutBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FEE2E2',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FEE2E2",
     borderRadius: LuxeBorderRadius.lg,
     padding: LuxeSpacing.md,
     gap: 8,
@@ -356,11 +401,11 @@ const styles = StyleSheet.create({
   },
   logoutText: {
     fontSize: 15,
-    fontWeight: '600',
-    color: '#DC2626',
+    fontWeight: "600",
+    color: "#DC2626",
   },
   version: {
-    textAlign: 'center',
+    textAlign: "center",
     fontSize: 12,
     color: LuxeColors.onSurfaceVariant,
     marginBottom: LuxeSpacing.lg,

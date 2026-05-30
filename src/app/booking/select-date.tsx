@@ -14,35 +14,63 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { LuxeColors, LuxeSpacing, LuxeBorderRadius, MembershipConfig, MembershipTier } from '@/constants/luxeTheme';
+import { LuxeColors, LuxeSpacing, LuxeBorderRadius, MembershipConfig } from '@/constants/luxeTheme';
 import { useAuth } from '@/contexts/AuthContext';
-import { mockUsers, mockVehicles, generateTimeSlots, TimeSlot } from '@/data/types';
+import { bookingService, type TimeSlot } from '@/services/api';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const DAYS_OF_WEEK = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
 
-interface SelectDateScreenProps {
-  onSelect?: (date: Date, timeSlot: TimeSlot) => void;
-  onBack?: () => void;
+interface DayCell {
+  date: Date | null;
+  isPast: boolean;
+  isLocked: boolean;
 }
 
-export default function SelectDateScreen({ onSelect, onBack }: SelectDateScreenProps) {
+export default function SelectDateScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const params = useLocalSearchParams();
   const vehicleId = params.vehicleId as string;
 
-  const currentUser = user || mockUsers[0];
-  const membershipInfo = MembershipConfig[currentUser?.membershipTier || 'standard'];
+  const membershipInfo = user ? MembershipConfig[user.membershipTier] : MembershipConfig.standard;
   const maxAdvanceDays = membershipInfo.maxAdvanceDays;
 
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<TimeSlot | null>(null);
-  const [timeSlots] = useState<TimeSlot[]>(() => generateTimeSlots('stn_001'));
+  const [slots, setSlots] = useState<TimeSlot[]>([]);
+  const [loadingSlots, setLoadingSlots] = useState(false);
 
-  // Generate calendar days
-  const calendarDays = useMemo(() => {
+  const loadSlots = async (date: string) => {
+    setLoadingSlots(true);
+    try {
+      const res = await bookingService.getSlots(date);
+      if (res.statusCode === 200 && res.data) {
+        setSlots(res.data);
+      }
+    } catch (e) {
+      console.error('Failed to load slots:', e);
+    }
+    setLoadingSlots(false);
+  };
+
+  const handlePrevMonth = () => {
+    setCurrentMonth(prev => {
+      const next = new Date(prev);
+      next.setMonth(next.getMonth() - 1);
+      return next;
+    });
+  };
+
+  const handleNextMonth = () => {
+    setCurrentMonth(prev => {
+      const next = new Date(prev);
+      next.setMonth(next.getMonth() + 1);
+      return next;
+    });
+  };
+
+  const calendarDays = useMemo<DayCell[]>(() => {
     const year = currentMonth.getFullYear();
     const month = currentMonth.getMonth();
     const firstDay = new Date(year, month, 1);
@@ -50,51 +78,33 @@ export default function SelectDateScreen({ onSelect, onBack }: SelectDateScreenP
     const daysInMonth = lastDay.getDate();
     const startDayOfWeek = firstDay.getDay();
 
-    const days: Array<{ date: Date | null; isPast: boolean; isLocked: boolean }> = [];
-
-    // Empty slots for days before first of month
+    const days: DayCell[] = [];
     for (let i = 0; i < startDayOfWeek; i++) {
       days.push({ date: null, isPast: false, isLocked: false });
     }
 
-    // Days of the month
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-
     const maxDate = new Date();
     maxDate.setDate(maxDate.getDate() + maxAdvanceDays);
 
     for (let day = 1; day <= daysInMonth; day++) {
       const date = new Date(year, month, day);
-      const isPast = date < today;
-      const isLocked = !isPast && date > maxDate;
-      days.push({ date, isPast, isLocked });
+      days.push({
+        date,
+      isPast: date < today,
+      isLocked: date >= today && date > maxDate,
+      });
     }
 
     return days;
   }, [currentMonth, maxAdvanceDays]);
 
-  const monthYearDisplay = currentMonth.toLocaleDateString('vi-VN', {
-    month: 'long',
-    year: 'numeric',
-  });
-
-  const handlePrevMonth = () => {
-    const prev = new Date(currentMonth);
-    prev.setMonth(prev.getMonth() - 1);
-    setCurrentMonth(prev);
-  };
-
-  const handleNextMonth = () => {
-    const next = new Date(currentMonth);
-    next.setMonth(next.getMonth() + 1);
-    setCurrentMonth(next);
-  };
-
-  const handleDateSelect = (day: { date: Date | null; isPast: boolean; isLocked: boolean }) => {
+  const handleDateSelect = (day: DayCell) => {
     if (day.date && !day.isPast && !day.isLocked) {
       setSelectedDate(day.date);
       setSelectedTimeSlot(null);
+      loadSlots(day.date.toISOString().split('T')[0]);
     }
   };
 
@@ -103,39 +113,44 @@ export default function SelectDateScreen({ onSelect, onBack }: SelectDateScreenP
       router.push({
         pathname: '/booking/select-service',
         params: {
-          vehicleId: vehicleId || mockVehicles[0].id,
+          vehicleId: vehicleId || '',
           date: selectedDate.toISOString(),
-          timeSlotId: selectedTimeSlot.id,
+          timeSlotId: String(selectedTimeSlot.slotId),
+          timeRange: selectedTimeSlot.timeRange,
         },
       });
     }
   };
 
-  // Group time slots by period
-  const groupedTimeSlots = useMemo(() => {
-    const groups = {
-      morning: timeSlots.filter((slot) => slot.period === 'morning'),
-      afternoon: timeSlots.filter((slot) => slot.period === 'afternoon'),
-      evening: timeSlots.filter((slot) => slot.period === 'evening'),
-    };
+  const vehicleName = user?.vehicles.find(v => v.id === vehicleId);
+
+  const groupedSlots = useMemo(() => {
+    const groups: Record<string, TimeSlot[]> = { morning: [], afternoon: [], evening: [] };
+    for (const slot of slots) {
+      const hour = parseInt(slot.timeRange.split(':')[0], 10);
+      if (hour < 12) groups.morning.push(slot);
+      else if (hour < 17) groups.afternoon.push(slot);
+      else groups.evening.push(slot);
+    }
     return groups;
-  }, [timeSlots]);
+  }, [slots]);
 
-  const formatDate = (date: Date) => {
-    return date.toLocaleDateString('vi-VN', {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'numeric',
-    });
+  const monthYearDisplay = currentMonth.toLocaleDateString('vi-VN', {
+    month: 'long',
+    year: 'numeric',
+  });
+
+  const periodLabel: Record<string, string> = {
+    morning: 'Sáng',
+    afternoon: 'Chiều',
+    evening: 'Tối',
   };
-
-  const selectedVehicle = mockVehicles.find((v) => v.id === vehicleId) || mockVehicles[0];
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => onBack ? onBack() : router.back()}>
+        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
           <Text style={styles.backIcon}>←</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Đặt lịch rửa xe</Text>
@@ -156,8 +171,10 @@ export default function SelectDateScreen({ onSelect, onBack }: SelectDateScreenP
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
         {/* Selected Vehicle */}
         <View style={styles.vehicleInfo}>
-          <Text style={styles.vehicleName}>{selectedVehicle.brand} {selectedVehicle.model}</Text>
-          <Text style={styles.vehiclePlate}>{selectedVehicle.licensePlate}</Text>
+          <Text style={styles.vehicleName}>
+            {vehicleName ? `${vehicleName.brand} ${vehicleName.model}` : ''}
+          </Text>
+          <Text style={styles.vehiclePlate}>{vehicleName?.licensePlate || ''}</Text>
         </View>
 
         {/* Calendar Section */}
@@ -190,7 +207,6 @@ export default function SelectDateScreen({ onSelect, onBack }: SelectDateScreenP
 
               const isToday = day.date.toDateString() === new Date().toDateString();
               const isSelected = selectedDate?.toDateString() === day.date.toDateString();
-              const dayNumber = day.date.getDate();
 
               return (
                 <TouchableOpacity
@@ -214,7 +230,7 @@ export default function SelectDateScreen({ onSelect, onBack }: SelectDateScreenP
                       isToday && !isSelected && styles.dayTextToday,
                     ]}
                   >
-                    {dayNumber}
+                    {day.date.getDate()}
                   </Text>
                   {day.isLocked && <Text style={styles.lockIcon}>🔒</Text>}
                   {isToday && <View style={styles.todayDot} />}
@@ -229,30 +245,28 @@ export default function SelectDateScreen({ onSelect, onBack }: SelectDateScreenP
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Khung giờ đến</Text>
-              <View style={styles.availableBadge}>
-                <Text style={styles.availableIcon}>⚡</Text>
-                <Text style={styles.availableText}>Sẵn có</Text>
-              </View>
+              {loadingSlots ? (
+                <Text style={styles.availableText}>Đang tải...</Text>
+              ) : (
+                <View style={styles.availableBadge}>
+                  <Text style={styles.availableIcon}>⚡</Text>
+                  <Text style={styles.availableText}>
+                    {slots.filter(s => s.isAvailable).length} khung giờ
+                  </Text>
+                </View>
+              )}
             </View>
 
-            {Object.entries(groupedTimeSlots).map(([period, slots]) => {
-              const periodLabel = {
-                morning: 'Sáng',
-                afternoon: 'Chiều',
-                evening: 'Tối',
-              }[period as keyof typeof groupedTimeSlots];
-
-              return (
+            {Object.entries(groupedSlots).map(([period, periodSlots]) =>
+              periodSlots.length > 0 ? (
                 <View key={period} style={styles.timePeriod}>
-                  <Text style={styles.periodLabel}>{periodLabel}</Text>
+                  <Text style={styles.periodLabel}>{periodLabel[period] || period}</Text>
                   <View style={styles.timeSlotsGrid}>
-                    {slots.map((slot) => {
-                      const isSelected = selectedTimeSlot?.id === slot.id;
-                      const timeDisplay = `${slot.startTime} - ${slot.endTime}`;
-
+                    {periodSlots.map((slot) => {
+                      const isSelected = selectedTimeSlot?.slotId === slot.slotId;
                       return (
                         <TouchableOpacity
-                          key={slot.id}
+                          key={slot.slotId}
                           style={[
                             styles.timeSlot,
                             !slot.isAvailable && styles.timeSlotUnavailable,
@@ -268,21 +282,20 @@ export default function SelectDateScreen({ onSelect, onBack }: SelectDateScreenP
                               isSelected && styles.timeSlotTextSelected,
                             ]}
                           >
-                            {timeDisplay}
+                            {slot.timeRange}
                           </Text>
                         </TouchableOpacity>
                       );
                     })}
                   </View>
                 </View>
-              );
-            })}
+              ) : null,
+            )}
 
-            {/* Info Badge */}
             <View style={styles.infoBadge}>
               <Text style={styles.infoIcon}>ℹ️</Text>
               <Text style={styles.infoText}>
-                Hệ thống sử dụng các "khối đệm siêu nhỏ" (micro buffer blocks) để đảm bảo dịch vụ thông suốt ngay cả khi có sự chậm trễ từ khách hàng trước.
+                Khung giờ có thể đầy. Vui lòng chọn thời gian khác nếu không có giờ trống.
               </Text>
             </View>
           </View>
@@ -294,16 +307,10 @@ export default function SelectDateScreen({ onSelect, onBack }: SelectDateScreenP
             <Text style={styles.membershipIconText}>🏆</Text>
           </View>
           <View style={styles.membershipContent}>
-            <Text style={styles.membershipTitle}>Đặc quyền thành viên {membershipInfo.nameVi}</Text>
+            <Text style={styles.membershipTitle}>Đặc quyền {membershipInfo.nameVi}</Text>
             <Text style={styles.membershipDesc}>
-              Hạng của bạn được đặt trước tối đa {membershipInfo.maxAdvanceDays} ngày.
+              Đặt trước tối đa {maxAdvanceDays} ngày.
             </Text>
-            <TouchableOpacity style={styles.upgradeLink}>
-              <Text style={styles.upgradeLinkText}>
-                Nâng cấp lên Bạch kim để đặt trước 30 ngày
-              </Text>
-              <Text style={styles.upgradeArrow}>→</Text>
-            </TouchableOpacity>
           </View>
         </View>
       </ScrollView>
@@ -426,8 +433,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: LuxeColors.onSurface,
   },
-
-  // Calendar styles
   monthNav: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -536,8 +541,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 6,
   },
-
-  // Time slots styles
   availableBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -624,11 +627,8 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 12,
     color: LuxeColors.onSurfaceVariant,
-    fontStyle: 'italic',
     lineHeight: 18,
   },
-
-  // Membership card
   membershipCard: {
     flexDirection: 'row',
     backgroundColor: 'rgba(255, 255, 255, 0.8)',
@@ -661,24 +661,7 @@ const styles = StyleSheet.create({
   membershipDesc: {
     fontSize: 14,
     color: LuxeColors.onSurfaceVariant,
-    marginBottom: 8,
   },
-  upgradeLink: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  upgradeLinkText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: LuxeColors.primaryContainer,
-  },
-  upgradeArrow: {
-    fontSize: 12,
-    color: LuxeColors.primaryContainer,
-  },
-
-  // Bottom action
   bottomAction: {
     position: 'absolute',
     bottom: 0,

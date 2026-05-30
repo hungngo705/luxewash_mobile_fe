@@ -3,19 +3,21 @@
  * Booking summary and payment confirmation
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { LuxeColors, LuxeSpacing, LuxeBorderRadius, MembershipConfig } from '@/constants/luxeTheme';
 import { useAuth } from '@/contexts/AuthContext';
-import { mockUsers, mockVehicles, mockServices, generateTimeSlots, Booking } from '@/data/types';
+import { bookingService, loyaltyService } from '@/services/api';
 
 export default function BookingConfirmationScreen() {
   const router = useRouter();
@@ -25,51 +27,71 @@ export default function BookingConfirmationScreen() {
   const vehicleId = params.vehicleId as string;
   const dateParam = params.date as string;
   const timeSlotId = params.timeSlotId as string;
+  const timeRange = params.timeRange as string;
   const serviceId = params.serviceId as string;
+  const serviceName = params.serviceName as string;
+  const servicePrice = parseInt(params.servicePrice as string) || 0;
   const useLoyaltyPoints = params.useLoyaltyPoints === 'true';
   const pointsToUse = parseInt(params.pointsToUse as string) || 0;
 
-  const currentUser = user || mockUsers[0];
-  const membershipInfo = MembershipConfig[currentUser?.membershipTier || 'standard'];
-  const selectedVehicle = mockVehicles.find((v) => v.id === vehicleId) || mockVehicles[0];
+  const currentUser = user;
+  const membershipInfo = currentUser ? MembershipConfig[currentUser.membershipTier] : MembershipConfig.standard;
+  const selectedVehicle = user?.vehicles.find((v) => v.id === vehicleId);
   const selectedDate = dateParam ? new Date(dateParam) : new Date();
-  const selectedService = mockServices.find((s) => s.id === serviceId) || mockServices[0];
-  const selectedTimeSlot = useMemo(() => {
-    const slots = generateTimeSlots('stn_001');
-    return slots.find((s) => s.id === timeSlotId) || slots[0];
-  }, [timeSlotId]);
 
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'wallet' | 'bank'>('wallet');
-  const [voucherCode, setVoucherCode] = useState('');
-  const [voucherApplied, setVoucherApplied] = useState(false);
+  const [voucherId, setVoucherId] = useState<number | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const membershipDiscount = membershipInfo.discountRate;
-
   const pointsDiscount = Math.floor(pointsToUse / 10) * 1000;
-  const voucherDiscount = voucherApplied ? 20000 : 0;
-  const servicePrice = selectedService?.price || 0;
   const membershipDiscountAmount = Math.round(servicePrice * membershipDiscount);
-  const totalDiscount = membershipDiscountAmount + pointsDiscount + voucherDiscount;
+  const totalDiscount = membershipDiscountAmount + pointsDiscount;
   const finalPrice = Math.max(0, servicePrice - totalDiscount);
 
-  const handleConfirmBooking = () => {
-    // Create booking and navigate to success
-    router.replace({
-      pathname: '/booking/success',
-      params: {
-        bookingId: `BK${Date.now()}`,
-        vehicleId,
-        serviceId,
-        date: dateParam,
-        timeSlot: selectedTimeSlot.startTime,
-        finalAmount: finalPrice.toString(),
-      },
-    });
+  const handleApplyVoucher = async () => {
+    try {
+      const res = await loyaltyService.redeemVoucher('');
+      if (res.statusCode === 200 && res.data) {
+        // voucher applied
+      }
+    } catch (e) {
+      console.error('Voucher error:', e);
+    }
   };
 
-  const handleApplyVoucher = () => {
-    if (voucherCode.toUpperCase() === 'GIAM20K') {
-      setVoucherApplied(true);
+  const handleConfirmBooking = async () => {
+    setIsSubmitting(true);
+    try {
+      const res = await bookingService.createBooking({
+        scheduledDate: selectedDate.toISOString(),
+        slotId: parseInt(timeSlotId),
+        pointsToUse,
+        voucherId,
+        vehicles: [{ licensePlate: vehicleId, serviceId: parseInt(serviceId) }],
+      });
+
+      if (res.statusCode === 200) {
+        const bookingId = (res.data as any)?.bookingId || 0;
+        router.replace({
+          pathname: '/booking/success',
+          params: {
+            bookingId: String(bookingId),
+            vehicleId,
+            serviceId,
+            serviceName,
+            date: dateParam,
+            timeRange,
+            finalAmount: String(finalPrice),
+          },
+        });
+      } else {
+        Alert.alert('Lỗi', res.message || 'Tạo đặt lịch thất bại');
+      }
+    } catch (e: any) {
+      Alert.alert('Lỗi', e?.message || 'Đã xảy ra lỗi khi tạo đặt lịch');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -80,12 +102,6 @@ export default function BookingConfirmationScreen() {
       month: 'numeric',
       year: 'numeric',
     });
-  };
-
-  const formatTime = (time: string) => {
-    const [hours, minutes] = time.split(':');
-    const hour = parseInt(hours);
-    return `${hour}:${minutes}`;
   };
 
   return (
@@ -121,11 +137,11 @@ export default function BookingConfirmationScreen() {
                 <Text style={styles.serviceIcon}>🚿</Text>
               </View>
               <View style={styles.serviceSummaryInfo}>
-                <Text style={styles.serviceName}>{selectedService?.nameVi}</Text>
+                <Text style={styles.serviceName}>{serviceName}</Text>
                 <View style={styles.serviceMeta}>
                   <Text style={styles.serviceMetaText}>📅 {formatDate(selectedDate)}</Text>
                   <Text style={styles.serviceMetaDot}>•</Text>
-                  <Text style={styles.serviceMetaText}>🕐 {formatTime(selectedTimeSlot.startTime)}</Text>
+                  <Text style={styles.serviceMetaText}>🕐 {timeRange}</Text>
                 </View>
               </View>
             </View>
@@ -138,16 +154,16 @@ export default function BookingConfirmationScreen() {
             <View style={styles.vehicleRow}>
               <Text style={styles.vehicleLabel}>Xe</Text>
               <Text style={styles.vehicleValue}>
-                {selectedVehicle.brand} {selectedVehicle.model}
+                {selectedVehicle ? `${selectedVehicle.brand} ${selectedVehicle.model}` : vehicleId}
               </Text>
             </View>
             <View style={styles.vehicleRow}>
               <Text style={styles.vehicleLabel}>Biển số</Text>
-              <Text style={styles.vehicleValue}>{selectedVehicle.licensePlate}</Text>
+              <Text style={styles.vehicleValue}>{selectedVehicle?.licensePlate || ''}</Text>
             </View>
             <View style={styles.vehicleRow}>
               <Text style={styles.vehicleLabel}>Trạm</Text>
-              <Text style={styles.vehicleValue}>LuxeWash Quận 1</Text>
+              <Text style={styles.vehicleValue}>LuxeWash</Text>
             </View>
           </View>
         </View>
@@ -169,7 +185,7 @@ export default function BookingConfirmationScreen() {
                 </View>
                 <View style={styles.paymentInfo}>
                   <Text style={styles.paymentTitle}>Số dư ví</Text>
-                  <Text style={styles.paymentBalance}>{(currentUser?.loyaltyPoints || 0).toLocaleString('vi-VN')} VND</Text>
+                  <Text style={styles.paymentBalance}>{servicePrice.toLocaleString('vi-VN')} VND</Text>
                 </View>
               </View>
               <View style={[styles.radioOuter, selectedPaymentMethod === 'wallet' && styles.radioOuterSelected]}>
@@ -197,45 +213,12 @@ export default function BookingConfirmationScreen() {
           </View>
         </View>
 
-        {/* Voucher */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Khuyến mãi</Text>
-          <View style={styles.voucherInput}>
-            <Text style={styles.voucherIcon}>🎟️</Text>
-            <View style={styles.voucherInputContainer}>
-              <Text style={styles.voucherPlaceholder}>Mã giảm giá/Voucher</Text>
-              <View style={styles.voucherTextInput}>
-                <Text style={styles.voucherCodeText}>
-                  {voucherCode || 'Nhập mã giảm giá...'}
-                </Text>
-              </View>
-            </View>
-            <TouchableOpacity style={styles.applyBtn} onPress={handleApplyVoucher}>
-              <Text style={styles.applyBtnText}>ÁP DỤNG</Text>
-            </TouchableOpacity>
-          </View>
-          <View style={styles.quickVouchers}>
-            <TouchableOpacity
-              style={styles.quickVoucher}
-              onPress={() => setVoucherCode('KHAITRUONG50')}
-            >
-              <Text style={styles.quickVoucherText}>KHAITRUONG50</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.quickVoucher}
-              onPress={() => setVoucherCode('GIAM20K')}
-            >
-              <Text style={styles.quickVoucherText}>GIAM20K</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
         {/* Billing Details */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Chi tiết thanh toán</Text>
           <View style={styles.billingCard}>
             <View style={styles.billingRow}>
-              <Text style={styles.billingLabel}>Giá gốc</Text>
+              <Text style={styles.billingLabel}>Giá dịch vụ</Text>
               <Text style={styles.billingValue}>{servicePrice.toLocaleString('vi-VN')}đ</Text>
             </View>
             {membershipDiscountAmount > 0 && (
@@ -248,12 +231,6 @@ export default function BookingConfirmationScreen() {
               <View style={styles.billingRow}>
                 <Text style={styles.billingLabel}>Giảm điểm thưởng</Text>
                 <Text style={styles.billingDiscount}>-{pointsDiscount.toLocaleString('vi-VN')}đ</Text>
-              </View>
-            )}
-            {voucherDiscount > 0 && (
-              <View style={styles.billingRow}>
-                <Text style={styles.billingLabel}>Mã giảm giá/Voucher</Text>
-                <Text style={styles.billingDiscount}>-{voucherDiscount.toLocaleString('vi-VN')}đ</Text>
               </View>
             )}
             <View style={styles.billingDivider} />
@@ -276,9 +253,19 @@ export default function BookingConfirmationScreen() {
 
       {/* Bottom Action */}
       <View style={styles.bottomAction}>
-        <TouchableOpacity style={styles.confirmBtn} onPress={handleConfirmBooking}>
-          <Text style={styles.confirmBtnIcon}>🔒</Text>
-          <Text style={styles.confirmBtnText}>XÁC NHẬN ĐẶT LỊCH</Text>
+        <TouchableOpacity
+          style={[styles.confirmBtn, isSubmitting && styles.confirmBtnDisabled]}
+          onPress={handleConfirmBooking}
+          disabled={isSubmitting}
+        >
+          {isSubmitting ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <>
+              <Text style={styles.confirmBtnIcon}>🔒</Text>
+              <Text style={styles.confirmBtnText}>XÁC NHẬN ĐẶT LỊCH</Text>
+            </>
+          )}
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -503,60 +490,6 @@ const styles = StyleSheet.create({
     backgroundColor: LuxeColors.primaryContainer,
   },
 
-  // Voucher
-  voucherInput: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.6)',
-    borderRadius: LuxeBorderRadius.lg,
-    padding: LuxeSpacing.sm,
-    gap: LuxeSpacing.sm,
-  },
-  voucherIcon: {
-    fontSize: 20,
-  },
-  voucherInputContainer: {
-    flex: 1,
-  },
-  voucherPlaceholder: {
-    fontSize: 10,
-    color: LuxeColors.onSurfaceVariant,
-    marginBottom: 2,
-  },
-  voucherTextInput: {
-    flex: 1,
-  },
-  voucherCodeText: {
-    fontSize: 16,
-    color: LuxeColors.onSurface,
-  },
-  applyBtn: {
-    paddingHorizontal: LuxeSpacing.md,
-    paddingVertical: LuxeSpacing.sm,
-  },
-  applyBtnText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: LuxeColors.primaryContainer,
-  },
-  quickVouchers: {
-    flexDirection: 'row',
-    gap: LuxeSpacing.sm,
-    marginTop: LuxeSpacing.sm,
-  },
-  quickVoucher: {
-    backgroundColor: LuxeColors.surfaceContainer,
-    paddingHorizontal: LuxeSpacing.sm,
-    paddingVertical: 4,
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: LuxeColors.outlineVariant + '50',
-  },
-  quickVoucherText: {
-    fontSize: 11,
-    color: LuxeColors.onSurfaceVariant,
-  },
-
   // Billing
   billingCard: {
     backgroundColor: 'rgba(255, 255, 255, 0.6)',
@@ -637,6 +570,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 15,
     elevation: 8,
+  },
+  confirmBtnDisabled: {
+    opacity: 0.7,
   },
   confirmBtnIcon: {
     fontSize: 18,

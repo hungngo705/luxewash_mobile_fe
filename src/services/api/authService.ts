@@ -40,6 +40,11 @@ export interface UserProfile {
   }>;
 }
 
+export interface RefreshTokenResponse {
+  token: string;
+  refreshToken: string;
+}
+
 export const authService = {
   register: async (data: RegisterRequest): Promise<ApiResponse<void>> => {
     return apiClient.post<void>('/auth/register', data);
@@ -48,15 +53,7 @@ export const authService = {
   login: async (data: LoginRequest): Promise<ApiResponse<LoginResponse>> => {
     const response = await apiClient.post<LoginResponse>('/auth/login', data);
     if (response.data?.token) {
-      setTokens(response.data.token, response.data.refreshToken);
-    }
-    return response;
-  },
-
-  refreshToken: async (refresh: string): Promise<ApiResponse<{ token: string; refreshToken: string }>> => {
-    const response = await apiClient.post<{ token: string; refreshToken: string }>('/auth/refresh-token', { refreshToken: refresh });
-    if (response.data?.token) {
-      setTokens(response.data.token, response.data.refreshToken);
+      await setTokens(response.data.token, response.data.refreshToken);
     }
     return response;
   },
@@ -65,7 +62,11 @@ export const authService = {
     return apiClient.get<UserProfile>('/users/me');
   },
 
-  logout: () => {
-    clearTokens();
+  refreshToken: async (refresh: string): Promise<ApiResponse<RefreshTokenResponse>> => {
+    return apiClient.post<RefreshTokenResponse>('/auth/refresh-token', { refreshToken: refresh });
+  },
+
+  logout: async () => {
+    await clearTokens();
   },
 };

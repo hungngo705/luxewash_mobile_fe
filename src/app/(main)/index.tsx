@@ -4,41 +4,52 @@
  * Redirects to login if not authenticated
  */
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Image,
-  Platform,
   Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter, usePathname } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { LuxeColors, LuxeSpacing, LuxeBorderRadius, MembershipConfig } from '@/constants/luxeTheme';
 import { useAuth } from '@/contexts/AuthContext';
-import {
-  mockUsers,
-  mockVehicles,
-  mockVouchers,
-  mockServices,
-  Vehicle,
-  Voucher,
-} from '@/data/types';
+import { bookingService } from '@/services/api';
+import { mockVouchers, mockServices } from '@/data/types';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { user, isAuthenticated } = useAuth();
+  const { user, walletBalance, isAuthenticated } = useAuth();
+  const [services, setServices] = useState<Array<{ serviceId: number; serviceName: string; description: string; prices: Array<{ vehicleTypeId: number; vehicleTypeName: string; price: number }> }>>([]);
+  const [loadingServices, setLoadingServices] = useState(false);
 
-  // Use auth user or mock data
-  const currentUser = user || mockUsers[0];
-  const vehicles = user?.vehicles?.length ? user.vehicles : mockVehicles;
+  const currentUser = user;
+  const vehicles = user?.vehicles || [];
   const currentVehicle = vehicles[0];
-  const membershipInfo = MembershipConfig[currentUser?.membershipTier || 'standard'];
+  const membershipInfo = currentUser ? MembershipConfig[currentUser.membershipTier] : MembershipConfig.standard;
+
+  useEffect(() => {
+    const loadServices = async () => {
+      setLoadingServices(true);
+      try {
+        const res = await bookingService.getServices();
+        if (res.statusCode === 200 && res.data) {
+          setServices(res.data);
+        }
+      } catch (e) {
+        console.error('Failed to load services:', e);
+      }
+      setLoadingServices(false);
+    };
+    if (isAuthenticated) {
+      loadServices();
+    }
+  }, [isAuthenticated]);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -49,6 +60,11 @@ export default function HomeScreen() {
   if (!isAuthenticated) {
     return null;
   }
+
+  const getLowestPrice = (service: typeof services[0]) => {
+    if (!service.prices || service.prices.length === 0) return 0;
+    return Math.min(...service.prices.map(p => p.price));
+  };
 
   const formatDate = (date: Date) => {
     const now = new Date();
@@ -71,7 +87,7 @@ export default function HomeScreen() {
           <View style={styles.header}>
             <View>
               <Text style={styles.greeting}>Xin chào!</Text>
-              <Text style={styles.userName}>{currentUser.name}</Text>
+              <Text style={styles.userName}>{currentUser?.name || 'Khách'}</Text>
             </View>
             <TouchableOpacity
               style={styles.notificationBtn}
@@ -91,7 +107,7 @@ export default function HomeScreen() {
               </View>
               <View style={[styles.membershipBadge, { backgroundColor: membershipInfo.color }]}>
                 <Text style={styles.membershipBadgeText}>
-                  {currentUser.loyaltyPoints.toLocaleString()} điểm
+                  {currentUser?.loyaltyPoints?.toLocaleString() || '0'} điểm
                 </Text>
               </View>
             </View>
@@ -105,31 +121,39 @@ export default function HomeScreen() {
                 />
               </View>
               <Text style={styles.membershipProgressText}>
-                Còn 500 điểm để lên hạng Kim Cương
+                Số dư: {walletBalance.toLocaleString('vi-VN')}đ
               </Text>
             </View>
           </View>
 
           {/* Current Vehicle Card */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Phương tiện hiện tại</Text>
-            <View style={styles.currentVehicleCard}>
-              <Image
-                source={{ uri: currentVehicle.imageUrl || 'https://via.placeholder.com/80' }}
-                style={styles.vehicleImage}
-              />
-              <View style={styles.vehicleInfo}>
-                <Text style={styles.vehicleName}>{currentVehicle.brand} {currentVehicle.model}</Text>
-                <Text style={styles.vehiclePlate}>{currentVehicle.licensePlate}</Text>
-                <View style={styles.vehicleBadge}>
-                  <Text style={styles.vehicleBadgeText}>{membershipInfo.nameVi} Member</Text>
+          {currentVehicle ? (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Phương tiện hiện tại</Text>
+              <View style={styles.currentVehicleCard}>
+                <View style={styles.vehicleImagePlaceholder}>
+                  <Text style={styles.vehicleImagePlaceholderText}>🚗</Text>
                 </View>
+                <View style={styles.vehicleInfo}>
+                  <Text style={styles.vehicleName}>{currentVehicle.brand} {currentVehicle.model}</Text>
+                  <Text style={styles.vehiclePlate}>{currentVehicle.licensePlate}</Text>
+                  <View style={styles.vehicleBadge}>
+                    <Text style={styles.vehicleBadgeText}>{membershipInfo.nameVi} Member</Text>
+                  </View>
+                </View>
+                <TouchableOpacity style={styles.chevronBtn}>
+                  <Text style={styles.chevronIcon}>›</Text>
+                </TouchableOpacity>
               </View>
-              <TouchableOpacity style={styles.chevronBtn}>
-                <Text style={styles.chevronIcon}>›</Text>
-              </TouchableOpacity>
             </View>
-          </View>
+          ) : (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Phương tiện</Text>
+              <View style={styles.currentVehicleCard}>
+                <Text style={styles.vehiclePlate}>Chưa có xe nào. Thêm xe để đặt lịch.</Text>
+              </View>
+            </View>
+          )}
 
           {/* Vehicle Selector */}
           {vehicles.length > 1 && (
@@ -137,10 +161,9 @@ export default function HomeScreen() {
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 {vehicles.map((vehicle) => (
                   <TouchableOpacity key={vehicle.id} style={styles.vehicleSelectorItem}>
-                    <Image
-                      source={{ uri: vehicle.imageUrl || 'https://via.placeholder.com/60' }}
-                      style={styles.vehicleSelectorImage}
-                    />
+                    <View style={styles.vehicleSelectorImage}>
+                      <Text style={{ fontSize: 24 }}>🚗</Text>
+                    </View>
                     <Text style={styles.vehicleSelectorPlate} numberOfLines={1}>
                       {vehicle.licensePlate}
                     </Text>
@@ -198,18 +221,23 @@ export default function HomeScreen() {
               </TouchableOpacity>
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              {mockServices.map((service) => (
-                <View key={service.id} style={styles.serviceCard}>
-                  <View style={styles.serviceIconContainer}>
-                    <Text style={styles.serviceIcon}>
-                      {service.category === 'basic' ? '🚿' : service.category === 'premium' ? '✨' : service.category === 'deep_clean' ? '🧹' : '💎'}
+              {(services.length > 0 ? services : mockServices).map((service) => {
+                const price = services.length > 0 ? getLowestPrice(service as any) : service.price;
+                const cat = services.length > 0 ? 'basic' : service.category;
+                return (
+                  <View key={services.length > 0 ? (service as any).serviceId : service.id} style={styles.serviceCard}>
+                    <View style={styles.serviceIconContainer}>
+                      <Text style={styles.serviceIcon}>
+                        {cat === 'basic' ? '🚿' : cat === 'premium' ? '✨' : cat === 'deep_clean' ? '🧹' : '💎'}
+                      </Text>
+                    </View>
+                    <Text style={styles.serviceName}>
+                      {services.length > 0 ? (service as any).serviceName : service.nameVi}
                     </Text>
+                    <Text style={styles.servicePrice}>{price.toLocaleString('vi-VN')}đ</Text>
                   </View>
-                  <Text style={styles.serviceName}>{service.nameVi}</Text>
-                  <Text style={styles.servicePrice}>{service.price.toLocaleString('vi-VN')}đ</Text>
-                  <Text style={styles.serviceDuration}>{service.duration} phút</Text>
-                </View>
-              ))}
+                );
+              })}
             </ScrollView>
           </View>
 
@@ -244,17 +272,17 @@ export default function HomeScreen() {
               <View style={styles.statCard}>
                 <Text style={styles.statIcon}>📊</Text>
                 <Text style={styles.statLabel}>Tổng lần rửa</Text>
-                <Text style={styles.statValue}>24</Text>
+                <Text style={styles.statValue}>{vehicles.length}</Text>
               </View>
               <View style={styles.statCard}>
                 <Text style={styles.statIcon}>💰</Text>
-                <Text style={styles.statLabel}>Đã chi tiêu</Text>
-                <Text style={styles.statValue}>12.5M</Text>
+                <Text style={styles.statLabel}>Số dư ví</Text>
+                <Text style={styles.statValue}>{walletBalance > 0 ? `${(walletBalance / 1000000).toFixed(1)}M` : '0đ'}</Text>
               </View>
               <View style={styles.statCard}>
                 <Text style={styles.statIcon}>⭐</Text>
-                <Text style={styles.statLabel}>Đánh giá</Text>
-                <Text style={styles.statValue}>4.9</Text>
+                <Text style={styles.statLabel}>Điểm</Text>
+                <Text style={styles.statValue}>{currentUser?.loyaltyPoints || 0}</Text>
               </View>
             </View>
           </View>

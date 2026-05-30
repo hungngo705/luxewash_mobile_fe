@@ -3,44 +3,46 @@
  * Shows loyalty points and available rewards
  */
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LuxeColors, LuxeSpacing, LuxeBorderRadius, MembershipConfig } from '@/constants/luxeTheme';
 import { useAuth } from '@/contexts/AuthContext';
-import { mockRewardHistory } from '@/data/types';
+import { loyaltyService, type Tier, type Voucher } from '@/services/api';
 
 export default function RewardsScreen() {
   const { user } = useAuth();
   const currentUser = user;
   const membershipInfo = currentUser ? MembershipConfig[currentUser.membershipTier] : MembershipConfig.standard;
 
-  const rewards = [
-    {
-      id: '1',
-      title: 'Miễn phí rửa tiêu chuẩn',
-      points: 500,
-      description: 'Đổi 500 điểm để nhận 1 lần rửa xe tiêu chuẩn miễn phí',
-    },
-    {
-      id: '2',
-      title: 'Giảm 50% dịch vụ premium',
-      points: 300,
-      description: 'Đổi 300 điểm để nhận voucher giảm 50% cho gói premium',
-    },
-    {
-      id: '3',
-      title: 'Tặng 1 lần hút bụi miễn phí',
-      points: 200,
-      description: 'Đổi 200 điểm để nhận 1 lần hút bụi nội thất miễn phí',
-    },
-  ];
+  const [tiers, setTiers] = useState<Tier[]>([]);
+  const [vouchers, setVouchers] = useState<Voucher[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadData = async () => {
+      setLoading(true);
+      try {
+        const [tiersRes, vouchersRes] = await Promise.all([
+          loyaltyService.getTiers(),
+          loyaltyService.getMyVouchers(),
+        ]);
+        if (tiersRes.statusCode === 200 && tiersRes.data) setTiers(tiersRes.data);
+        if (vouchersRes.statusCode === 200 && vouchersRes.data) setVouchers(vouchersRes.data);
+      } catch (e) {
+        console.error('Failed to load loyalty data:', e);
+      }
+      setLoading(false);
+    };
+    loadData();
+  }, []);
 
   return (
     <View style={styles.container}>
@@ -89,20 +91,23 @@ export default function RewardsScreen() {
           {/* Redeemable Rewards */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Đổi phần thưởng</Text>
-            {rewards.map((reward) => (
-              <TouchableOpacity key={reward.id} style={styles.rewardCard}>
-                <View style={styles.rewardContent}>
-                  <Text style={styles.rewardTitle}>{reward.title}</Text>
-                  <Text style={styles.rewardDesc}>{reward.description}</Text>
-                </View>
-                <View style={styles.rewardAction}>
-                  <Text style={styles.rewardPoints}>{reward.points} điểm</Text>
-                  <View style={styles.redeemBtn}>
+            {loading ? (
+              <ActivityIndicator color={LuxeColors.primaryContainer} />
+            ) : vouchers.length > 0 ? (
+              vouchers.map((voucher) => (
+                <TouchableOpacity key={voucher.id} style={styles.rewardCard}>
+                  <View style={styles.rewardContent}>
+                    <Text style={styles.rewardTitle}>{voucher.title}</Text>
+                    <Text style={styles.rewardDesc}>{voucher.description}</Text>
+                  </View>
+                  <View style={styles.rewardAction}>
                     <Text style={styles.redeemBtnText}>Đổi</Text>
                   </View>
-                </View>
-              </TouchableOpacity>
-            ))}
+                </TouchableOpacity>
+              ))
+            ) : (
+              <Text style={styles.emptyText}>Chưa có voucher nào</Text>
+            )}
           </View>
 
           {/* How to Earn */}

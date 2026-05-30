@@ -3,56 +3,60 @@
  * Phone number and password authentication
  */
 
-import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
+  LuxeBorderRadius,
+  LuxeColors,
+  LuxeSpacing,
+} from "@/constants/luxeTheme";
+import { useAuth } from "@/contexts/AuthContext";
+import { useRouter } from "expo-router";
+import React, { useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  ActivityIndicator,
-  Alert,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import { useAuth } from '@/contexts/AuthContext';
-import { LuxeColors, LuxeSpacing, LuxeBorderRadius } from '@/constants/luxeTheme';
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function LoginScreen() {
   const router = useRouter();
   const { login, isLoading } = useAuth();
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [password, setPassword] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleLogin = async () => {
     if (!phoneNumber.trim()) {
-      Alert.alert('Lỗi', 'Vui lòng nhập số điện thoại');
+      Alert.alert("Lỗi", "Vui lòng nhập số điện thoại");
       return;
     }
     if (!password.trim()) {
-      Alert.alert('Lỗi', 'Vui lòng nhập mật khẩu');
+      Alert.alert("Lỗi", "Vui lòng nhập mật khẩu");
       return;
     }
 
     setIsSubmitting(true);
-      const result = await login({ phoneOrEmail: phoneNumber.trim(), password });
+    const result = await login({ phoneOrEmail: phoneNumber.trim(), password });
     setIsSubmitting(false);
 
     if (result.success) {
-      router.replace('/(main)' as any);
+      router.replace("/(main)" as any);
     } else {
-      Alert.alert('Đăng nhập thất bại', result.error || 'Vui lòng thử lại');
+      Alert.alert("Đăng nhập thất bại", result.error || "Vui lòng thử lại");
     }
   };
 
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.keyboardView}
       >
         <ScrollView
@@ -115,7 +119,7 @@ export default function LoginScreen() {
           {/* Register Link */}
           <View style={styles.registerSection}>
             <Text style={styles.registerText}>Chưa có tài khoản? </Text>
-            <TouchableOpacity onPress={() => router.push('/register' as any)}>
+            <TouchableOpacity onPress={() => router.push("/register" as any)}>
               <Text style={styles.registerLink}>Đăng ký ngay</Text>
             </TouchableOpacity>
           </View>
@@ -138,7 +142,7 @@ const styles = StyleSheet.create({
     padding: LuxeSpacing.lg,
   },
   header: {
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: LuxeSpacing.xl * 2,
     marginBottom: LuxeSpacing.xl,
   },
@@ -146,9 +150,9 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: LuxeColors.primaryContainer + '20',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: LuxeColors.primaryContainer + "20",
+    alignItems: "center",
+    justifyContent: "center",
     marginBottom: LuxeSpacing.md,
   },
   logoIcon: {
@@ -156,7 +160,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 32,
-    fontWeight: '700',
+    fontWeight: "700",
     color: LuxeColors.primaryContainer,
     letterSpacing: 2,
   },
@@ -166,14 +170,14 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   form: {
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    backgroundColor: "rgba(255, 255, 255, 0.9)",
     borderRadius: LuxeBorderRadius.xl,
     padding: LuxeSpacing.lg,
     marginBottom: LuxeSpacing.lg,
   },
   formTitle: {
     fontSize: 20,
-    fontWeight: '600',
+    fontWeight: "600",
     color: LuxeColors.onSurface,
     marginBottom: LuxeSpacing.lg,
   },
@@ -182,7 +186,7 @@ const styles = StyleSheet.create({
   },
   inputLabel: {
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: "500",
     color: LuxeColors.onSurfaceVariant,
     marginBottom: 8,
   },
@@ -193,13 +197,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: LuxeColors.onSurface,
     borderWidth: 1,
-    borderColor: LuxeColors.outlineVariant + '30',
+    borderColor: LuxeColors.outlineVariant + "30",
   },
   loginBtn: {
     backgroundColor: LuxeColors.primaryContainer,
     borderRadius: LuxeBorderRadius.lg,
     padding: LuxeSpacing.md,
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: LuxeSpacing.md,
     shadowColor: LuxeColors.primaryContainer,
     shadowOffset: { width: 0, height: 4 },
@@ -211,15 +215,15 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   loginBtnText: {
-    color: '#ffffff',
+    color: "#ffffff",
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: "700",
     letterSpacing: 1,
   },
   registerSection: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
     marginTop: LuxeSpacing.md,
   },
   registerText: {
@@ -228,7 +232,7 @@ const styles = StyleSheet.create({
   },
   registerLink: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
     color: LuxeColors.primaryContainer,
   },
 });

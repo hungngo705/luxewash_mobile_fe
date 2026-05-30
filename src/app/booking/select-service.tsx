@@ -3,20 +3,19 @@
  * Service selection with pricing and loyalty points redemption
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { LuxeColors, LuxeSpacing, LuxeBorderRadius, MembershipConfig } from '@/constants/luxeTheme';
 import { useAuth } from '@/contexts/AuthContext';
-import { mockUsers, mockVehicles, mockServices, Service, generateTimeSlots } from '@/data/types';
+import { bookingService, type Service } from '@/services/api';
 
 interface SelectServiceScreenProps {
   onSelect?: (service: Service) => void;
@@ -31,18 +30,33 @@ export default function SelectServiceScreen({ onSelect, onBack }: SelectServiceS
   const vehicleId = params.vehicleId as string;
   const dateParam = params.date as string;
   const timeSlotId = params.timeSlotId as string;
+  const timeRange = params.timeRange as string;
 
-  const currentUser = user || mockUsers[0];
-  const membershipInfo = MembershipConfig[currentUser?.membershipTier || 'standard'];
-  const selectedVehicle = mockVehicles.find((v) => v.id === vehicleId) || mockVehicles[0];
+  const currentUser = user;
+  const membershipInfo = currentUser ? MembershipConfig[currentUser.membershipTier] : MembershipConfig.standard;
+  const selectedVehicle = user?.vehicles.find((v) => v.id === vehicleId);
   const selectedDate = dateParam ? new Date(dateParam) : new Date();
-  const selectedTimeSlot = useMemo(() => {
-    const slots = generateTimeSlots('stn_001');
-    return slots.find((s) => s.id === timeSlotId) || slots[0];
-  }, [timeSlotId]);
 
+  const [services, setServices] = useState<Service[]>([]);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [useLoyaltyPoints, setUseLoyaltyPoints] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      try {
+        const res = await bookingService.getServices();
+        if (res.statusCode === 200 && res.data) {
+          setServices(res.data);
+        }
+      } catch (e) {
+        console.error('Failed to load services:', e);
+      }
+      setLoading(false);
+    };
+    load();
+  }, []);
 
   const currentTier = currentUser?.membershipTier || 'standard';
   const membershipDiscount = membershipInfo.discountRate;
@@ -50,11 +64,24 @@ export default function SelectServiceScreen({ onSelect, onBack }: SelectServiceS
   const pointsToUse = useLoyaltyPoints ? Math.min(currentUser?.loyaltyPoints || 0, 300) : 0;
   const pointsDiscount = Math.floor(pointsToUse / 10) * 1000;
 
+  const getServicePrice = (service: Service) => {
+    if (!service.prices || service.prices.length === 0) return 0;
+    return Math.min(...service.prices.map(p => p.price));
+  };
+
   // Calculate totals
-  const servicePrice = selectedService?.price || 0;
+  const servicePrice = selectedService ? getServicePrice(selectedService) : 0;
   const membershipDiscountAmount = Math.round(servicePrice * membershipDiscount);
   const totalDiscount = membershipDiscountAmount + pointsDiscount;
   const finalPrice = Math.max(0, servicePrice - totalDiscount);
+
+  const getServiceIcon = (name: string) => {
+    const n = name.toLowerCase();
+    if (n.includes('premium') || n.includes('cao')) return '✨';
+    if (n.includes('deep') || n.includes('ve sinh') || n.includes('sâu')) return '🧹';
+    if (n.includes('ceramic') || n.includes('special') || n.includes('đặc')) return '💎';
+    return '🚿';
+  };
 
   const handleContinue = () => {
     if (selectedService) {
@@ -67,7 +94,10 @@ export default function SelectServiceScreen({ onSelect, onBack }: SelectServiceS
           vehicleId,
           date: dateParam,
           timeSlotId,
-          serviceId: selectedService.id,
+          timeRange: timeRange || '',
+          serviceId: String(selectedService.serviceId),
+          serviceName: selectedService.serviceName,
+          servicePrice: String(getServicePrice(selectedService)),
           useLoyaltyPoints: useLoyaltyPoints ? 'true' : 'false',
           pointsToUse: pointsToUse.toString(),
         },
@@ -81,16 +111,6 @@ export default function SelectServiceScreen({ onSelect, onBack }: SelectServiceS
       day: 'numeric',
       month: 'numeric',
     });
-  };
-
-  const getServiceIcon = (category: string) => {
-    switch (category) {
-      case 'basic': return '🚿';
-      case 'premium': return '✨';
-      case 'deep_clean': return '🧹';
-      case 'special': return '💎';
-      default: return '🚗';
-    }
   };
 
   return (
@@ -121,13 +141,13 @@ export default function SelectServiceScreen({ onSelect, onBack }: SelectServiceS
           <View style={styles.summaryRow}>
             <Text style={styles.summaryIcon}>🚗</Text>
             <Text style={styles.summaryText}>
-              {selectedVehicle.brand} {selectedVehicle.model} • {selectedVehicle.licensePlate}
+              {selectedVehicle ? `${selectedVehicle.brand} ${selectedVehicle.model} • ${selectedVehicle.licensePlate}` : vehicleId}
             </Text>
           </View>
           <View style={styles.summaryRow}>
             <Text style={styles.summaryIcon}>📅</Text>
             <Text style={styles.summaryText}>
-              {formatDate(selectedDate)} • {selectedTimeSlot.startTime}
+              {formatDate(selectedDate)} • {timeRange}
             </Text>
           </View>
         </View>
@@ -136,14 +156,15 @@ export default function SelectServiceScreen({ onSelect, onBack }: SelectServiceS
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Dịch vụ</Text>
 
-          {mockServices.map((service) => {
-            const isSelected = selectedService?.id === service.id;
-            const discountedPrice = Math.round(service.price * (1 - membershipDiscount));
-            const icon = getServiceIcon(service.category);
+          {(loading ? [] : services.length > 0 ? services : []).map((service) => {
+            const isSelected = selectedService?.serviceId === service.serviceId;
+            const price = getServicePrice(service);
+            const discountedPrice = Math.round(price * (1 - membershipDiscount));
+            const icon = getServiceIcon(service.serviceName);
 
             return (
               <TouchableOpacity
-                key={service.id}
+                key={service.serviceId}
                 style={[styles.serviceCard, isSelected && styles.serviceCardSelected]}
                 onPress={() => setSelectedService(service)}
               >
@@ -158,10 +179,9 @@ export default function SelectServiceScreen({ onSelect, onBack }: SelectServiceS
                 </View>
 
                 <View style={styles.serviceContent}>
-                  <Text style={styles.serviceName}>{service.nameVi}</Text>
+                  <Text style={styles.serviceName}>{service.serviceName}</Text>
                   <Text style={styles.serviceDesc}>{service.description}</Text>
                   <View style={styles.serviceMeta}>
-                    <Text style={styles.serviceDuration}>⏱ {service.duration} phút</Text>
                     {membershipDiscount > 0 && (
                       <Text style={styles.serviceDiscount}>
                         Giảm {Math.round(membershipDiscount * 100)}%
@@ -173,7 +193,7 @@ export default function SelectServiceScreen({ onSelect, onBack }: SelectServiceS
                 <View style={styles.servicePriceContainer}>
                   {membershipDiscount > 0 && (
                     <Text style={styles.originalPrice}>
-                      {service.price.toLocaleString('vi-VN')}đ
+                      {price.toLocaleString('vi-VN')}đ
                     </Text>
                   )}
                   <Text style={[styles.servicePrice, membershipDiscount > 0 && styles.servicePriceDiscounted]}>
@@ -183,6 +203,12 @@ export default function SelectServiceScreen({ onSelect, onBack }: SelectServiceS
               </TouchableOpacity>
             );
           })}
+
+          {loading && (
+            <Text style={{ textAlign: 'center', color: LuxeColors.onSurfaceVariant, padding: 20 }}>
+              Đang tải dịch vụ...
+            </Text>
+          )}
         </View>
 
         {/* Loyalty Points Section */}

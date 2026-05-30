@@ -24,7 +24,7 @@ export default function VehiclesScreen() {
   const { user, removeVehicle } = useAuth();
   const vehicles = user?.vehicles || [];
 
-  const handleDeleteVehicle = (vehicle: Vehicle) => {
+  const handleDeleteVehicle = async (vehicle: Vehicle) => {
     Alert.alert(
       'Xóa xe',
       `Bạn có chắc muốn xóa xe ${vehicle.licensePlate}?`,
@@ -33,10 +33,10 @@ export default function VehiclesScreen() {
         {
           text: 'Xóa',
           style: 'destructive',
-          onPress: () => {
-            const success = removeVehicle(vehicle.id);
-            if (!success) {
-              Alert.alert('Lỗi', 'Không thể xóa xe. Vui lòng thử lại.');
+          onPress: async () => {
+            const result = await removeVehicle(vehicle.licensePlate);
+            if (!result.success) {
+              Alert.alert('Lỗi', result.error || 'Không thể xóa xe. Vui lòng thử lại.');
             }
           },
         },
@@ -97,10 +97,12 @@ export default function VehiclesScreen() {
                       <Text style={styles.deleteBtnText}>🗑️</Text>
                     </TouchableOpacity>
                   </View>
-                  <Text style={styles.vehicleDetails}>
-                    {vehicle.brand} {vehicle.model}
-                  </Text>
-                  <Text style={styles.vehicleColor}>Màu: {vehicle.color}</Text>
+                  <View style={styles.vehicleTypeBadge}>
+                    <Text style={styles.vehicleTypeIcon}>
+                      {vehicle.brand === 'Sedan' ? '🚗' : vehicle.brand === 'SUV' ? '🚙' : vehicle.brand === 'Pickup' ? '🛻' : '🚗'}
+                    </Text>
+                    <Text style={styles.vehicleTypeText}>{vehicle.brand}</Text>
+                  </View>
                 </View>
               </View>
             ))}
@@ -254,21 +256,24 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: LuxeColors.primaryContainer,
   },
+  vehicleTypeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 4,
+  },
+  vehicleTypeIcon: {
+    fontSize: 16,
+  },
+  vehicleTypeText: {
+    fontSize: 14,
+    color: LuxeColors.onSurfaceVariant,
+  },
   deleteBtn: {
     padding: 4,
   },
   deleteBtnText: {
     fontSize: 18,
-  },
-  vehicleDetails: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: LuxeColors.onSurface,
-    marginBottom: 2,
-  },
-  vehicleColor: {
-    fontSize: 13,
-    color: LuxeColors.onSurfaceVariant,
   },
   addMoreCard: {
     flexDirection: 'row',

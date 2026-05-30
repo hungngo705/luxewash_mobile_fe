@@ -123,9 +123,8 @@ export default function SelectVehicleScreen() {
                       )}
                     </View>
                     <View style={styles.vehicleInfo}>
-                      <Text style={styles.vehicleName}>{vehicle.brand} {vehicle.model}</Text>
+                      <Text style={styles.vehicleName}>{vehicle.brand}</Text>
                       <Text style={styles.vehiclePlate}>{vehicle.licensePlate}</Text>
-                      <Text style={styles.vehicleColor}>{vehicle.color}</Text>
                     </View>
                   </TouchableOpacity>
                 );
@@ -139,7 +138,7 @@ export default function SelectVehicleScreen() {
             <Text style={styles.selectedSummaryTitle}>Xe đã chọn:</Text>
             {selectedVehicles.map((v) => (
               <Text key={v.id} style={styles.selectedSummaryItem}>
-                • {v.licensePlate} - {v.brand} {v.model}
+                • {v.licensePlate} - {v.brand}
               </Text>
             ))}
           </View>
@@ -367,11 +366,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: LuxeColors.primaryContainer,
-    marginTop: 2,
-  },
-  vehicleColor: {
-    fontSize: 13,
-    color: LuxeColors.onSurfaceVariant,
     marginTop: 2,
   },
   selectedSummary: {

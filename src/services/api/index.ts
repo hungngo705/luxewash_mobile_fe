@@ -3,9 +3,30 @@
  * Re-exports all services for convenient imports
  */
 
-export { apiClient, ApiResponse, ApiError, setTokens, clearTokens, getTokens, BASE_URL } from './client';
+export { apiClient, ApiResponse, ApiError, setTokens, clearTokens, getStoredTokens, BASE_URL } from './client';
 export { authService } from './authService';
-export { authService as vehicleService } from './vehicleService';
-export { authService as bookingService } from './bookingService';
-export { authService as walletService } from './walletService';
-export { authService as loyaltyService } from './loyaltyService';
+export type {
+  LoginRequest,
+  LoginResponse,
+  RegisterRequest,
+  UserProfile,
+  RefreshTokenResponse,
+} from './authService';
+export { vehicleService } from './vehicleService';
+export type { VehicleResponse } from './vehicleService';
+export { uploadImage } from './uploadService';
+export type { UploadResult } from './uploadService';
+export { bookingService } from './bookingService';
+export type {
+  TimeSlot,
+  Service,
+  ServicePrice,
+  BookingRequest,
+  BookingDetail,
+  BookingDetailVehicle,
+  CreateBookingResponse,
+} from './bookingService';
+export { walletService } from './walletService';
+export type { WalletBalance, TopUpRequest } from './walletService';
+export { loyaltyService } from './loyaltyService';
+export type { Tier, Voucher } from './loyaltyService';
