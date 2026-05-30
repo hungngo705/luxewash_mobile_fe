@@ -1,10 +1,12 @@
 /**
  * LuxeWash Authentication Context
- * Handles user login/logout state
+ * Handles user login/logout state with real API integration
  */
 
 import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { User, Vehicle, AuthUser, LoginCredentials, mockUsers, mockStaffUsers, mockVehicles } from '@/data/types';
+import { Vehicle, AuthUser, LoginCredentials } from '../data/types';
+import { authService } from '../services/api/authService';
+import { ApiError } from '../services/api/client';
 
 interface AuthState {
   user: AuthUser | null;
@@ -14,6 +16,12 @@ interface AuthState {
 
 interface AuthContextType extends AuthState {
   login: (credentials: LoginCredentials) => Promise<{ success: boolean; error?: string }>;
+  register: (
+    phoneNumber: string,
+    email: string,
+    password: string,
+    fullName: string,
+  ) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
   addVehicle: (vehicle: Vehicle) => boolean;
   removeVehicle: (vehicleId: string) => boolean;
@@ -29,50 +37,83 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
 
   const login = async (credentials: LoginCredentials): Promise<{ success: boolean; error?: string }> => {
+    setState(prev => ({ ...prev, isLoading: true }));
+
     try {
-      // Find user by phone number
-      const allUsers = [...mockUsers, ...mockStaffUsers];
-      const foundUser = allUsers.find(u => u.phoneNumber === credentials.phoneNumber);
+      const response = await authService.login({
+        phoneOrEmail: credentials.phoneOrEmail,
+        password: credentials.password,
+      });
 
-      if (!foundUser) {
-        return { success: false, error: 'Số điện thoại không tồn tại' };
+      if (response.statusCode !== 200) {
+        return { success: false, error: response.message || 'Đăng nhập thất bại' };
       }
 
-      // For demo: password is '123456' for all users, or phone is password for staff
-      const validPassword = credentials.password === '123456' || credentials.password === credentials.phoneNumber;
-      if (!validPassword) {
-        return { success: false, error: 'Mật khẩu không đúng' };
-      }
+      const loginData = response.data;
 
-      // Build auth user with vehicles for customers
-      let authUser: AuthUser;
-      if (foundUser.role === 'customer') {
-        const vehicles = mockVehicles.filter(v => v.userId === foundUser.id);
-        authUser = { ...foundUser, vehicles };
-      } else {
-        authUser = { ...foundUser, vehicles: [] };
-      }
+      const authUser: AuthUser = {
+        id: String(loginData.userId),
+        phoneNumber: loginData.phoneNumber,
+        name: loginData.fullName,
+        role: loginData.role?.toLowerCase() || 'customer',
+        membershipId: 'standard',
+        membershipTier: 'standard' as any,
+        loyaltyPoints: 0,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        vehicles: [],
+      };
 
       setState({ user: authUser, isLoading: false, isAuthenticated: true });
-
       return { success: true };
     } catch (error) {
       console.error('Login error:', error);
-      return { success: false, error: 'Đã xảy ra lỗi. Vui lòng thử lại' };
+      const message = error instanceof ApiError ? error.message : 'Đã xảy ra lỗi. Vui lòng thử lại';
+      setState(prev => ({ ...prev, isLoading: false }));
+      return { success: false, error: message };
+    }
+  };
+
+  const register = async (
+    phoneNumber: string,
+    email: string,
+    password: string,
+    fullName: string,
+  ): Promise<{ success: boolean; error?: string }> => {
+    setState(prev => ({ ...prev, isLoading: true }));
+
+    try {
+      const response = await authService.register({
+        phoneNumber,
+        email,
+        password,
+        fullName,
+      });
+
+      if (response.statusCode !== 201) {
+        return { success: false, error: response.message || 'Đăng ký thất bại' };
+      }
+
+      setState(prev => ({ ...prev, isLoading: false }));
+      return { success: true };
+    } catch (error) {
+      console.error('Register error:', error);
+      const message = error instanceof ApiError ? error.message : 'Đã xảy ra lỗi. Vui lòng thử lại';
+      setState(prev => ({ ...prev, isLoading: false }));
+      return { success: false, error: message };
     }
   };
 
   const logout = () => {
+    authService.logout();
     setState({ user: null, isLoading: false, isAuthenticated: false });
   };
 
   const addVehicle = (vehicle: Vehicle): boolean => {
     if (!state.user) return false;
 
-    // Check max 5 vehicles
     if (state.user.vehicles.length >= 5) return false;
 
-    // Check duplicate license plate
     const exists = state.user.vehicles.some(v => v.licensePlate === vehicle.licensePlate);
     if (exists) return false;
 
@@ -90,7 +131,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ ...state, login, logout, addVehicle, removeVehicle }}>
+    <AuthContext.Provider value={{ ...state, login, register, logout, addVehicle, removeVehicle }}>
       {children}
     </AuthContext.Provider>
   );
@@ -103,12 +144,3 @@ export function useAuth() {
   }
   return context;
 }
-
-// Mock login credentials for demo
-export const DEMO_ACCOUNTS = [
-  { phone: '0909123456', password: '123456', role: 'customer', name: 'Nguyễn Văn Minh (Gold)' },
-  { phone: '0912345678', password: '123456', role: 'customer', name: 'Trần Thị Lan (Platinum)' },
-  { phone: '0934567890', password: '123456', role: 'customer', name: 'Lê Hoàng Nam (Standard)' },
-  { phone: 'staff001', password: 'staff001', role: 'staff', name: 'Nguyễn Văn An (Receptionist)' },
-  { phone: 'staff002', password: 'staff002', role: 'staff', name: 'Phạm Thị Hương (Supervisor)' },
-];

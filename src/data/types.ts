@@ -226,7 +226,7 @@ export interface Notification {
 
 // Login credentials
 export interface LoginCredentials {
-  phoneNumber: string;
+  phoneOrEmail: string;
   password: string;
 }
 

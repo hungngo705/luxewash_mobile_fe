@@ -18,7 +18,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { useAuth, DEMO_ACCOUNTS } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { LuxeColors, LuxeSpacing, LuxeBorderRadius } from '@/constants/luxeTheme';
 
 export default function LoginScreen() {
@@ -39,7 +39,7 @@ export default function LoginScreen() {
     }
 
     setIsSubmitting(true);
-    const result = await login({ phoneNumber: phoneNumber.trim(), password });
+      const result = await login({ phoneOrEmail: phoneNumber.trim(), password });
     setIsSubmitting(false);
 
     if (result.success) {
@@ -47,11 +47,6 @@ export default function LoginScreen() {
     } else {
       Alert.alert('Đăng nhập thất bại', result.error || 'Vui lòng thử lại');
     }
-  };
-
-  const handleDemoLogin = (phone: string, pass: string) => {
-    setPhoneNumber(phone);
-    setPassword(pass);
   };
 
   return (
@@ -78,15 +73,16 @@ export default function LoginScreen() {
             <Text style={styles.formTitle}>Đăng nhập</Text>
 
             <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Số điện thoại</Text>
+              <Text style={styles.inputLabel}>Số điện thoại / Email</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Nhập số điện thoại"
+                placeholder="Nhập số điện thoại hoặc email"
                 placeholderTextColor={LuxeColors.onSurfaceVariant}
                 value={phoneNumber}
                 onChangeText={setPhoneNumber}
-                keyboardType="phone-pad"
-                autoComplete="tel"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoComplete="email"
               />
             </View>
 
@@ -116,26 +112,12 @@ export default function LoginScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Demo Accounts */}
-          <View style={styles.demoSection}>
-            <Text style={styles.demoTitle}>Tài khoản demo (tap để điền):</Text>
-            <View style={styles.demoList}>
-              {DEMO_ACCOUNTS.slice(0, 5).map((account, index) => (
-                <TouchableOpacity
-                  key={index}
-                  style={styles.demoItem}
-                  onPress={() => handleDemoLogin(account.phone, account.password)}
-                >
-                  <Text style={styles.demoRole}>
-                    {account.role === 'staff' ? '👔' : '👤'}
-                  </Text>
-                  <View style={styles.demoInfo}>
-                    <Text style={styles.demoName}>{account.name}</Text>
-                    <Text style={styles.demoCredentials}>{account.phone} / {account.password}</Text>
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </View>
+          {/* Register Link */}
+          <View style={styles.registerSection}>
+            <Text style={styles.registerText}>Chưa có tài khoản? </Text>
+            <TouchableOpacity onPress={() => router.push('/register' as any)}>
+              <Text style={styles.registerLink}>Đăng ký ngay</Text>
+            </TouchableOpacity>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -234,39 +216,19 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 1,
   },
-  demoSection: {
+  registerSection: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
     marginTop: LuxeSpacing.md,
   },
-  demoTitle: {
-    fontSize: 12,
+  registerText: {
+    fontSize: 14,
     color: LuxeColors.onSurfaceVariant,
-    marginBottom: LuxeSpacing.sm,
-    textAlign: 'center',
   },
-  demoList: {
-    gap: 8,
-  },
-  demoItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.7)',
-    borderRadius: LuxeBorderRadius.md,
-    padding: LuxeSpacing.sm,
-    gap: LuxeSpacing.sm,
-  },
-  demoRole: {
-    fontSize: 20,
-  },
-  demoInfo: {
-    flex: 1,
-  },
-  demoName: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: LuxeColors.onSurface,
-  },
-  demoCredentials: {
-    fontSize: 11,
-    color: LuxeColors.onSurfaceVariant,
+  registerLink: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: LuxeColors.primaryContainer,
   },
 });
