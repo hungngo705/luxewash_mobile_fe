@@ -13,7 +13,6 @@ import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -24,32 +23,31 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Feather } from "@expo/vector-icons";
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { login, isLoading } = useAuth();
+  const { login, isLoggingIn } = useAuth();
   const [phoneNumber, setPhoneNumber] = useState("");
   const [password, setPassword] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleLogin = async () => {
     if (!phoneNumber.trim()) {
-      Alert.alert("Lỗi", "Vui lòng nhập số điện thoại");
+      alert("Vui lòng nhập số điện thoại");
       return;
     }
     if (!password.trim()) {
-      Alert.alert("Lỗi", "Vui lòng nhập mật khẩu");
+      alert("Vui lòng nhập mật khẩu");
       return;
     }
 
-    setIsSubmitting(true);
     const result = await login({ phoneOrEmail: phoneNumber.trim(), password });
-    setIsSubmitting(false);
 
     if (result.success) {
       router.replace("/(main)" as any);
     } else {
-      Alert.alert("Đăng nhập thất bại", result.error || "Vui lòng thử lại");
+      alert(result.error || "Vui lòng thử lại");
     }
   };
 
@@ -66,7 +64,7 @@ export default function LoginScreen() {
           {/* Logo & Title */}
           <View style={styles.header}>
             <View style={styles.logoContainer}>
-              <Text style={styles.logoIcon}>✨</Text>
+              <Feather name="sun" size={40} color={LuxeColors.primaryContainer} />
             </View>
             <Text style={styles.title}>LuxeWash</Text>
             <Text style={styles.subtitle}>Rửa xe cao cấp</Text>
@@ -92,23 +90,36 @@ export default function LoginScreen() {
 
             <View style={styles.inputContainer}>
               <Text style={styles.inputLabel}>Mật khẩu</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Nhập mật khẩu"
-                placeholderTextColor={LuxeColors.onSurfaceVariant}
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-                autoComplete="password"
-              />
+              <View style={styles.passwordWrapper}>
+                <TextInput
+                  style={styles.passwordInput}
+                  placeholder="Nhập mật khẩu"
+                  placeholderTextColor={LuxeColors.onSurfaceVariant}
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry={!showPassword}
+                  autoComplete="password"
+                />
+                <TouchableOpacity
+                  style={styles.eyeBtn}
+                  onPress={() => setShowPassword((prev) => !prev)}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <Feather
+                    name={showPassword ? "eye-off" : "eye"}
+                    size={20}
+                    color={LuxeColors.onSurfaceVariant}
+                  />
+                </TouchableOpacity>
+              </View>
             </View>
 
             <TouchableOpacity
-              style={[styles.loginBtn, isSubmitting && styles.loginBtnDisabled]}
+              style={[styles.loginBtn, isLoggingIn && styles.loginBtnDisabled]}
               onPress={handleLogin}
-              disabled={isSubmitting}
+              disabled={isLoggingIn}
             >
-              {isSubmitting ? (
+              {isLoggingIn ? (
                 <ActivityIndicator color="#ffffff" />
               ) : (
                 <Text style={styles.loginBtnText}>Đăng nhập</Text>
@@ -155,9 +166,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginBottom: LuxeSpacing.md,
   },
-  logoIcon: {
-    fontSize: 40,
-  },
   title: {
     fontSize: 32,
     fontWeight: "700",
@@ -198,6 +206,23 @@ const styles = StyleSheet.create({
     color: LuxeColors.onSurface,
     borderWidth: 1,
     borderColor: LuxeColors.outlineVariant + "30",
+  },
+  passwordWrapper: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: LuxeColors.surfaceContainer,
+    borderRadius: LuxeBorderRadius.md,
+    borderWidth: 1,
+    borderColor: LuxeColors.outlineVariant + "30",
+  },
+  passwordInput: {
+    flex: 1,
+    padding: LuxeSpacing.md,
+    fontSize: 16,
+    color: LuxeColors.onSurface,
+  },
+  eyeBtn: {
+    padding: LuxeSpacing.md,
   },
   loginBtn: {
     backgroundColor: LuxeColors.primaryContainer,

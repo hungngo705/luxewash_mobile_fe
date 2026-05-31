@@ -13,14 +13,21 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Feather } from '@expo/vector-icons';
+import { useRouter, type RelativePathString } from 'expo-router';
 import { LuxeColors, LuxeSpacing, LuxeBorderRadius, MembershipConfig } from '@/constants/luxeTheme';
 import { useAuth } from '@/contexts/AuthContext';
 import { loyaltyService, type Tier, type Voucher } from '@/services/api';
 
 export default function RewardsScreen() {
+  const router = useRouter();
   const { user } = useAuth();
   const currentUser = user;
   const membershipInfo = currentUser ? MembershipConfig[currentUser.membershipTier] : MembershipConfig.standard;
+
+  const formatCurrency = (amount: number): string => {
+    return new Intl.NumberFormat('vi-VN').format(amount);
+  };
 
   const [tiers, setTiers] = useState<Tier[]>([]);
   const [vouchers, setVouchers] = useState<Voucher[]>([]);
@@ -77,10 +84,12 @@ export default function RewardsScreen() {
             <View style={styles.benefitsGrid}>
               {membershipInfo.benefits.map((benefit, index) => (
                 <View key={index} style={styles.benefitCard}>
-                  <View style={styles.benefitIcon}>
-                    <Text style={styles.benefitIconText}>
-                      {index === 0 ? '☕' : index === 1 ? '✅' : index === 2 ? '⚡' : '🎁'}
-                    </Text>
+                    <View style={styles.benefitIcon}>
+                    <Feather
+                      name={index === 0 ? 'tag' : index === 1 ? 'check-circle' : index === 2 ? 'trending-up' : 'gift'}
+                      size={20}
+                      color={LuxeColors.primaryContainer}
+                    />
                   </View>
                   <Text style={styles.benefitText}>{benefit}</Text>
                 </View>
@@ -90,23 +99,46 @@ export default function RewardsScreen() {
 
           {/* Redeemable Rewards */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Đổi phần thưởng</Text>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Đổi phần thưởng</Text>
+              <TouchableOpacity onPress={() => router.push('/vouchers' as RelativePathString)}>
+                <Text style={styles.seeAllText}>Xem tất cả →</Text>
+              </TouchableOpacity>
+            </View>
             {loading ? (
               <ActivityIndicator color={LuxeColors.primaryContainer} />
             ) : vouchers.length > 0 ? (
-              vouchers.map((voucher) => (
-                <TouchableOpacity key={voucher.id} style={styles.rewardCard}>
+              vouchers.slice(0, 3).map((voucher) => (
+                <TouchableOpacity
+                  key={voucher.voucherId}
+                  style={styles.rewardCard}
+                  onPress={() => router.push('/vouchers' as RelativePathString)}
+                >
                   <View style={styles.rewardContent}>
-                    <Text style={styles.rewardTitle}>{voucher.title}</Text>
-                    <Text style={styles.rewardDesc}>{voucher.description}</Text>
+                    <Text style={styles.rewardTitle}>{voucher.title || voucher.code}</Text>
+                    <Text style={styles.rewardDesc}>
+                      Giảm {formatCurrency(voucher.discountAmount)}đ
+                    </Text>
                   </View>
                   <View style={styles.rewardAction}>
-                    <Text style={styles.redeemBtnText}>Đổi</Text>
+                    {voucher.isUsed ? (
+                      <View style={styles.usedTag}>
+                        <Text style={styles.usedTagText}>Đã dùng</Text>
+                      </View>
+                    ) : (
+                      <Text style={styles.redeemBtnText}>→</Text>
+                    )}
                   </View>
                 </TouchableOpacity>
               ))
             ) : (
-              <Text style={styles.emptyText}>Chưa có voucher nào</Text>
+              <TouchableOpacity
+                style={styles.emptyCard}
+                onPress={() => router.push('/vouchers' as RelativePathString)}
+              >
+                <Text style={styles.emptyText}>Chưa có voucher - Nhận ngay!</Text>
+                <Text style={styles.emptyAction}>→ Đến kho voucher</Text>
+              </TouchableOpacity>
             )}
           </View>
 
@@ -115,21 +147,27 @@ export default function RewardsScreen() {
             <Text style={styles.sectionTitle}>Cách tích điểm</Text>
             <View style={styles.earnCard}>
               <View style={styles.earnItem}>
-                <Text style={styles.earnIcon}>🚗</Text>
+                <View style={[styles.earnIconContainer, { backgroundColor: LuxeColors.primaryContainer + '20' }]}>
+                  <Feather name="settings" size={20} color={LuxeColors.primaryContainer} />
+                </View>
                 <View style={styles.earnInfo}>
                   <Text style={styles.earnTitle}>Sử dụng dịch vụ</Text>
                   <Text style={styles.earnDesc}>1 điểm/10.000đ thanh toán</Text>
                 </View>
               </View>
               <View style={styles.earnItem}>
-                <Text style={styles.earnIcon}>⭐</Text>
+                <View style={[styles.earnIconContainer, { backgroundColor: '#F59E0B20' }]}>
+                  <Feather name="star" size={20} color="#F59E0B" />
+                </View>
                 <View style={styles.earnInfo}>
                   <Text style={styles.earnTitle}>Đánh giá dịch vụ</Text>
                   <Text style={styles.earnDesc}>+50 điểm/đánh giá</Text>
                 </View>
               </View>
               <View style={styles.earnItem}>
-                <Text style={styles.earnIcon}>🎂</Text>
+                <View style={[styles.earnIconContainer, { backgroundColor: '#EC407A20' }]}>
+                  <Feather name="gift" size={20} color="#EC407A" />
+                </View>
                 <View style={styles.earnInfo}>
                   <Text style={styles.earnTitle}>Sinh nhật</Text>
                   <Text style={styles.earnDesc}>+200 điểm vào ngày sinh nhật</Text>
@@ -218,11 +256,21 @@ const styles = StyleSheet.create({
   section: {
     marginBottom: LuxeSpacing.xl,
   },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: LuxeSpacing.md,
+  },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
     color: LuxeColors.onSurface,
-    marginBottom: LuxeSpacing.md,
+  },
+  seeAllText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: LuxeColors.primaryContainer,
   },
   benefitsGrid: {
     flexDirection: 'row',
@@ -240,9 +288,6 @@ const styles = StyleSheet.create({
   },
   benefitIcon: {
     marginBottom: 8,
-  },
-  benefitIconText: {
-    fontSize: 28,
   },
   benefitText: {
     fontSize: 13,
@@ -295,6 +340,36 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: LuxeColors.primaryContainer,
   },
+  usedTag: {
+    backgroundColor: LuxeColors.surfaceVariant,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: LuxeBorderRadius.md,
+  },
+  usedTagText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: LuxeColors.onSurfaceVariant,
+  },
+  emptyCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.6)',
+    borderRadius: LuxeBorderRadius.xl,
+    padding: LuxeSpacing.lg,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: LuxeColors.outlineVariant + '30',
+    borderStyle: 'dashed',
+  },
+  emptyText: {
+    fontSize: 14,
+    color: LuxeColors.onSurfaceVariant,
+    marginBottom: 8,
+  },
+  emptyAction: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: LuxeColors.primaryContainer,
+  },
   earnCard: {
     backgroundColor: 'rgba(255, 255, 255, 0.8)',
     borderRadius: LuxeBorderRadius.xl,
@@ -306,8 +381,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: LuxeSpacing.md,
   },
-  earnIcon: {
-    fontSize: 28,
+  earnIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   earnInfo: {
     flex: 1,

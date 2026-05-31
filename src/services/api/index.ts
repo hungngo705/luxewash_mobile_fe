@@ -11,6 +11,8 @@ export type {
   RegisterRequest,
   UserProfile,
   RefreshTokenResponse,
+  ChangePasswordRequest,
+  UpdateProfileRequest,
 } from './authService';
 export { vehicleService } from './vehicleService';
 export type { VehicleResponse } from './vehicleService';
@@ -27,6 +29,6 @@ export type {
   CreateBookingResponse,
 } from './bookingService';
 export { walletService } from './walletService';
-export type { WalletBalance, TopUpRequest } from './walletService';
+export type { WalletBalance, TopUpRequest, Transaction, TransactionType, TransactionStatus } from './walletService';
 export { loyaltyService } from './loyaltyService';
-export type { Tier, Voucher } from './loyaltyService';
+export type { Tier, Voucher, VoucherCatalogItem } from './loyaltyService';

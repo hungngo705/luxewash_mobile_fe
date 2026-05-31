@@ -52,6 +52,7 @@ export interface Vehicle {
   brand: string;
   model: string;
   color: string;
+  vehicleTypeId?: number;
   imageUrl?: string;
   userId: string;
   createdAt: Date;

@@ -11,8 +11,10 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Feather } from '@expo/vector-icons';
 import { LuxeColors, LuxeSpacing, LuxeBorderRadius } from '@/constants/luxeTheme';
 import { useAuth } from '@/contexts/AuthContext';
 import { bookingService, type BookingDetail } from '@/services/api';
@@ -41,7 +43,9 @@ export default function AppointmentsScreen() {
       try {
         const res = await bookingService.getMyBookings();
         if (res.statusCode === 200 && res.data) {
-          setBookings(res.data);
+          setBookings(Array.isArray(res.data) ? res.data : []);
+        } else {
+          setBookings([]);
         }
       } catch (e) {
         console.error('Failed to load bookings:', e);
@@ -51,7 +55,8 @@ export default function AppointmentsScreen() {
     loadBookings();
   }, []);
 
-  const filteredBookings = bookings.filter(b => {
+  const filteredBookings = (bookings || []).filter((b) => {
+    if (!b) return false;
     if (activeTab === 'all') return true;
     if (activeTab === 'pending') return statusMap[b.status] === 'pending';
     if (activeTab === 'completed') return statusMap[b.status] === 'completed' || statusMap[b.status] === 'cancelled';
@@ -87,8 +92,10 @@ export default function AppointmentsScreen() {
     return date.toLocaleDateString('vi-VN');
   };
 
-  const formatTime = (timeRange: string) => {
-    return timeRange.split(' - ')[0] || '';
+  const formatTime = (isoDateStr: string) => {
+    if (!isoDateStr) return '';
+    const date = new Date(isoDateStr);
+    return date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
   };
 
   return (
@@ -119,7 +126,7 @@ export default function AppointmentsScreen() {
             <ActivityIndicator size="large" color={LuxeColors.primaryContainer} style={{ marginTop: 40 }} />
           ) : filteredBookings.length === 0 ? (
             <View style={styles.emptyState}>
-              <Text style={styles.emptyIcon}>📅</Text>
+              <Feather name="calendar" size={48} color={LuxeColors.outlineVariant} />
               <Text style={styles.emptyText}>Chưa có lịch hẹn nào</Text>
               <TouchableOpacity style={styles.emptyActionBtn}>
                 <Text style={styles.emptyActionBtnText}>Đặt lịch ngay</Text>
@@ -127,12 +134,23 @@ export default function AppointmentsScreen() {
             </View>
           ) : (
             filteredBookings.map((booking) => {
-              const statusStyle = getStatusStyle(booking.status);
-              const date = formatDate(booking.scheduledDate);
-              const time = formatTime(booking.timeRange);
-              const mainVehicle = booking.vehicles[0];
+              if (!booking) return null;
+              const statusStyle = getStatusStyle(booking.status || 'unknown');
+              const date = booking.scheduledDate ? formatDate(booking.scheduledDate) : '';
+              const time = booking.scheduledDate ? formatTime(booking.scheduledDate) : '';
+
+              // Support both flat API (licensePlate/serviceName) and nested API (vehicles[0])
+              const mainVehicle = (booking as any).vehicles?.[0];
+              const hasNestedVehicles = !!mainVehicle;
+              const vehicleDisplay = hasNestedVehicles
+                ? (mainVehicle?.carModel || mainVehicle?.vehicleType || 'Xe')
+                : ((booking as any).licensePlate ? 'Xe' : 'Xe');
+              const vehiclePlate = hasNestedVehicles ? (mainVehicle?.licensePlate || '') : ((booking as any).licensePlate || '');
+              const vehicleImage = hasNestedVehicles ? mainVehicle?.imageUrl : undefined;
+              const serviceName = hasNestedVehicles ? (mainVehicle?.serviceName || '') : ((booking as any).serviceName || '');
+              const vehicleCount = hasNestedVehicles ? ((booking as any).vehicles?.length || 0) : (vehiclePlate ? 1 : 0);
               return (
-                <View key={booking.bookingId} style={styles.appointmentCard}>
+                <View key={String(booking.bookingId || 'unknown')} style={styles.appointmentCard}>
                   <View style={styles.cardHeader}>
                     <Text style={styles.appointmentDate}>{date} • {time}</Text>
                     <View style={[styles.statusBadge, { backgroundColor: statusStyle.bg }]}>
@@ -144,10 +162,16 @@ export default function AppointmentsScreen() {
                   </View>
 
                   <View style={styles.vehicleRow}>
-                    <View style={styles.vehicleImage} />
+                    {vehicleImage ? (
+                      <Image source={{ uri: vehicleImage }} style={styles.vehicleImage} />
+                    ) : (
+                      <View style={[styles.vehicleImage, styles.vehicleImagePlaceholder]}>
+                        <Feather name="truck" size={24} color={LuxeColors.onSurfaceVariant} />
+                      </View>
+                    )}
                     <View style={styles.vehicleInfo}>
-                      <Text style={styles.vehicleName}>{mainVehicle?.vehicleType || 'Xe'} - {mainVehicle?.licensePlate || ''}</Text>
-                      <Text style={styles.vehiclePlate}>{mainVehicle?.serviceName || ''}</Text>
+                      <Text style={styles.vehicleName}>{vehicleDisplay}</Text>
+                      <Text style={styles.vehiclePlate}>{vehiclePlate}</Text>
                     </View>
                   </View>
 
@@ -157,14 +181,14 @@ export default function AppointmentsScreen() {
                     <View style={styles.serviceInfo}>
                       <Text style={styles.serviceLabel}>Tổng cộng</Text>
                       <Text style={styles.serviceName}>
-                        {booking.vehicles.length} xe • {booking.finalAmount.toLocaleString('vi-VN')}đ
+                        {vehicleCount} xe • {(booking.finalAmount || 0).toLocaleString('vi-VN')}đ
                       </Text>
                     </View>
                     <Text style={[
                       styles.serviceAmount,
                       statusMap[booking.status] === 'cancelled' && styles.serviceAmountCancelled
                     ]}>
-                      {booking.finalAmount.toLocaleString('vi-VN')}đ
+                      {(booking.finalAmount || 0).toLocaleString('vi-VN')}đ
                     </Text>
                   </View>
                 </View>
@@ -274,6 +298,14 @@ const styles = StyleSheet.create({
     borderRadius: LuxeBorderRadius.lg,
     backgroundColor: LuxeColors.surfaceVariant,
   },
+  vehicleImagePlaceholder: {
+    width: 64,
+    height: 64,
+    borderRadius: LuxeBorderRadius.lg,
+    backgroundColor: LuxeColors.surfaceVariant,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   vehicleInfo: {
     marginLeft: LuxeSpacing.md,
   },
@@ -321,8 +353,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 60,
   },
-  emptyIcon: {
-    fontSize: 48,
+  emptyIconContainer: {
     marginBottom: 12,
   },
   emptyText: {

@@ -44,8 +44,6 @@ export interface BookingDetailVehicle {
   serviceName: string;
   status: string;
   subtotal: number;
-  discountAmount: number;
-  finalAmount: number;
 }
 
 export interface BookingDetail {
@@ -72,8 +70,11 @@ export const bookingService = {
     return apiClient.get<Service[]>('/services');
   },
 
-  getSlots: async (targetDate: string): Promise<ApiResponse<TimeSlot[]>> => {
-    return apiClient.get<TimeSlot[]>(`/bookings/slots?targetDate=${targetDate}`);
+  getAvailableSlots: async (targetDate: string, bookingVehicles: { vehicleTypeId: number; serviceId: number }[]): Promise<ApiResponse<TimeSlot[]>> => {
+    return apiClient.post<TimeSlot[]>('/bookings/available-slots', {
+      targetDate,
+      bookingVehicles,
+    });
   },
 
   createBooking: async (data: BookingRequest): Promise<ApiResponse<CreateBookingResponse>> => {

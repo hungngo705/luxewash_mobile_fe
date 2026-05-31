@@ -1,6 +1,7 @@
 /**
  * Advance Booking Flow - Step 2: Select Date & Time
- * Calendar with time slot selection based on membership tier
+ * After selecting service, user picks date and time slot
+ * Uses POST /api/v1/bookings/available-slots to get available slots
  */
 
 import React, { useState, useMemo } from 'react';
@@ -10,9 +11,10 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Feather } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { LuxeColors, LuxeSpacing, LuxeBorderRadius, MembershipConfig } from '@/constants/luxeTheme';
 import { useAuth } from '@/contexts/AuthContext';
@@ -20,43 +22,81 @@ import { bookingService, type TimeSlot } from '@/services/api';
 
 const DAYS_OF_WEEK = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
 
+const toLocalDateString = (date: Date): string => {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+};
+
+const toISOString = (date: Date): string => {
+  return date.toISOString();
+};
+
 interface DayCell {
   date: Date | null;
   isPast: boolean;
   isLocked: boolean;
 }
 
+const PERIOD_LABEL: Record<string, string> = {
+  morning: 'Sáng',
+  afternoon: 'Chiều',
+  evening: 'Tối',
+};
+
 export default function SelectDateScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const params = useLocalSearchParams();
-  const vehicleId = params.vehicleId as string;
+
+  const serviceIdParam = parseInt(params.serviceId as string) || 0;
+  const serviceNameParam = (params.serviceName as string) || '';
+  const servicePriceParam = parseInt(params.servicePrice as string) || 0;
+  const membershipDiscountParam = parseFloat(params.membershipDiscount as string) || 0;
 
   const membershipInfo = user ? MembershipConfig[user.membershipTier] : MembershipConfig.standard;
   const maxAdvanceDays = membershipInfo.maxAdvanceDays;
 
-  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const getFirstOfMonth = (d: Date) => {
+    const next = new Date(d);
+    next.setDate(1);
+    return next;
+  };
+
+  const [currentMonth, setCurrentMonth] = useState(getFirstOfMonth(new Date()));
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [selectedTimeSlot, setSelectedTimeSlot] = useState<TimeSlot | null>(null);
+  const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null);
   const [slots, setSlots] = useState<TimeSlot[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
 
-  const loadSlots = async (date: string) => {
+  const loadSlots = async (date: Date) => {
     setLoadingSlots(true);
+    setSlots([]);
+    setSelectedSlot(null);
     try {
-      const res = await bookingService.getSlots(date);
+      const isoDate = toISOString(date);
+      const res = await bookingService.getAvailableSlots(isoDate, [
+        { vehicleTypeId: 1, serviceId: serviceIdParam },
+      ]);
       if (res.statusCode === 200 && res.data) {
         setSlots(res.data);
+      } else {
+        setSlots([]);
       }
     } catch (e) {
-      console.error('Failed to load slots:', e);
+      const msg = e instanceof Error ? e.message : 'Không thể tải lịch trống';
+      alert(msg);
+      setSlots([]);
+    } finally {
+      setLoadingSlots(false);
     }
-    setLoadingSlots(false);
   };
 
   const handlePrevMonth = () => {
     setCurrentMonth(prev => {
       const next = new Date(prev);
+      next.setDate(1);
       next.setMonth(next.getMonth() - 1);
       return next;
     });
@@ -65,6 +105,7 @@ export default function SelectDateScreen() {
   const handleNextMonth = () => {
     setCurrentMonth(prev => {
       const next = new Date(prev);
+      next.setDate(1);
       next.setMonth(next.getMonth() + 1);
       return next;
     });
@@ -92,8 +133,8 @@ export default function SelectDateScreen() {
       const date = new Date(year, month, day);
       days.push({
         date,
-      isPast: date < today,
-      isLocked: date >= today && date > maxDate,
+        isPast: date < today,
+        isLocked: date >= today && date > maxDate,
       });
     }
 
@@ -101,33 +142,32 @@ export default function SelectDateScreen() {
   }, [currentMonth, maxAdvanceDays]);
 
   const handleDateSelect = (day: DayCell) => {
-    if (day.date && !day.isPast && !day.isLocked) {
-      setSelectedDate(day.date);
-      setSelectedTimeSlot(null);
-      loadSlots(day.date.toISOString().split('T')[0]);
-    }
+    if (!day.date || day.isPast || day.isLocked) return;
+    setSelectedDate(day.date);
+    setSelectedSlot(null);
+    loadSlots(day.date);
   };
 
   const handleContinue = () => {
-    if (selectedDate && selectedTimeSlot) {
-      router.push({
-        pathname: '/booking/select-service',
-        params: {
-          vehicleId: vehicleId || '',
-          date: selectedDate.toISOString(),
-          timeSlotId: String(selectedTimeSlot.slotId),
-          timeRange: selectedTimeSlot.timeRange,
-        },
-      });
-    }
+    if (!selectedDate || !selectedSlot) return;
+    router.push({
+      pathname: '/booking/select-vehicle',
+      params: {
+        serviceId: String(serviceIdParam),
+        serviceName: serviceNameParam,
+        servicePrice: String(servicePriceParam),
+        membershipDiscount: String(membershipDiscountParam),
+        date: toLocalDateString(selectedDate),
+        slotId: String(selectedSlot.slotId),
+        timeRange: selectedSlot.timeRange,
+      },
+    });
   };
-
-  const vehicleName = user?.vehicles.find(v => v.id === vehicleId);
 
   const groupedSlots = useMemo(() => {
     const groups: Record<string, TimeSlot[]> = { morning: [], afternoon: [], evening: [] };
     for (const slot of slots) {
-      const hour = parseInt(slot.timeRange.split(':')[0], 10);
+      const hour = parseInt((slot.timeRange || '00:00').split(':')[0], 10);
       if (hour < 12) groups.morning.push(slot);
       else if (hour < 17) groups.afternoon.push(slot);
       else groups.evening.push(slot);
@@ -140,11 +180,9 @@ export default function SelectDateScreen() {
     year: 'numeric',
   });
 
-  const periodLabel: Record<string, string> = {
-    morning: 'Sáng',
-    afternoon: 'Chiều',
-    evening: 'Tối',
-  };
+  const selectedDateDisplay = selectedDate
+    ? selectedDate.toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'numeric', year: 'numeric' })
+    : '';
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -160,25 +198,29 @@ export default function SelectDateScreen() {
       {/* Progress Steps */}
       <View style={styles.progressContainer}>
         <View style={styles.progressStep}>
+          <View style={[styles.progressDot, styles.progressDotCompleted]} />
+          <View style={styles.progressLineCompleted} />
           <View style={[styles.progressDot, styles.progressDotActive]} />
           <View style={styles.progressLine} />
-          <View style={[styles.progressDot, styles.progressDotActive]} />
+          <View style={[styles.progressDot, styles.progressDotPending]} />
           <View style={styles.progressLine} />
           <View style={[styles.progressDot, styles.progressDotPending]} />
         </View>
       </View>
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-        {/* Selected Vehicle */}
-        <View style={styles.vehicleInfo}>
-          <Text style={styles.vehicleName}>
-            {vehicleName ? `${vehicleName.brand} ${vehicleName.model}` : ''}
+        {/* Service info */}
+        <View style={styles.serviceInfoCard}>
+          <Text style={styles.serviceIcon}>🚿</Text>
+          <Text style={styles.serviceName}>{serviceNameParam}</Text>
+          <Text style={styles.servicePrice}>
+            Từ {servicePriceParam.toLocaleString('vi-VN')}đ/xe
           </Text>
-          <Text style={styles.vehiclePlate}>{vehicleName?.licensePlate || ''}</Text>
         </View>
 
-        {/* Calendar Section */}
+        {/* Calendar */}
         <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Chọn ngày</Text>
           <View style={styles.monthNav}>
             <TouchableOpacity style={styles.navBtn} onPress={handlePrevMonth}>
               <Text style={styles.navBtnText}>‹</Text>
@@ -189,7 +231,6 @@ export default function SelectDateScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Days of Week Header */}
           <View style={styles.daysOfWeek}>
             {DAYS_OF_WEEK.map((day, index) => (
               <View key={index} style={styles.dayOfWeekCell}>
@@ -198,7 +239,6 @@ export default function SelectDateScreen() {
             ))}
           </View>
 
-          {/* Calendar Grid */}
           <View style={styles.calendarGrid}>
             {calendarDays.map((day, index) => {
               if (!day.date) {
@@ -233,83 +273,90 @@ export default function SelectDateScreen() {
                     {day.date.getDate()}
                   </Text>
                   {day.isLocked && <Text style={styles.lockIcon}>🔒</Text>}
-                  {isToday && <View style={styles.todayDot} />}
+                  {isToday && !isSelected && <View style={styles.todayDot} />}
                 </TouchableOpacity>
               );
             })}
           </View>
         </View>
 
-        {/* Time Slots Section */}
+        {/* Time Slots */}
         {selectedDate && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Khung giờ đến</Text>
-              {loadingSlots ? (
-                <Text style={styles.availableText}>Đang tải...</Text>
-              ) : (
-                <View style={styles.availableBadge}>
-                  <Text style={styles.availableIcon}>⚡</Text>
-                  <Text style={styles.availableText}>
-                    {slots.filter(s => s.isAvailable).length} khung giờ
+              <Text style={styles.sectionTitle}>Chọn giờ</Text>
+              <Text style={styles.selectedDateLabel}>{selectedDateDisplay}</Text>
+            </View>
+
+            {loadingSlots ? (
+              <View style={styles.loadingSlots}>
+                <ActivityIndicator size="small" color={LuxeColors.primaryContainer} />
+                <Text style={styles.loadingText}>Đang tải lịch trống...</Text>
+              </View>
+            ) : slots.length === 0 ? (
+              <View style={styles.noSlotsCard}>
+                <Feather name="calendar" size={40} color={LuxeColors.outlineVariant} />
+                <Text style={styles.noSlotsText}>Không có lịch trống cho ngày này</Text>
+                <Text style={styles.noSlotsSubtext}>Vui lòng chọn ngày khác</Text>
+              </View>
+            ) : (
+              <>
+                <View style={styles.slotsSummary}>
+                  <Feather name="zap" size={16} color="#F59E0B" />
+                  <Text style={styles.slotsSummaryText}>
+                    {slots.filter(s => s.isAvailable).length} khung giờ trống
                   </Text>
                 </View>
-              )}
-            </View>
 
-            {Object.entries(groupedSlots).map(([period, periodSlots]) =>
-              periodSlots.length > 0 ? (
-                <View key={period} style={styles.timePeriod}>
-                  <Text style={styles.periodLabel}>{periodLabel[period] || period}</Text>
-                  <View style={styles.timeSlotsGrid}>
-                    {periodSlots.map((slot) => {
-                      const isSelected = selectedTimeSlot?.slotId === slot.slotId;
-                      return (
-                        <TouchableOpacity
-                          key={slot.slotId}
-                          style={[
-                            styles.timeSlot,
-                            !slot.isAvailable && styles.timeSlotUnavailable,
-                            isSelected && styles.timeSlotSelected,
-                          ]}
-                          onPress={() => slot.isAvailable && setSelectedTimeSlot(slot)}
-                          disabled={!slot.isAvailable}
-                        >
-                          <Text
-                            style={[
-                              styles.timeSlotText,
-                              !slot.isAvailable && styles.timeSlotTextUnavailable,
-                              isSelected && styles.timeSlotTextSelected,
-                            ]}
-                          >
-                            {slot.timeRange}
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </View>
-                </View>
-              ) : null,
+                {Object.entries(groupedSlots).map(([period, periodSlots]) =>
+                  periodSlots.length > 0 ? (
+                    <View key={period} style={styles.timePeriod}>
+                      <Text style={styles.periodLabel}>{PERIOD_LABEL[period] || period}</Text>
+                      <View style={styles.timeSlotsGrid}>
+                        {periodSlots.map((slot) => {
+                          const isSelected = selectedSlot?.slotId === slot.slotId;
+                          return (
+                            <TouchableOpacity
+                              key={slot.slotId}
+                              style={[
+                                styles.timeSlot,
+                                !slot.isAvailable && styles.timeSlotUnavailable,
+                                isSelected && styles.timeSlotSelected,
+                              ]}
+                              onPress={() => slot.isAvailable && setSelectedSlot(slot)}
+                              disabled={!slot.isAvailable}
+                            >
+                              <Text
+                                style={[
+                                  styles.timeSlotText,
+                                  !slot.isAvailable && styles.timeSlotTextUnavailable,
+                                  isSelected && styles.timeSlotTextSelected,
+                                ]}
+                              >
+                                {slot.timeRange}
+                              </Text>
+                              {!slot.isAvailable && (
+                                <Text style={styles.slotUnavailableText}>{slot.reason || 'Đã đầy'}</Text>
+                              )}
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+                    </View>
+                  ) : null,
+                )}
+              </>
             )}
-
-            <View style={styles.infoBadge}>
-              <Text style={styles.infoIcon}>ℹ️</Text>
-              <Text style={styles.infoText}>
-                Khung giờ có thể đầy. Vui lòng chọn thời gian khác nếu không có giờ trống.
-              </Text>
-            </View>
           </View>
         )}
 
-        {/* Membership Info Card */}
+        {/* Membership info */}
         <View style={styles.membershipCard}>
-          <View style={styles.membershipIcon}>
-            <Text style={styles.membershipIconText}>🏆</Text>
-          </View>
+          <Feather name="star" size={24} color={LuxeColors.primaryContainer} />
           <View style={styles.membershipContent}>
             <Text style={styles.membershipTitle}>Đặc quyền {membershipInfo.nameVi}</Text>
             <Text style={styles.membershipDesc}>
-              Đặt trước tối đa {maxAdvanceDays} ngày.
+              Đặt trước tối đa {maxAdvanceDays} ngày
             </Text>
           </View>
         </View>
@@ -318,14 +365,12 @@ export default function SelectDateScreen() {
       {/* Bottom Action */}
       <View style={styles.bottomAction}>
         <TouchableOpacity
-          style={[
-            styles.continueBtn,
-            (!selectedDate || !selectedTimeSlot) && styles.continueBtnDisabled,
-          ]}
+          style={[styles.continueBtn, (!selectedDate || !selectedSlot) && styles.continueBtnDisabled]}
           onPress={handleContinue}
-          disabled={!selectedDate || !selectedTimeSlot}
+          disabled={!selectedDate || !selectedSlot}
+          activeOpacity={0.9}
         >
-          <Text style={styles.continueBtnText}>ĐẶT LỊCH</Text>
+          <Text style={styles.continueBtnText}>TIẾP TỤC</Text>
           <Text style={styles.continueBtnIcon}>→</Text>
         </TouchableOpacity>
       </View>
@@ -344,7 +389,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: LuxeSpacing.md,
     paddingVertical: LuxeSpacing.md,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
     borderBottomWidth: 1,
     borderBottomColor: LuxeColors.outlineVariant + '20',
   },
@@ -356,10 +401,10 @@ const styles = StyleSheet.create({
   },
   backIcon: {
     fontSize: 24,
-    color: LuxeColors.onSurfaceVariant,
+    color: LuxeColors.onSurface,
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '600',
     color: LuxeColors.onSurface,
   },
@@ -368,7 +413,7 @@ const styles = StyleSheet.create({
   },
   progressContainer: {
     paddingHorizontal: LuxeSpacing.md,
-    paddingVertical: LuxeSpacing.md,
+    paddingVertical: LuxeSpacing.sm,
     alignItems: 'center',
   },
   progressStep: {
@@ -382,15 +427,21 @@ const styles = StyleSheet.create({
   },
   progressDotActive: {
     backgroundColor: LuxeColors.primaryContainer,
-    shadowColor: LuxeColors.primaryContainer,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.6,
-    shadowRadius: 8,
+    borderWidth: 2,
+    borderColor: LuxeColors.primary,
+  },
+  progressDotCompleted: {
+    backgroundColor: LuxeColors.primaryContainer,
   },
   progressDotPending: {
     backgroundColor: LuxeColors.surfaceVariant,
   },
   progressLine: {
+    width: 32,
+    height: 2,
+    backgroundColor: LuxeColors.surfaceVariant,
+  },
+  progressLineCompleted: {
     width: 32,
     height: 2,
     backgroundColor: LuxeColors.primaryContainer,
@@ -400,24 +451,29 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: LuxeSpacing.md,
-    paddingBottom: 100,
+    paddingBottom: 120,
   },
-  vehicleInfo: {
+  serviceInfoCard: {
     backgroundColor: 'rgba(255, 255, 255, 0.6)',
     borderRadius: LuxeBorderRadius.lg,
-    padding: LuxeSpacing.sm,
-    marginBottom: LuxeSpacing.md,
+    padding: LuxeSpacing.md,
+    alignItems: 'center',
+    marginTop: LuxeSpacing.sm,
+    marginBottom: LuxeSpacing.lg,
+    gap: 4,
   },
-  vehicleName: {
-    fontSize: 14,
-    fontWeight: '600',
+  serviceIcon: {
+    fontSize: 32,
+  },
+  serviceName: {
+    fontSize: 16,
+    fontWeight: '700',
     color: LuxeColors.onSurface,
-    textAlign: 'center',
   },
-  vehiclePlate: {
-    fontSize: 12,
-    color: LuxeColors.onSurfaceVariant,
-    textAlign: 'center',
+  servicePrice: {
+    fontSize: 13,
+    color: LuxeColors.primaryContainer,
+    fontWeight: '600',
   },
   section: {
     marginBottom: LuxeSpacing.lg,
@@ -429,9 +485,16 @@ const styles = StyleSheet.create({
     marginBottom: LuxeSpacing.md,
   },
   sectionTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '600',
     color: LuxeColors.onSurface,
+    marginBottom: LuxeSpacing.md,
+  },
+  selectedDateLabel: {
+    fontSize: 12,
+    color: LuxeColors.primaryContainer,
+    fontWeight: '600',
+    marginBottom: LuxeSpacing.md,
   },
   monthNav: {
     flexDirection: 'row',
@@ -446,24 +509,19 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.8)',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
   },
   navBtnText: {
     fontSize: 24,
     color: LuxeColors.onSurface,
   },
   monthTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '600',
     color: LuxeColors.onSurface,
   },
   daysOfWeek: {
     flexDirection: 'row',
-    marginBottom: LuxeSpacing.sm,
+    marginBottom: LuxeSpacing.xs,
   },
   dayOfWeekCell: {
     flex: 1,
@@ -488,12 +546,10 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   dayCellPast: {
-    backgroundColor: LuxeColors.surfaceContainer,
-    opacity: 0.4,
+    opacity: 0.3,
   },
   dayCellLocked: {
-    backgroundColor: LuxeColors.surfaceContainerHighest,
-    opacity: 0.6,
+    opacity: 0.5,
   },
   dayCellToday: {
     backgroundColor: 'rgba(255, 255, 255, 0.8)',
@@ -502,23 +558,16 @@ const styles = StyleSheet.create({
   },
   dayCellSelected: {
     backgroundColor: LuxeColors.primaryContainer,
-    shadowColor: LuxeColors.primaryContainer,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 14,
-    elevation: 5,
   },
   dayNumber: {
-    fontSize: 16,
+    fontSize: 15,
     color: LuxeColors.onSurface,
   },
   dayTextPast: {
     color: LuxeColors.onSurfaceVariant,
-    opacity: 0.4,
   },
   dayTextLocked: {
     color: LuxeColors.onSurfaceVariant,
-    opacity: 0.6,
   },
   dayTextSelected: {
     color: LuxeColors.onPrimaryContainer,
@@ -529,7 +578,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   lockIcon: {
-    fontSize: 10,
+    fontSize: 9,
     position: 'absolute',
     bottom: 4,
   },
@@ -541,20 +590,48 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 6,
   },
-  availableBadge: {
+  loadingSlots: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.8)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 20,
-    gap: 4,
+    justifyContent: 'center',
+    padding: LuxeSpacing.lg,
+    gap: LuxeSpacing.sm,
   },
-  availableIcon: {
-    fontSize: 12,
+  loadingText: {
+    fontSize: 14,
+    color: LuxeColors.onSurfaceVariant,
   },
-  availableText: {
-    fontSize: 12,
+  noSlotsCard: {
+    alignItems: 'center',
+    padding: LuxeSpacing.xl,
+    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+    borderRadius: LuxeBorderRadius.lg,
+    gap: 8,
+  },
+  noSlotsIconContainer: {
+    marginBottom: 8,
+  },
+  noSlotsText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: LuxeColors.onSurface,
+  },
+  noSlotsSubtext: {
+    fontSize: 13,
+    color: LuxeColors.onSurfaceVariant,
+  },
+  slotsSummary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: LuxeColors.primaryContainer + '10',
+    paddingHorizontal: LuxeSpacing.md,
+    paddingVertical: LuxeSpacing.sm,
+    borderRadius: LuxeBorderRadius.md,
+    gap: 8,
+    marginBottom: LuxeSpacing.md,
+  },
+  slotsSummaryText: {
+    fontSize: 13,
     fontWeight: '600',
     color: LuxeColors.primaryContainer,
   },
@@ -565,8 +642,9 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: LuxeColors.onSurfaceVariant,
-    opacity: 0.6,
     marginBottom: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
   },
   timeSlotsGrid: {
     flexDirection: 'row',
@@ -580,12 +658,7 @@ const styles = StyleSheet.create({
     padding: LuxeSpacing.md,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.6)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    borderColor: 'rgba(255, 255, 255, 0.5)',
   },
   timeSlotUnavailable: {
     backgroundColor: LuxeColors.surfaceVariant,
@@ -594,11 +667,6 @@ const styles = StyleSheet.create({
   timeSlotSelected: {
     backgroundColor: LuxeColors.primaryContainer,
     borderColor: LuxeColors.primaryContainer,
-    shadowColor: LuxeColors.primaryContainer,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 5,
   },
   timeSlotText: {
     fontSize: 14,
@@ -607,59 +675,34 @@ const styles = StyleSheet.create({
   },
   timeSlotTextUnavailable: {
     color: LuxeColors.onSurfaceVariant,
+    textDecorationLine: 'line-through',
   },
   timeSlotTextSelected: {
     color: LuxeColors.onPrimaryContainer,
   },
-  infoBadge: {
-    flexDirection: 'row',
-    backgroundColor: LuxeColors.primaryContainer + '10',
-    borderRadius: LuxeBorderRadius.md,
-    padding: LuxeSpacing.sm,
-    gap: 8,
-    borderWidth: 1,
-    borderColor: LuxeColors.primaryContainer + '30',
-  },
-  infoIcon: {
-    fontSize: 14,
-  },
-  infoText: {
-    flex: 1,
-    fontSize: 12,
+  slotUnavailableText: {
+    fontSize: 10,
     color: LuxeColors.onSurfaceVariant,
-    lineHeight: 18,
+    marginTop: 2,
   },
   membershipCard: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    backgroundColor: 'rgba(255, 255, 255, 0.5)',
     borderRadius: LuxeBorderRadius.xl,
     padding: LuxeSpacing.md,
     gap: LuxeSpacing.md,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.5)',
-  },
-  membershipIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: LuxeColors.primaryContainer + '10',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  membershipIconText: {
-    fontSize: 20,
   },
   membershipContent: {
     flex: 1,
   },
   membershipTitle: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
     color: LuxeColors.onSurface,
-    marginBottom: 4,
+    marginBottom: 2,
   },
   membershipDesc: {
-    fontSize: 14,
+    fontSize: 13,
     color: LuxeColors.onSurfaceVariant,
   },
   bottomAction: {
@@ -668,7 +711,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     padding: LuxeSpacing.md,
-    backgroundColor: 'rgba(247, 249, 251, 0.9)',
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
     borderTopWidth: 1,
     borderTopColor: LuxeColors.outlineVariant + '20',
   },
@@ -680,16 +723,9 @@ const styles = StyleSheet.create({
     backgroundColor: LuxeColors.primaryContainer,
     paddingVertical: 16,
     borderRadius: LuxeBorderRadius.lg,
-    shadowColor: LuxeColors.primaryContainer,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
-    elevation: 8,
   },
   continueBtnDisabled: {
     backgroundColor: LuxeColors.surfaceVariant,
-    shadowOpacity: 0,
-    elevation: 0,
   },
   continueBtnText: {
     fontSize: 14,

@@ -89,7 +89,7 @@ export function BookingProvider({ children }: { children: ReactNode }) {
   const loadSlots = useCallback(async (date: string) => {
     try {
       setState(prev => ({ ...prev, isLoadingSlots: true }));
-      const response = await bookingService.getSlots(date);
+      const response = await bookingService.getAvailableSlots(date, []);
       if (response.statusCode === 200 && response.data) {
         setState(prev => ({ ...prev, slots: response.data || [], isLoadingSlots: false }));
       } else {
@@ -162,13 +162,13 @@ export function BookingProvider({ children }: { children: ReactNode }) {
         voucherId: state.voucherId,
         vehicles: state.selectedVehicles.map(v => ({
           licensePlate: v.licensePlate,
-          serviceId: state.selectedServices.get(v.licensePlate)!,
+          serviceId: state.selectedServices.get(v.licensePlate) ?? 1,
         })),
       };
 
       const response = await bookingService.createBooking(request);
 
-      if (response.statusCode === 200) {
+      if (response.statusCode === 200 || response.statusCode === 201) {
         return { success: true, bookingId: response.data?.bookingId };
       } else {
         return { success: false, error: response.message || 'Tạo đặt lịch thất bại' };
@@ -185,7 +185,7 @@ export function BookingProvider({ children }: { children: ReactNode }) {
   const cancelBooking = useCallback(async (bookingId: number): Promise<{ success: boolean; error?: string }> => {
     try {
       const response = await bookingService.cancelBooking(bookingId);
-      if (response.statusCode === 200) {
+      if (response.statusCode === 200 || response.statusCode === 201) {
         await loadMyBookings();
         return { success: true };
       } else {

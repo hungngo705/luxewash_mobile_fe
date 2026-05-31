@@ -17,6 +17,19 @@ export interface TopUpRequest {
   returnUrl: string;
 }
 
+export type TransactionType = 'TopUp' | 'Booking' | 'Refund' | 'Upsell' | 'PointReward' | 'PointRedeem';
+export type TransactionStatus = 'Completed' | 'Pending' | 'Failed';
+
+export interface Transaction {
+  transactionId: number;
+  amount: number;
+  transactionType: TransactionType;
+  description: string;
+  createdAt: string;
+  status?: string;
+  referenceId?: string;
+}
+
 export const walletService = {
   getBalance: async (): Promise<ApiResponse<WalletBalance>> => {
     return apiClient.get<WalletBalance>('/wallets/me');
@@ -26,7 +39,7 @@ export const walletService = {
     return apiClient.post<{ checkoutUrl: string }>('/wallets/top-up', data);
   },
 
-  getTransactions: async (): Promise<ApiResponse<unknown>> => {
-    return apiClient.get<unknown>('/transactions');
+  getTransactions: async (): Promise<ApiResponse<Transaction[]>> => {
+    return apiClient.get<Transaction[]>('/transactions');
   },
 };

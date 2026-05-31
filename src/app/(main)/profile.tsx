@@ -14,7 +14,6 @@ import { mockVehicles } from "@/data/types";
 import { useRouter } from "expo-router";
 import React from "react";
 import {
-  Alert,
   ScrollView,
   StyleSheet,
   Text,
@@ -22,39 +21,60 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Feather } from "@expo/vector-icons";
+import { useConfirmDialog } from "@/components/ConfirmDialog";
 
 export default function ProfileScreen() {
-  const { user, logout } = useAuth();
   const router = useRouter();
+  const { user, walletBalance, logout } = useAuth();
+  const { confirm } = useConfirmDialog();
 
   const currentUser = user;
   const membershipInfo = currentUser
     ? MembershipConfig[currentUser.membershipTier]
     : MembershipConfig.standard;
 
+const formatCurrency = (amount: number): string => {
+  return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
+};
+
   const menuItems = [
     {
-      icon: "💳",
-      title: "Phương thức thanh toán",
-      subtitle: "Quản lý ví và thẻ",
+      icon: "dollar-sign",
+      iconColor: "#1565C0",
+      title: "Ví & Thanh toán",
+      subtitle: `Số dư: ${formatCurrency(walletBalance)}`,
+      onPress: () => router.push("/wallet" as any),
     },
-    { icon: "🔔", title: "Thông báo", subtitle: "Cài đặt thông báo" },
-    { icon: "🔒", title: "Bảo mật", subtitle: "Đổi mật khẩu, PIN" },
-    { icon: "❓", title: "Hỗ trợ", subtitle: "Liên hệ, FAQ" },
+    {
+      icon: "gift",
+      iconColor: "#C62828",
+      title: "Voucher",
+      subtitle: "Kho voucher & điểm thưởng",
+      onPress: () => router.push("/vouchers" as any),
+    },
+    {
+      icon: "lock",
+      iconColor: "#2E7D32",
+      title: "Bảo mật",
+      subtitle: "Đổi mật khẩu",
+      onPress: () => router.push("/change-password"),
+    },
+    { icon: "bell", iconColor: "#F57C00", title: "Thông báo", subtitle: "Cài đặt thông báo" },
+    { icon: "help-circle", iconColor: "#7B1FA2", title: "Hỗ trợ", subtitle: "Liên hệ, FAQ" },
   ];
 
   const handleLogout = () => {
-    Alert.alert("Đăng xuất", "Bạn có chắc chắn muốn đăng xuất?", [
-      { text: "Hủy", style: "cancel" },
-      {
-        text: "Đăng xuất",
-        style: "destructive",
-        onPress: async () => {
-          await logout();
-          router.replace("/login");
-        },
+    confirm({
+      title: "Đăng xuất",
+      message: "Bạn có chắc chắn muốn đăng xuất?",
+      confirmText: "Đăng xuất",
+      destructive: true,
+      onConfirm: async () => {
+        await logout();
+        router.replace("/login");
       },
-    ]);
+    });
   };
 
   return (
@@ -67,6 +87,13 @@ export default function ProfileScreen() {
         >
           {/* Profile Header */}
           <View style={styles.profileCard}>
+            <TouchableOpacity
+              style={styles.editProfileBtn}
+              onPress={() => router.push('/profile-edit' as any)}
+            >
+              <Feather name="edit-2" size={14} color={LuxeColors.primaryContainer} />
+              <Text style={styles.editProfileBtnText}> Sửa</Text>
+            </TouchableOpacity>
             <View style={styles.avatar}>
               <Text style={styles.avatarText}>
                 {currentUser?.name?.charAt(0) || "U"}
@@ -122,7 +149,7 @@ export default function ProfileScreen() {
                   { backgroundColor: LuxeColors.primaryContainer + "20" },
                 ]}
               >
-                <Text style={styles.quickActionIconText}>📅</Text>
+                <Feather name="calendar" size={20} color={LuxeColors.primaryContainer} />
               </View>
               <Text style={styles.quickActionText}>Lịch hẹn</Text>
             </TouchableOpacity>
@@ -133,7 +160,7 @@ export default function ProfileScreen() {
                   { backgroundColor: LuxeColors.tertiaryContainer + "30" },
                 ]}
               >
-                <Text style={styles.quickActionIconText}>🎫</Text>
+                <Feather name="tag" size={20} color={LuxeColors.tertiaryContainer} />
               </View>
               <Text style={styles.quickActionText}>Voucher</Text>
             </TouchableOpacity>
@@ -144,7 +171,7 @@ export default function ProfileScreen() {
                   { backgroundColor: "#F59E0B20" },
                 ]}
               >
-                <Text style={styles.quickActionIconText}>⭐</Text>
+                <Feather name="star" size={20} color="#F59E0B" />
               </View>
               <Text style={styles.quickActionText}>Đánh giá</Text>
             </TouchableOpacity>
@@ -155,7 +182,7 @@ export default function ProfileScreen() {
                   { backgroundColor: LuxeColors.secondaryContainer + "40" },
                 ]}
               >
-                <Text style={styles.quickActionIconText}>📤</Text>
+                <Feather name="share-2" size={20} color={LuxeColors.secondaryContainer} />
               </View>
               <Text style={styles.quickActionText}>Chia sẻ</Text>
             </TouchableOpacity>
@@ -169,7 +196,9 @@ export default function ProfileScreen() {
                 onPress={() => router.push("/vehicles" as any)}
               >
                 <View style={styles.menuItemLeft}>
-                  <Text style={styles.menuIcon}>🚗</Text>
+                  <View style={[styles.menuIconContainer, { backgroundColor: LuxeColors.primaryContainer + '20' }]}>
+                    <Feather name="truck" size={18} color={LuxeColors.primaryContainer} />
+                  </View>
                   <View style={styles.menuItemContent}>
                     <Text style={styles.menuTitle}>Xe của tôi</Text>
                     <Text style={styles.menuSubtitle}>
@@ -181,9 +210,11 @@ export default function ProfileScreen() {
               </TouchableOpacity>
             )}
             {menuItems.map((item, index) => (
-              <TouchableOpacity key={index} style={styles.menuItem}>
+              <TouchableOpacity key={index} style={styles.menuItem} onPress={item.onPress}>
                 <View style={styles.menuItemLeft}>
-                  <Text style={styles.menuIcon}>{item.icon}</Text>
+                  <View style={[styles.menuIconContainer, { backgroundColor: item.iconColor + '20' }]}>
+                    <Feather name={item.icon as any} size={18} color={item.iconColor} />
+                  </View>
                   <View style={styles.menuItemContent}>
                     <Text style={styles.menuTitle}>{item.title}</Text>
                     <Text style={styles.menuSubtitle}>{item.subtitle}</Text>
@@ -198,7 +229,9 @@ export default function ProfileScreen() {
                 onPress={() => router.push("/staff/lpr-checkin" as any)}
               >
                 <View style={styles.menuItemLeft}>
-                  <Text style={styles.menuIcon}>🚗</Text>
+                  <View style={[styles.menuIconContainer, { backgroundColor: LuxeColors.primaryContainer + '20' }]}>
+                    <Feather name="truck" size={18} color={LuxeColors.primaryContainer} />
+                  </View>
                   <View style={styles.menuItemContent}>
                     <Text style={styles.menuTitle}>Chế độ Staff</Text>
                     <Text style={styles.menuSubtitle}>LPR Check-in</Text>
@@ -211,7 +244,7 @@ export default function ProfileScreen() {
 
           {/* Logout */}
           <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
-            <Text style={styles.logoutIcon}>🚪</Text>
+            <Feather name="log-out" size={18} color="#DC2626" />
             <Text style={styles.logoutText}>Đăng xuất</Text>
           </TouchableOpacity>
 
@@ -250,6 +283,20 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 40,
     elevation: 5,
+  },
+  editProfileBtn: {
+    position: 'absolute',
+    top: LuxeSpacing.md,
+    right: LuxeSpacing.md,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: LuxeColors.primaryContainer + '30',
+  },
+  editProfileBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: LuxeColors.primaryContainer,
   },
   avatar: {
     width: 80,
@@ -338,9 +385,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginBottom: 6,
   },
-  quickActionIconText: {
-    fontSize: 18,
-  },
   quickActionText: {
     fontSize: 11,
     color: LuxeColors.onSurfaceVariant,
@@ -365,8 +409,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     flex: 1,
   },
-  menuIcon: {
-    fontSize: 20,
+  menuIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
     marginRight: LuxeSpacing.md,
   },
   menuItemContent: {
@@ -395,9 +443,6 @@ const styles = StyleSheet.create({
     padding: LuxeSpacing.md,
     gap: 8,
     marginBottom: LuxeSpacing.lg,
-  },
-  logoutIcon: {
-    fontSize: 18,
   },
   logoutText: {
     fontSize: 15,

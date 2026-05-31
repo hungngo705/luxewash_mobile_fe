@@ -10,19 +10,30 @@ export interface Tier {
   tierName: string;
   pointMultiplier: number;
   minAccumulatedPoints: number;
+  bookingWindowDays?: number;
 }
 
 export interface Voucher {
-  id: number;
+  voucherId: number;
   code: string;
-  title: string;
-  description: string;
-  discountType: string;
-  discountValue: number;
-  minOrderAmount: number;
-  maxDiscount: number;
-  validUntil: string;
-  isActive: boolean;
+  title?: string;
+  description?: string;
+  discountAmount: number;
+  pointsRequired: number;
+  expiryDate: string;
+  isUsed: boolean;
+  usedDate?: string | null;
+}
+
+export interface VoucherCatalogItem {
+  voucherId: number;
+  code: string;
+  title?: string;
+  description?: string;
+  discountAmount: number;
+  pointsRequired: number;
+  expiryDate: string;
+  isRedeemed: boolean;
 }
 
 export const loyaltyService = {
@@ -40,5 +51,9 @@ export const loyaltyService = {
 
   redeemVoucher: async (voucherCode: string): Promise<ApiResponse<void>> => {
     return apiClient.post<void>('/vouchers/redeem', { voucherCode });
+  },
+
+  getCatalog: async (): Promise<ApiResponse<VoucherCatalogItem[]>> => {
+    return apiClient.get<VoucherCatalogItem[]>('/vouchers/catalog');
   },
 };

@@ -11,44 +11,42 @@ import {
   ScrollView,
   TouchableOpacity,
   Image,
-  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { Feather } from '@expo/vector-icons';
 import { LuxeColors, LuxeSpacing, LuxeBorderRadius } from '@/constants/luxeTheme';
 import { useAuth } from '@/contexts/AuthContext';
 import { Vehicle } from '@/data/types';
+import { useConfirmDialog } from '@/components/ConfirmDialog';
 
 export default function VehiclesScreen() {
   const router = useRouter();
   const { user, removeVehicle } = useAuth();
   const vehicles = user?.vehicles || [];
+  const { confirm } = useConfirmDialog();
 
   const handleDeleteVehicle = async (vehicle: Vehicle) => {
-    Alert.alert(
-      'Xóa xe',
-      `Bạn có chắc muốn xóa xe ${vehicle.licensePlate}?`,
-      [
-        { text: 'Hủy', style: 'cancel' },
-        {
-          text: 'Xóa',
-          style: 'destructive',
-          onPress: async () => {
-            const result = await removeVehicle(vehicle.licensePlate);
-            if (!result.success) {
-              Alert.alert('Lỗi', result.error || 'Không thể xóa xe. Vui lòng thử lại.');
-            }
-          },
-        },
-      ]
-    );
+    confirm({
+      title: 'Xóa xe',
+      message: `Bạn có chắc muốn xóa xe ${vehicle.licensePlate}?`,
+      confirmText: 'Xóa',
+      destructive: true,
+      onConfirm: async () => {
+        const result = await removeVehicle(vehicle.licensePlate);
+        if (!result.success) {
+          // Show error using a simple Alert (non-blocking)
+          alert(result.error || 'Không thể xóa xe. Vui lòng thử lại.');
+        }
+      },
+    });
   };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-          <Text style={styles.backIcon}>←</Text>
+          <Feather name="chevron-left" size={24} color={LuxeColors.onSurface} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Xe của tôi</Text>
         <TouchableOpacity
@@ -62,7 +60,9 @@ export default function VehiclesScreen() {
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
         {vehicles.length === 0 ? (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyIcon}>🚗</Text>
+            <View style={styles.emptyIconWrap}>
+              <Feather name="truck" size={48} color={LuxeColors.outlineVariant} />
+            </View>
             <Text style={styles.emptyTitle}>Chưa có xe nào</Text>
             <Text style={styles.emptyText}>
               Thêm xe của bạn để đặt lịch rửa xe dễ dàng hơn
@@ -83,7 +83,7 @@ export default function VehiclesScreen() {
                     <Image source={{ uri: vehicle.imageUrl }} style={styles.vehicleImage} />
                   ) : (
                     <View style={styles.vehicleImagePlaceholder}>
-                      <Text style={styles.vehicleImagePlaceholderText}>🚗</Text>
+                      <Feather name="truck" size={36} color={LuxeColors.onSurfaceVariant} />
                     </View>
                   )}
                 </View>
@@ -94,14 +94,12 @@ export default function VehiclesScreen() {
                       style={styles.deleteBtn}
                       onPress={() => handleDeleteVehicle(vehicle)}
                     >
-                      <Text style={styles.deleteBtnText}>🗑️</Text>
+                      <Feather name="trash-2" size={18} color="#ef4444" />
                     </TouchableOpacity>
                   </View>
                   <View style={styles.vehicleTypeBadge}>
-                    <Text style={styles.vehicleTypeIcon}>
-                      {vehicle.brand === 'Sedan' ? '🚗' : vehicle.brand === 'SUV' ? '🚙' : vehicle.brand === 'Pickup' ? '🛻' : '🚗'}
-                    </Text>
-                    <Text style={styles.vehicleTypeText}>{vehicle.brand}</Text>
+                    <Feather name="truck" size={14} color={LuxeColors.onSurfaceVariant} />
+                    <Text style={styles.vehicleTypeText}>{vehicle.brand}{vehicle.model ? ` · ${vehicle.model}` : ''}</Text>
                   </View>
                 </View>
               </View>
@@ -112,7 +110,9 @@ export default function VehiclesScreen() {
                 style={styles.addMoreCard}
                 onPress={() => router.push('/vehicles/add-vehicle')}
               >
-                <Text style={styles.addMoreIcon}>+</Text>
+                <View style={styles.addMoreIconWrap}>
+                  <Feather name="plus" size={18} color={LuxeColors.primaryContainer} />
+                </View>
                 <Text style={styles.addMoreText}>Thêm xe mới</Text>
               </TouchableOpacity>
             )}
@@ -148,10 +148,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  backIcon: {
-    fontSize: 24,
-    color: LuxeColors.onSurface,
-  },
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
@@ -178,8 +174,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: LuxeSpacing.xl * 2,
   },
-  emptyIcon: {
-    fontSize: 64,
+  emptyIconWrap: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: LuxeColors.surfaceVariant,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: LuxeSpacing.lg,
   },
   emptyTitle: {
@@ -238,9 +239,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  vehicleImagePlaceholderText: {
-    fontSize: 32,
-  },
   vehicleInfo: {
     flex: 1,
     justifyContent: 'center',
@@ -262,18 +260,12 @@ const styles = StyleSheet.create({
     gap: 6,
     marginTop: 4,
   },
-  vehicleTypeIcon: {
-    fontSize: 16,
-  },
   vehicleTypeText: {
     fontSize: 14,
     color: LuxeColors.onSurfaceVariant,
   },
   deleteBtn: {
     padding: 4,
-  },
-  deleteBtnText: {
-    fontSize: 18,
   },
   addMoreCard: {
     flexDirection: 'row',
@@ -287,9 +279,13 @@ const styles = StyleSheet.create({
     borderColor: LuxeColors.outlineVariant,
     gap: LuxeSpacing.sm,
   },
-  addMoreIcon: {
-    fontSize: 24,
-    color: LuxeColors.primaryContainer,
+  addMoreIconWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: LuxeColors.primaryContainer + '20',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   addMoreText: {
     fontSize: 16,

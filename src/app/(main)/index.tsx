@@ -13,6 +13,7 @@ import {
   TouchableOpacity,
   Dimensions,
 } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { LuxeColors, LuxeSpacing, LuxeBorderRadius, MembershipConfig } from '@/constants/luxeTheme';
@@ -76,7 +77,7 @@ export default function HomeScreen() {
   };
 
   const handleBooking = () => {
-    router.push('/booking/select-vehicle');
+    router.push('/booking/select-service');
   };
 
   return (
@@ -93,7 +94,7 @@ export default function HomeScreen() {
               style={styles.notificationBtn}
               onPress={() => router.push('/notifications' as any)}
             >
-              <Text style={styles.notificationIcon}>🔔</Text>
+              <Feather name="bell" size={24} color={LuxeColors.primaryContainer} />
               <View style={styles.notificationBadge} />
             </TouchableOpacity>
           </View>
@@ -132,7 +133,7 @@ export default function HomeScreen() {
               <Text style={styles.sectionTitle}>Phương tiện hiện tại</Text>
               <View style={styles.currentVehicleCard}>
                 <View style={styles.vehicleImagePlaceholder}>
-                  <Text style={styles.vehicleImagePlaceholderText}>🚗</Text>
+                  <Feather name="truck" size={40} color={LuxeColors.primaryContainer} />
                 </View>
                 <View style={styles.vehicleInfo}>
                   <Text style={styles.vehicleName}>{currentVehicle.brand} {currentVehicle.model}</Text>
@@ -161,8 +162,8 @@ export default function HomeScreen() {
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 {vehicles.map((vehicle) => (
                   <TouchableOpacity key={vehicle.id} style={styles.vehicleSelectorItem}>
-                    <View style={styles.vehicleSelectorImage}>
-                      <Text style={{ fontSize: 24 }}>🚗</Text>
+                  <View style={styles.vehicleSelectorImage}>
+                    <Feather name="truck" size={28} color={LuxeColors.onSurfaceVariant} />
                     </View>
                     <Text style={styles.vehicleSelectorPlate} numberOfLines={1}>
                       {vehicle.licensePlate}
@@ -175,29 +176,29 @@ export default function HomeScreen() {
 
           {/* Quick Actions */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Thao tác nhanh</Text>
+            <Text style={styles.sectionTitle}>Tiện ích</Text>
             <View style={styles.quickActions}>
               <TouchableOpacity style={styles.quickActionItem} onPress={handleBooking}>
                 <View style={[styles.quickActionIcon, { backgroundColor: LuxeColors.primaryContainer + '30' }]}>
-                  <Text style={styles.quickActionEmoji}>📅</Text>
+                  <Feather name="calendar" size={20} color={LuxeColors.primaryContainer} />
                 </View>
                 <Text style={styles.quickActionText}>Đặt lịch</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.quickActionItem}>
                 <View style={[styles.quickActionIcon, { backgroundColor: '#E8F5E9' }]}>
-                  <Text style={styles.quickActionEmoji}>📍</Text>
+                  <Feather name="map-pin" size={20} color="#2E7D32" />
                 </View>
                 <Text style={styles.quickActionText}>Chi nhánh</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.quickActionItem}>
                 <View style={[styles.quickActionIcon, { backgroundColor: '#FFF3E0' }]}>
-                  <Text style={styles.quickActionEmoji}>📞</Text>
+                  <Feather name="phone" size={20} color="#E65100" />
                 </View>
                 <Text style={styles.quickActionText}>Hỗ trợ</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.quickActionItem}>
                 <View style={[styles.quickActionIcon, { backgroundColor: '#F3E5F5' }]}>
-                  <Text style={styles.quickActionEmoji}>📖</Text>
+                  <Feather name="book-open" size={20} color="#7B1FA2" />
                 </View>
                 <Text style={styles.quickActionText}>Hướng dẫn</Text>
               </TouchableOpacity>
@@ -207,7 +208,7 @@ export default function HomeScreen() {
           {/* Booking Button */}
           <View style={styles.bookingSection}>
             <TouchableOpacity style={styles.bookingBtn} onPress={handleBooking}>
-              <Text style={styles.bookingIcon}>✨</Text>
+              <Feather name="star" size={20} color="#ffffff" />
               <Text style={styles.bookingText}>Đặt lịch hẹn ngay</Text>
             </TouchableOpacity>
           </View>
@@ -221,18 +222,20 @@ export default function HomeScreen() {
               </TouchableOpacity>
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              {(services.length > 0 ? services : mockServices).map((service) => {
-                const price = services.length > 0 ? getLowestPrice(service as any) : service.price;
+              {(services.length > 0 ? services : mockServices).map((service: any) => {
+                const price = services.length > 0 ? getLowestPrice(service) : service.price;
                 const cat = services.length > 0 ? 'basic' : service.category;
                 return (
-                  <View key={services.length > 0 ? (service as any).serviceId : service.id} style={styles.serviceCard}>
+                  <View key={services.length > 0 ? service.serviceId : service.id} style={styles.serviceCard}>
                     <View style={styles.serviceIconContainer}>
-                      <Text style={styles.serviceIcon}>
-                        {cat === 'basic' ? '🚿' : cat === 'premium' ? '✨' : cat === 'deep_clean' ? '🧹' : '💎'}
-                      </Text>
+                      <Feather
+                        name={cat === 'basic' ? 'droplet' : cat === 'premium' ? 'star' : cat === 'deep_clean' ? 'sun' : 'award'}
+                        size={24}
+                        color={LuxeColors.primaryContainer}
+                      />
                     </View>
                     <Text style={styles.serviceName}>
-                      {services.length > 0 ? (service as any).serviceName : service.nameVi}
+                      {services.length > 0 ? service.serviceName : service.nameVi}
                     </Text>
                     <Text style={styles.servicePrice}>{price.toLocaleString('vi-VN')}đ</Text>
                   </View>
@@ -270,17 +273,17 @@ export default function HomeScreen() {
             <Text style={styles.sectionTitle}>Thống kê</Text>
             <View style={styles.statsRow}>
               <View style={styles.statCard}>
-                <Text style={styles.statIcon}>📊</Text>
+                <Feather name="bar-chart-2" size={20} color={LuxeColors.primaryContainer} />
                 <Text style={styles.statLabel}>Tổng lần rửa</Text>
                 <Text style={styles.statValue}>{vehicles.length}</Text>
               </View>
               <View style={styles.statCard}>
-                <Text style={styles.statIcon}>💰</Text>
+                <Feather name="dollar-sign" size={20} color={LuxeColors.primaryContainer} />
                 <Text style={styles.statLabel}>Số dư ví</Text>
                 <Text style={styles.statValue}>{walletBalance > 0 ? `${(walletBalance / 1000000).toFixed(1)}M` : '0đ'}</Text>
               </View>
               <View style={styles.statCard}>
-                <Text style={styles.statIcon}>⭐</Text>
+                <Feather name="star" size={20} color={LuxeColors.primaryContainer} />
                 <Text style={styles.statLabel}>Điểm</Text>
                 <Text style={styles.statValue}>{currentUser?.loyaltyPoints || 0}</Text>
               </View>
@@ -329,9 +332,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: LuxeColors.surfaceContainer,
     borderRadius: 22,
-  },
-  notificationIcon: {
-    fontSize: 20,
   },
   notificationBadge: {
     position: 'absolute',
@@ -426,6 +426,16 @@ const styles = StyleSheet.create({
     height: 60,
     borderRadius: 12,
     backgroundColor: LuxeColors.surfaceContainer,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  vehicleImagePlaceholder: {
+    width: 60,
+    height: 60,
+    borderRadius: 12,
+    backgroundColor: LuxeColors.surfaceContainer,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   vehicleInfo: {
     flex: 1,
@@ -501,9 +511,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 8,
   },
-  quickActionEmoji: {
-    fontSize: 22,
-  },
   quickActionText: {
     fontSize: 12,
     color: LuxeColors.onSurfaceVariant,
@@ -525,9 +532,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 20,
     elevation: 10,
-  },
-  bookingIcon: {
-    fontSize: 20,
   },
   bookingText: {
     fontSize: 16,
@@ -552,9 +556,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 8,
-  },
-  serviceIcon: {
-    fontSize: 22,
   },
   serviceName: {
     fontSize: 13,
@@ -629,10 +630,6 @@ const styles = StyleSheet.create({
     borderRadius: LuxeBorderRadius.xl,
     padding: LuxeSpacing.md,
     alignItems: 'center',
-  },
-  statIcon: {
-    fontSize: 24,
-    marginBottom: 4,
   },
   statLabel: {
     fontSize: 10,

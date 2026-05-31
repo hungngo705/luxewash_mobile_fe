@@ -4,7 +4,7 @@
  * Docs: https://api.imgur.com/endpoints/image
  */
 
-import * as FileSystem from 'expo-file-system';
+import { File } from 'expo-file-system';
 import { Platform } from 'react-native';
 
 const IMGUR_API_URL = 'https://api.imgur.com/3/image';
@@ -20,9 +20,8 @@ async function fileToBase64(uri: string): Promise<string> {
   if (Platform.OS === 'web') {
     return uri.split(',')[1] || '';
   }
-  return await FileSystem.readAsStringAsync(uri, {
-    encoding: FileSystem.EncodingType.Base64,
-  });
+  const file = new File(uri);
+  return await file.base64();
 }
 
 export async function uploadImage(uri: string): Promise<UploadResult> {

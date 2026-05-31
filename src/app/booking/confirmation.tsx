@@ -1,6 +1,6 @@
 /**
  * Advance Booking Flow - Final Step: Confirmation
- * Booking summary and payment confirmation
+ * Summary of service, vehicle(s), date/time, and payment
  */
 
 import React, { useState } from 'react';
@@ -11,97 +11,101 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Feather } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { LuxeColors, LuxeSpacing, LuxeBorderRadius, MembershipConfig } from '@/constants/luxeTheme';
+import { LuxeColors, LuxeSpacing, LuxeBorderRadius } from '@/constants/luxeTheme';
 import { useAuth } from '@/contexts/AuthContext';
-import { bookingService, loyaltyService } from '@/services/api';
+import { bookingService } from '@/services/api';
 
 export default function BookingConfirmationScreen() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, walletBalance, refreshWallet } = useAuth();
   const params = useLocalSearchParams();
 
-  const vehicleId = params.vehicleId as string;
-  const dateParam = params.date as string;
-  const timeSlotId = params.timeSlotId as string;
-  const timeRange = params.timeRange as string;
-  const serviceId = params.serviceId as string;
-  const serviceName = params.serviceName as string;
-  const servicePrice = parseInt(params.servicePrice as string) || 0;
-  const useLoyaltyPoints = params.useLoyaltyPoints === 'true';
-  const pointsToUse = parseInt(params.pointsToUse as string) || 0;
+  const serviceIdParam = parseInt(params.serviceId as string) || 0;
+  const serviceNameParam = (params.serviceName as string) || '';
+  const servicePriceParam = parseInt(params.servicePrice as string) || 0;
+  const membershipDiscountParam = parseFloat(params.membershipDiscount as string) || 0;
+  const dateParam = (params.date as string) || '';
+  const slotIdParam = parseInt(params.slotId as string) || 0;
+  const timeRangeParam = (params.timeRange as string) || '';
+  const vehicleIdsParam = (params.vehicleIds as string) || '';
+  const vehicleTypeIdsParam = (params.vehicleTypeIds as string) || '';
+  const vehicleBrandsParam = (params.vehicleBrands as string) || '';
 
-  const currentUser = user;
-  const membershipInfo = currentUser ? MembershipConfig[currentUser.membershipTier] : MembershipConfig.standard;
-  const selectedVehicle = user?.vehicles.find((v) => v.id === vehicleId);
-  const selectedDate = dateParam ? new Date(dateParam) : new Date();
+  const vehiclePlateList = vehicleIdsParam ? vehicleIdsParam.split(',') : [];
+  const vehicleTypeIdList = vehicleTypeIdsParam ? vehicleTypeIdsParam.split(',').map(Number) : [];
+
+  const vehicleCount = vehiclePlateList.length;
+  const subtotal = servicePriceParam * vehicleCount;
+  const membershipDiscountAmount = Math.round(subtotal * membershipDiscountParam);
+  const finalPrice = Math.max(0, subtotal - membershipDiscountAmount);
 
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'wallet' | 'bank'>('wallet');
-  const [voucherId, setVoucherId] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const membershipDiscount = membershipInfo.discountRate;
-  const pointsDiscount = Math.floor(pointsToUse / 10) * 1000;
-  const membershipDiscountAmount = Math.round(servicePrice * membershipDiscount);
-  const totalDiscount = membershipDiscountAmount + pointsDiscount;
-  const finalPrice = Math.max(0, servicePrice - totalDiscount);
-
-  const handleApplyVoucher = async () => {
-    try {
-      const res = await loyaltyService.redeemVoucher('');
-      if (res.statusCode === 200 && res.data) {
-        // voucher applied
-      }
-    } catch (e) {
-      console.error('Voucher error:', e);
-    }
-  };
-
-  const handleConfirmBooking = async () => {
-    setIsSubmitting(true);
-    try {
-      const res = await bookingService.createBooking({
-        scheduledDate: selectedDate.toISOString(),
-        slotId: parseInt(timeSlotId),
-        pointsToUse,
-        voucherId,
-        vehicles: [{ licensePlate: vehicleId, serviceId: parseInt(serviceId) }],
-      });
-
-      if (res.statusCode === 200) {
-        const bookingId = (res.data as any)?.bookingId || 0;
-        router.replace({
-          pathname: '/booking/success',
-          params: {
-            bookingId: String(bookingId),
-            vehicleId,
-            serviceId,
-            serviceName,
-            date: dateParam,
-            timeRange,
-            finalAmount: String(finalPrice),
-          },
-        });
-      } else {
-        Alert.alert('Lỗi', res.message || 'Tạo đặt lịch thất bại');
-      }
-    } catch (e: any) {
-      Alert.alert('Lỗi', e?.message || 'Đã xảy ra lỗi khi tạo đặt lịch');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const formatDate = (date: Date) => {
+  const formatDateDisplay = (dateStr: string): string => {
+    if (!dateStr) return '';
+    const [year, month, day] = dateStr.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
     return date.toLocaleDateString('vi-VN', {
       weekday: 'long',
       day: 'numeric',
       month: 'numeric',
       year: 'numeric',
     });
+  };
+
+  const handleConfirmBooking = async () => {
+    if (selectedPaymentMethod === 'wallet' && walletBalance < finalPrice) {
+      alert('Số dư không đủ. Vui lòng nạp thêm tiền vào ví hoặc chọn phương thức thanh toán khác.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const bookingVehicles = vehiclePlateList.map((plate, i) => ({
+        licensePlate: plate,
+        serviceId: serviceIdParam,
+        vehicleTypeId: vehicleTypeIdList[i] ?? 1,
+      }));
+
+      const [year, month, day] = dateParam.split('-').map(Number);
+      const scheduledDate = new Date(year, month - 1, day).toISOString();
+
+      const res = await bookingService.createBooking({
+        scheduledDate,
+        slotId: slotIdParam,
+        pointsToUse: 0,
+        voucherId: null,
+        vehicles: bookingVehicles,
+      });
+
+      if (res.statusCode === 200 || res.statusCode === 201) {
+        const bookingId = (res.data as any)?.bookingId || 0;
+        await refreshWallet?.();
+        router.replace({
+          pathname: '/booking/success',
+          params: {
+            bookingId: String(bookingId),
+            serviceName: serviceNameParam,
+            date: dateParam,
+            timeRange: timeRangeParam,
+            vehicleCount: String(vehicleCount),
+            finalAmount: String(finalPrice),
+          },
+        });
+      } else {
+        alert(res.message || 'Tạo đặt lịch thất bại');
+      }
+    } catch (e: unknown) {
+      const err = e as { message?: string };
+      alert(err?.message || 'Đã xảy ra lỗi khi tạo đặt lịch');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -115,7 +119,7 @@ export default function BookingConfirmationScreen() {
         <View style={styles.placeholder} />
       </View>
 
-      {/* Progress Steps */}
+      {/* Progress */}
       <View style={styles.progressContainer}>
         <View style={styles.progressStep}>
           <View style={[styles.progressDot, styles.progressDotCompleted]} />
@@ -129,126 +133,143 @@ export default function BookingConfirmationScreen() {
       </View>
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-        {/* Service Summary */}
-        <View style={styles.section}>
-          <View style={styles.serviceSummaryCard}>
-            <View style={styles.serviceSummaryHeader}>
-              <View style={styles.serviceIconContainer}>
-                <Text style={styles.serviceIcon}>🚿</Text>
-              </View>
-              <View style={styles.serviceSummaryInfo}>
-                <Text style={styles.serviceName}>{serviceName}</Text>
-                <View style={styles.serviceMeta}>
-                  <Text style={styles.serviceMetaText}>📅 {formatDate(selectedDate)}</Text>
-                  <Text style={styles.serviceMetaDot}>•</Text>
-                  <Text style={styles.serviceMetaText}>🕐 {timeRange}</Text>
-                </View>
-              </View>
+        {/* Service Card */}
+        <View style={styles.card}>
+          <View style={styles.cardRow}>
+            <View style={styles.cardIconContainer}>
+              <Feather name="droplet" size={22} color={LuxeColors.primaryContainer} />
+            </View>
+            <View style={styles.cardInfo}>
+              <Text style={styles.cardTitle}>{serviceNameParam}</Text>
+              <Text style={styles.cardSubtitle}>
+                {vehicleCount} xe • {servicePriceParam.toLocaleString('vi-VN')}đ/xe
+              </Text>
             </View>
           </View>
         </View>
 
-        {/* Vehicle Info */}
-        <View style={styles.section}>
-          <View style={styles.vehicleCard}>
-            <View style={styles.vehicleRow}>
-              <Text style={styles.vehicleLabel}>Xe</Text>
-              <Text style={styles.vehicleValue}>
-                {selectedVehicle ? `${selectedVehicle.brand} ${selectedVehicle.model}` : vehicleId}
-              </Text>
+        {/* Date & Time Card */}
+        <View style={styles.card}>
+          <View style={styles.cardRow}>
+            <Feather name="calendar" size={18} color={LuxeColors.primaryContainer} />
+            <View style={styles.cardInfo}>
+              <Text style={styles.cardLabel}>Ngày</Text>
+              <Text style={styles.cardValue}>{formatDateDisplay(dateParam)}</Text>
             </View>
-            <View style={styles.vehicleRow}>
-              <Text style={styles.vehicleLabel}>Biển số</Text>
-              <Text style={styles.vehicleValue}>{selectedVehicle?.licensePlate || ''}</Text>
+          </View>
+          <View style={styles.cardDivider} />
+          <View style={styles.cardRow}>
+            <Feather name="clock" size={18} color={LuxeColors.primaryContainer} />
+            <View style={styles.cardInfo}>
+              <Text style={styles.cardLabel}>Giờ</Text>
+              <Text style={styles.cardValue}>{timeRangeParam}</Text>
             </View>
-            <View style={styles.vehicleRow}>
-              <Text style={styles.vehicleLabel}>Trạm</Text>
-              <Text style={styles.vehicleValue}>LuxeWash</Text>
+          </View>
+          <View style={styles.cardDivider} />
+          <View style={styles.cardRow}>
+            <Feather name="truck" size={18} color={LuxeColors.primaryContainer} />
+            <View style={styles.cardInfo}>
+              <Text style={styles.cardLabel}>Xe ({vehicleCount})</Text>
+              <Text style={styles.cardValue}>{vehicleBrandsParam || vehiclePlateList.join(', ')}</Text>
+              <Text style={styles.cardSubtitle}>{vehiclePlateList.join(', ')}</Text>
+            </View>
+          </View>
+          <View style={styles.cardDivider} />
+          <View style={styles.cardRow}>
+            <Feather name="map-pin" size={18} color={LuxeColors.primaryContainer} />
+            <View style={styles.cardInfo}>
+              <Text style={styles.cardLabel}>Trạm</Text>
+              <Text style={styles.cardValue}>LuxeWash</Text>
             </View>
           </View>
         </View>
 
         {/* Payment Methods */}
-        <View style={styles.section}>
+        <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Phương thức thanh toán</Text>
-          <View style={styles.paymentMethods}>
-            <TouchableOpacity
-              style={[
-                styles.paymentMethod,
-                selectedPaymentMethod === 'wallet' && styles.paymentMethodSelected,
-              ]}
-              onPress={() => setSelectedPaymentMethod('wallet')}
-            >
-              <View style={styles.paymentMethodContent}>
-                <View style={[styles.paymentIcon, selectedPaymentMethod === 'wallet' && styles.paymentIconActive]}>
-                  <Text style={styles.paymentIconText}>👛</Text>
-                </View>
-                <View style={styles.paymentInfo}>
-                  <Text style={styles.paymentTitle}>Số dư ví</Text>
-                  <Text style={styles.paymentBalance}>{servicePrice.toLocaleString('vi-VN')} VND</Text>
-                </View>
-              </View>
-              <View style={[styles.radioOuter, selectedPaymentMethod === 'wallet' && styles.radioOuterSelected]}>
-                {selectedPaymentMethod === 'wallet' && <View style={styles.radioInner} />}
-              </View>
-            </TouchableOpacity>
+        </View>
 
-            <TouchableOpacity
-              style={[
-                styles.paymentMethod,
-                selectedPaymentMethod === 'bank' && styles.paymentMethodSelected,
-              ]}
-              onPress={() => setSelectedPaymentMethod('bank')}
-            >
-              <View style={styles.paymentMethodContent}>
-                <View style={styles.paymentIcon}>
-                  <Text style={styles.paymentIconText}>🏦</Text>
-                </View>
+        <View style={styles.paymentMethods}>
+          <TouchableOpacity
+            style={[
+              styles.paymentMethod,
+              selectedPaymentMethod === 'wallet' && styles.paymentMethodSelected,
+              walletBalance < finalPrice && styles.paymentMethodDisabled,
+            ]}
+            onPress={() => {
+              if (walletBalance >= finalPrice) setSelectedPaymentMethod('wallet');
+            }}
+            disabled={walletBalance < finalPrice}
+            activeOpacity={0.8}
+          >
+            <View style={styles.paymentLeft}>
+              <View style={[styles.paymentRadio, selectedPaymentMethod === 'wallet' && styles.paymentRadioSelected]}>
+                {selectedPaymentMethod === 'wallet' && <View style={styles.paymentRadioInner} />}
+              </View>
+              <Text style={styles.paymentIcon}>👛</Text>
+              <View style={styles.paymentInfo}>
+                <Text style={styles.paymentTitle}>Số dư ví</Text>
+                <Text style={[styles.paymentBalance, walletBalance < finalPrice && styles.paymentBalanceDanger]}>
+                  {walletBalance.toLocaleString('vi-VN')} VND
+                </Text>
+              </View>
+            </View>
+            {walletBalance < finalPrice && (
+              <Text style={styles.paymentWarning}>Không đủ</Text>
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.paymentMethod, selectedPaymentMethod === 'bank' && styles.paymentMethodSelected]}
+            onPress={() => setSelectedPaymentMethod('bank')}
+            activeOpacity={0.8}
+          >
+            <View style={styles.paymentLeft}>
+              <View style={[styles.paymentRadio, selectedPaymentMethod === 'bank' && styles.paymentRadioSelected]}>
+                {selectedPaymentMethod === 'bank' && <View style={styles.paymentRadioInner} />}
+              </View>
+              <Text style={styles.paymentIcon}>🏦</Text>
+              <View style={styles.paymentInfo}>
                 <Text style={styles.paymentTitle}>Chuyển khoản ngân hàng</Text>
+                <Text style={styles.paymentSubtitle}>Thanh toán sau khi hoàn thành</Text>
               </View>
-              <View style={[styles.radioOuter, selectedPaymentMethod === 'bank' && styles.radioOuterSelected]}>
-                {selectedPaymentMethod === 'bank' && <View style={styles.radioInner} />}
-              </View>
-            </TouchableOpacity>
-          </View>
+            </View>
+          </TouchableOpacity>
         </View>
 
         {/* Billing Details */}
-        <View style={styles.section}>
+        <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Chi tiết thanh toán</Text>
-          <View style={styles.billingCard}>
+        </View>
+
+        <View style={styles.card}>
+          <View style={styles.billingRow}>
+            <Text style={styles.billingLabel}>
+              {serviceNameParam} × {vehicleCount} xe
+            </Text>
+            <Text style={styles.billingValue}>{subtotal.toLocaleString('vi-VN')}đ</Text>
+          </View>
+          {membershipDiscountAmount > 0 && (
             <View style={styles.billingRow}>
-              <Text style={styles.billingLabel}>Giá dịch vụ</Text>
-              <Text style={styles.billingValue}>{servicePrice.toLocaleString('vi-VN')}đ</Text>
+              <Text style={[styles.billingLabel, styles.billingDiscountLabel]}>
+                Giảm thành viên ({Math.round(membershipDiscountParam * 100)}%)
+              </Text>
+              <Text style={styles.billingDiscount}>-{membershipDiscountAmount.toLocaleString('vi-VN')}đ</Text>
             </View>
-            {membershipDiscountAmount > 0 && (
-              <View style={styles.billingRow}>
-                <Text style={styles.billingLabel}>Giảm thành viên ({Math.round(membershipDiscount * 100)}%)</Text>
-                <Text style={styles.billingDiscount}>-{membershipDiscountAmount.toLocaleString('vi-VN')}đ</Text>
-              </View>
-            )}
-            {pointsDiscount > 0 && (
-              <View style={styles.billingRow}>
-                <Text style={styles.billingLabel}>Giảm điểm thưởng</Text>
-                <Text style={styles.billingDiscount}>-{pointsDiscount.toLocaleString('vi-VN')}đ</Text>
-              </View>
-            )}
-            <View style={styles.billingDivider} />
-            <View style={styles.billingRow}>
-              <Text style={styles.billingTotalLabel}>Tổng thanh toán</Text>
-              <Text style={styles.billingTotalValue}>{finalPrice.toLocaleString('vi-VN')}đ</Text>
-            </View>
+          )}
+          <View style={styles.billingDivider} />
+          <View style={styles.billingRow}>
+            <Text style={styles.billingTotalLabel}>Tổng thanh toán</Text>
+            <Text style={styles.billingTotalValue}>{finalPrice.toLocaleString('vi-VN')}đ</Text>
           </View>
         </View>
 
         {/* Terms */}
-        <View style={styles.termsSection}>
-          <Text style={styles.termsText}>
-            Bằng việc xác nhận đặt lịch, bạn đồng ý với{' '}
-            <Text style={styles.termsLink}>Điều khoản dịch vụ</Text> và{' '}
-            <Text style={styles.termsLink}>Chính sách hủy lịch</Text> của LuxeWash.
-          </Text>
-        </View>
+        <Text style={styles.termsText}>
+          Bằng việc xác nhận đặt lịch, bạn đồng ý với{' '}
+          <Text style={styles.termsLink}>�iều khoản dịch vụ</Text> và{' '}
+          <Text style={styles.termsLink}>chính sách hủy lịch</Text> của LuxeWash.
+        </Text>
       </ScrollView>
 
       {/* Bottom Action */}
@@ -257,9 +278,10 @@ export default function BookingConfirmationScreen() {
           style={[styles.confirmBtn, isSubmitting && styles.confirmBtnDisabled]}
           onPress={handleConfirmBooking}
           disabled={isSubmitting}
+          activeOpacity={0.9}
         >
           {isSubmitting ? (
-            <ActivityIndicator color="#fff" />
+            <ActivityIndicator color="#fff" size="small" />
           ) : (
             <>
               <Text style={styles.confirmBtnIcon}>🔒</Text>
@@ -283,7 +305,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: LuxeSpacing.md,
     paddingVertical: LuxeSpacing.md,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
     borderBottomWidth: 1,
     borderBottomColor: LuxeColors.outlineVariant + '20',
   },
@@ -295,10 +317,10 @@ const styles = StyleSheet.create({
   },
   backIcon: {
     fontSize: 24,
-    color: LuxeColors.onSurfaceVariant,
+    color: LuxeColors.onSurface,
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '600',
     color: LuxeColors.onSurface,
   },
@@ -307,7 +329,7 @@ const styles = StyleSheet.create({
   },
   progressContainer: {
     paddingHorizontal: LuxeSpacing.md,
-    paddingVertical: LuxeSpacing.md,
+    paddingVertical: LuxeSpacing.sm,
     alignItems: 'center',
   },
   progressStep: {
@@ -319,159 +341,114 @@ const styles = StyleSheet.create({
     height: 8,
     borderRadius: 4,
   },
-  progressDotCompleted: {
-    backgroundColor: LuxeColors.primaryContainer,
-  },
   progressDotActive: {
     backgroundColor: LuxeColors.primaryContainer,
     borderWidth: 2,
     borderColor: LuxeColors.primary,
   },
-  progressLineCompleted: {
-    width: 20,
-    height: 2,
+  progressDotCompleted: {
     backgroundColor: LuxeColors.primaryContainer,
   },
-  progressLine: {
-    width: 20,
+  progressLineCompleted: {
+    width: 32,
     height: 2,
-    backgroundColor: LuxeColors.surfaceVariant,
+    backgroundColor: LuxeColors.primaryContainer,
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
     paddingHorizontal: LuxeSpacing.md,
-    paddingBottom: 100,
+    paddingBottom: 120,
   },
-  section: {
-    marginBottom: LuxeSpacing.lg,
+  card: {
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+    borderRadius: LuxeBorderRadius.xl,
+    padding: LuxeSpacing.md,
+    marginBottom: LuxeSpacing.md,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.4)',
+  },
+  cardRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: LuxeSpacing.md,
+    paddingVertical: 6,
+  },
+  cardIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: LuxeBorderRadius.lg,
+    backgroundColor: LuxeColors.primaryContainer + '15',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cardInfo: {
+    flex: 1,
+  },
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: LuxeColors.onSurface,
+  },
+  cardLabel: {
+    fontSize: 12,
+    color: LuxeColors.onSurfaceVariant,
+  },
+  cardValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: LuxeColors.onSurface,
+    marginTop: 1,
+  },
+  cardSubtitle: {
+    fontSize: 12,
+    color: LuxeColors.primaryContainer,
+    fontWeight: '600',
+    marginTop: 1,
+  },
+  cardDivider: {
+    height: 1,
+    backgroundColor: LuxeColors.outlineVariant + '20',
+    marginVertical: 6,
+  },
+  sectionHeader: {
+    marginBottom: LuxeSpacing.sm,
   },
   sectionTitle: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '700',
     color: LuxeColors.onSurfaceVariant,
     textTransform: 'uppercase',
     letterSpacing: 1,
-    marginBottom: LuxeSpacing.md,
   },
-
-  // Service summary
-  serviceSummaryCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.6)',
-    borderRadius: LuxeBorderRadius.xl,
-    padding: LuxeSpacing.md,
-  },
-  serviceSummaryHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: LuxeSpacing.md,
-  },
-  serviceIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: LuxeBorderRadius.lg,
-    backgroundColor: LuxeColors.primaryContainer + '20',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  serviceIcon: {
-    fontSize: 24,
-  },
-  serviceSummaryInfo: {
-    flex: 1,
-  },
-  serviceName: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: LuxeColors.onSurface,
-    marginBottom: 4,
-  },
-  serviceMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  serviceMetaText: {
-    fontSize: 14,
-    color: LuxeColors.onSurfaceVariant,
-  },
-  serviceMetaDot: {
-    color: LuxeColors.onSurfaceVariant,
-  },
-
-  // Vehicle card
-  vehicleCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.6)',
-    borderRadius: LuxeBorderRadius.xl,
-    padding: LuxeSpacing.md,
-  },
-  vehicleRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: LuxeColors.outlineVariant + '20',
-  },
-  vehicleLabel: {
-    fontSize: 14,
-    color: LuxeColors.onSurfaceVariant,
-  },
-  vehicleValue: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: LuxeColors.onSurface,
-  },
-
-  // Payment methods
   paymentMethods: {
     gap: LuxeSpacing.sm,
+    marginBottom: LuxeSpacing.lg,
   },
   paymentMethod: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.6)',
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
     borderRadius: LuxeBorderRadius.xl,
     padding: LuxeSpacing.md,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: 'transparent',
   },
   paymentMethodSelected: {
     borderColor: LuxeColors.primaryContainer,
-    backgroundColor: LuxeColors.primaryContainer + '10',
+    backgroundColor: LuxeColors.primaryContainer + '08',
   },
-  paymentMethodContent: {
+  paymentMethodDisabled: {
+    opacity: 0.6,
+  },
+  paymentLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: LuxeSpacing.md,
   },
-  paymentIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: LuxeColors.primaryContainer + '20',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  paymentIconActive: {
-    backgroundColor: LuxeColors.primaryContainer + '30',
-  },
-  paymentIconText: {
-    fontSize: 20,
-  },
-  paymentInfo: {},
-  paymentTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: LuxeColors.onSurface,
-  },
-  paymentBalance: {
-    fontSize: 13,
-    color: LuxeColors.onSurfaceVariant,
-    marginTop: 2,
-  },
-  radioOuter: {
+  paymentRadio: {
     width: 20,
     height: 20,
     borderRadius: 10,
@@ -480,30 +457,60 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  radioOuterSelected: {
+  paymentRadioSelected: {
     borderColor: LuxeColors.primaryContainer,
   },
-  radioInner: {
+  paymentRadioInner: {
     width: 10,
     height: 10,
     borderRadius: 5,
     backgroundColor: LuxeColors.primaryContainer,
   },
-
-  // Billing
-  billingCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.6)',
-    borderRadius: LuxeBorderRadius.xl,
-    padding: LuxeSpacing.md,
+  paymentIcon: {
+    fontSize: 24,
+  },
+  paymentInfo: {
+    flex: 1,
+  },
+  paymentTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: LuxeColors.onSurface,
+  },
+  paymentSubtitle: {
+    fontSize: 12,
+    color: LuxeColors.onSurfaceVariant,
+    marginTop: 1,
+  },
+  paymentBalance: {
+    fontSize: 13,
+    color: LuxeColors.onSurfaceVariant,
+    marginTop: 1,
+  },
+  paymentBalanceDanger: {
+    color: LuxeColors.error,
+  },
+  paymentWarning: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: LuxeColors.error,
+    backgroundColor: LuxeColors.error + '15',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
   },
   billingRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 8,
+    alignItems: 'center',
+    paddingVertical: 6,
   },
   billingLabel: {
     fontSize: 14,
-    color: LuxeColors.onSurfaceVariant,
+    color: LuxeColors.onSurface,
+  },
+  billingDiscountLabel: {
+    color: LuxeColors.primaryContainer,
   },
   billingValue: {
     fontSize: 14,
@@ -512,7 +519,7 @@ const styles = StyleSheet.create({
   },
   billingDiscount: {
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: '600',
     color: LuxeColors.primaryContainer,
   },
   billingDivider: {
@@ -522,38 +529,32 @@ const styles = StyleSheet.create({
   },
   billingTotalLabel: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
     color: LuxeColors.onSurface,
   },
   billingTotalValue: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '700',
     color: LuxeColors.primaryContainer,
-  },
-
-  // Terms
-  termsSection: {
-    marginBottom: LuxeSpacing.lg,
   },
   termsText: {
     fontSize: 12,
     color: LuxeColors.onSurfaceVariant,
-    lineHeight: 18,
     textAlign: 'center',
+    lineHeight: 18,
+    paddingHorizontal: LuxeSpacing.md,
   },
   termsLink: {
     color: LuxeColors.primaryContainer,
     fontWeight: '500',
   },
-
-  // Bottom action
   bottomAction: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
     padding: LuxeSpacing.md,
-    backgroundColor: 'rgba(247, 249, 251, 0.95)',
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
     borderTopWidth: 1,
     borderTopColor: LuxeColors.outlineVariant + '20',
   },
@@ -566,9 +567,9 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderRadius: LuxeBorderRadius.lg,
     shadowColor: LuxeColors.primaryContainer,
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.3,
-    shadowRadius: 15,
+    shadowRadius: 20,
     elevation: 8,
   },
   confirmBtnDisabled: {

@@ -45,6 +45,17 @@ export interface RefreshTokenResponse {
   refreshToken: string;
 }
 
+export interface ChangePasswordRequest {
+  oldPassword: string;
+  newPassword: string;
+}
+
+export interface UpdateProfileRequest {
+  fullName?: string;
+  phoneNumber?: string;
+  email?: string;
+}
+
 export const authService = {
   register: async (data: RegisterRequest): Promise<ApiResponse<void>> => {
     return apiClient.post<void>('/auth/register', data);
@@ -68,5 +79,13 @@ export const authService = {
 
   logout: async () => {
     await clearTokens();
+  },
+
+  changePassword: async (data: ChangePasswordRequest): Promise<ApiResponse<void>> => {
+    return apiClient.post<void>('/auth/change-password', data);
+  },
+
+  updateProfile: async (data: UpdateProfileRequest): Promise<ApiResponse<void>> => {
+    return apiClient.put<void>('/users/me', data);
   },
 };

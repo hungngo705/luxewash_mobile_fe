@@ -13,6 +13,8 @@ export interface VehicleType {
 export interface VehicleResponse {
   licensePlate: string;
   vehicleType: string;
+  imageUrl?: string;
+  carModel?: string;
 }
 
 export const vehicleService = {

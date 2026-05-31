@@ -4,39 +4,42 @@
  * CreateVehicleDTO: { licensePlate, vehicleTypeId, registrationPhotoUrl?, userNote? }
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
+  Platform,
   View,
   Text,
   StyleSheet,
   ScrollView,
   TextInput,
   TouchableOpacity,
-  Alert,
   ActivityIndicator,
   Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
+import { Feather } from '@expo/vector-icons';
 import { LuxeColors, LuxeSpacing, LuxeBorderRadius } from '@/constants/luxeTheme';
 import { useAuth } from '@/contexts/AuthContext';
 import { vehicleService, VehicleType } from '@/services/api/vehicleService';
 import { uploadImage } from '@/services/api/uploadService';
+import { useConfirmDialog } from '@/components/ConfirmDialog';
 
 const VEHICLE_TYPE_ICONS: Record<string, string> = {
-  Sedan: '🚗',
-  SUV: '🚙',
-  Pickup: '🛻',
-  Van: '🚐',
-  Motorcycle: '🏍️',
-  Khác: '🚘',
-  Other: '🚘',
+  Sedan: 'truck',
+  SUV: 'truck',
+  Pickup: 'truck',
+  Van: 'truck',
+  Motorcycle: 'activity',
+  Khác: 'truck',
+  Other: 'truck',
 };
 
 export default function AddVehicleScreen() {
   const router = useRouter();
   const { addVehicle } = useAuth();
+  const { confirm } = useConfirmDialog();
 
   const OTHER_TYPE_ID = -1;
 
@@ -48,6 +51,7 @@ export default function AddVehicleScreen() {
   const [loadingTypes, setLoadingTypes] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showTypePicker, setShowTypePicker] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const selectedType = vehicleTypes.find(t => t.id === selectedTypeId);
   const isOtherType = selectedType?.name.toLowerCase().includes('khác') || selectedType?.name.toLowerCase().includes('other');
@@ -87,17 +91,14 @@ export default function AddVehicleScreen() {
 
     if (len <= 2) return cleaned;
 
-    // Plain numeric plates (no letter after province code)
     if (!hasLetterAfterProvince) {
+      // Plain numeric: 11-123 or 11-123.45
       if (len === 3) return `${cleaned.slice(0, 2)}-${cleaned.slice(2)}`;
       if (len === 4) return `${cleaned.slice(0, 2)}-${cleaned.slice(2)}`;
       if (len === 5) return `${cleaned.slice(0, 2)}-${cleaned.slice(2)}`;
-      if (len === 6) return `${cleaned.slice(0, 2)}-${cleaned.slice(2, 4)}.${cleaned.slice(4)}`;
-      if (len === 7) return `${cleaned.slice(0, 2)}-${cleaned.slice(2, 5)}.${cleaned.slice(5)}`;
-      return `${cleaned.slice(0, 2)}-${cleaned.slice(2, 6)}.${cleaned.slice(6)}`;
+      return `${cleaned.slice(0, 2)}-${cleaned.slice(2, 5)}.${cleaned.slice(5, 7)}`;
     }
 
-    // Plates with letter after province code (e.g., 51H, 50A)
     const province = cleaned.slice(0, 2);
     const letter = cleaned.slice(2, 3);
     const afterLetter = cleaned.slice(3);
@@ -109,30 +110,19 @@ export default function AddVehicleScreen() {
     return `${province}${letter}-${afterLetter}`;
   };
 
-  const isValidPlate = (plate: string): boolean => {
-    return /^[0-9]{2}[A-Z0-9]-[0-9]{3,5}(\.[0-9]{2})?$/.test(plate);
-  };
-
   const handlePlateChange = (text: string) => {
-    const prevPlate = licensePlate;
-
-    if (text.length < prevPlate.length) {
-      const cleaned = text.replace(/[^0-9A-Z]/g, '').slice(0, 8);
-      if (cleaned.length <= 2) {
-        setLicensePlate(cleaned);
-      } else {
-        setLicensePlate(text);
-      }
-      return;
-    }
-
     setLicensePlate(normalizePlate(text));
   };
 
   const handlePickImage = async () => {
+    if (Platform.OS === 'web') {
+      fileInputRef.current?.click();
+      return;
+    }
+
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Lỗi', 'Vui lòng cấp quyền truy cập thư viện ảnh');
+      alert('Vui lòng cấp quyền truy cập thư viện ảnh');
       return;
     }
 
@@ -148,25 +138,35 @@ export default function AddVehicleScreen() {
     }
   };
 
+  const handleWebFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const result = ev.target?.result;
+        if (typeof result === 'string') {
+          setRegistrationPhoto(result);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleSubmit = async () => {
     if (!licensePlate.trim()) {
-      Alert.alert('Lỗi', 'Vui lòng nhập biển số xe');
-      return;
-    }
-    if (!isValidPlate(licensePlate)) {
-      Alert.alert('Lỗi', 'Biển số xe không hợp lệ. Định dạng: 51H-123.45');
+      alert('Vui lòng nhập biển số xe');
       return;
     }
     if (!selectedTypeId) {
-      Alert.alert('Lỗi', 'Vui lòng chọn loại xe');
+      alert('Vui lòng chọn loại xe');
       return;
     }
     if (!registrationPhoto) {
-      Alert.alert('Lỗi', 'Vui lòng thêm ảnh thực tế của xe');
+      alert('Vui lòng thêm ảnh thực tế của xe');
       return;
     }
     if (isOtherType && !otherVehicleType.trim()) {
-      Alert.alert('Lỗi', 'Vui lòng nhập loại xe khi chọn "Khác"');
+      alert('Vui lòng nhập loại xe khi chọn "Khác"');
       return;
     }
 
@@ -179,7 +179,7 @@ export default function AddVehicleScreen() {
       if (registrationPhoto) {
         const uploadResult = await uploadImage(registrationPhoto);
         if (!uploadResult.success) {
-          Alert.alert('Lỗi', uploadResult.error || 'Không thể tải ảnh lên. Vui lòng thử lại.');
+          alert(uploadResult.error || 'Không thể tải ảnh lên. Vui lòng thử lại.');
           setIsSubmitting(false);
           return;
         }
@@ -187,11 +187,14 @@ export default function AddVehicleScreen() {
       }
       const result = await addVehicle(licensePlate, selectedTypeId, photoUrl, note);
       if (result.success) {
-        Alert.alert('Thành công', 'Xe đã được thêm vào tài khoản', [
-          { text: 'OK', onPress: () => router.back() },
-        ]);
+        confirm({
+          title: 'Thành công',
+          message: 'Xe đã được thêm vào tài khoản',
+          confirmText: 'OK',
+          onConfirm: () => router.back(),
+        });
       } else {
-        Alert.alert('Lỗi', result.error || 'Không thể thêm xe. Vui lòng thử lại.');
+        alert(result.error || 'Không thể thêm xe. Vui lòng thử lại.');
       }
     } finally {
       setIsSubmitting(false);
@@ -202,7 +205,7 @@ export default function AddVehicleScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-          <Text style={styles.backIcon}>←</Text>
+          <Feather name="chevron-left" size={24} color={LuxeColors.onSurface} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Thêm xe mới</Text>
         <View style={styles.placeholder} />
@@ -221,7 +224,7 @@ export default function AddVehicleScreen() {
               maxLength={12}
               autoCapitalize="characters"
             />
-            <Text style={styles.hint}>Định dạng: 51H-123 hoặc 51H-123.45</Text>
+            <Text style={styles.hint}>Định dạng: 51H-123.45</Text>
           </View>
 
           <View style={styles.inputGroup}>
@@ -238,14 +241,12 @@ export default function AddVehicleScreen() {
                   onPress={() => setShowTypePicker(!showTypePicker)}
                 >
                   <View style={styles.pickerLeft}>
-                    <Text style={styles.pickerIcon}>
-                      {VEHICLE_TYPE_ICONS[selectedType?.name || ''] || '🚗'}
-                    </Text>
+                    <Feather name={VEHICLE_TYPE_ICONS[selectedType?.name || ''] as any || 'truck'} size={18} color={LuxeColors.primaryContainer} />
                     <Text style={[styles.pickerText, !selectedType && styles.pickerPlaceholder]}>
                       {selectedType?.name || 'Chọn loại xe'}
                     </Text>
                   </View>
-                  <Text style={styles.pickerArrow}>{showTypePicker ? '▲' : '▼'}</Text>
+                  <Feather name={showTypePicker ? 'chevron-up' : 'chevron-down'} size={18} color={LuxeColors.onSurfaceVariant} />
                 </TouchableOpacity>
                 {showTypePicker && (
                   <View style={styles.pickerList}>
@@ -261,9 +262,7 @@ export default function AddVehicleScreen() {
                           setShowTypePicker(false);
                         }}
                       >
-                        <Text style={styles.pickerItemIcon}>
-                          {VEHICLE_TYPE_ICONS[type.name] || '🚗'}
-                        </Text>
+                          <Feather name={VEHICLE_TYPE_ICONS[type.name] as any || 'truck'} size={16} color={LuxeColors.primaryContainer} />
                         <Text
                           style={[
                             styles.pickerItemText,
@@ -303,20 +302,31 @@ export default function AddVehicleScreen() {
                 <Image source={{ uri: registrationPhoto }} style={styles.previewImage} />
               ) : (
                 <View style={styles.imagePickerPlaceholder}>
-                  <Text style={styles.imagePickerIcon}>📷</Text>
+                  <View style={styles.imagePickerIconWrap}>
+                    <Feather name="camera" size={28} color={LuxeColors.primaryContainer} />
+                  </View>
                   <Text style={styles.imagePickerText}>Thêm ảnh xe</Text>
                 </View>
               )}
             </TouchableOpacity>
+            {Platform.OS === 'web' && (
+              <input
+                ref={fileInputRef as any}
+                type="file"
+                accept="image/*"
+                style={{ display: 'none' }}
+                onChange={handleWebFileChange as any}
+              />
+            )}
             <Text style={styles.hint}>Chụp hoặc chọn ảnh biển số xe để xác minh</Text>
           </View>
 
           <View style={styles.note}>
-          <Text style={styles.noteIcon}>ℹ️</Text>
-          <Text style={styles.noteText}>
-            Bằng cách thêm xe, bạn đồng ý rằng biển số xe là chính chủ và thuộc quyền sở hữu của bạn.
-          </Text>
-        </View>
+            <Feather name="info" size={16} color={LuxeColors.primaryContainer} />
+            <Text style={styles.noteText}>
+              Bằng cách thêm xe, bạn đồng ý rằng biển số xe là chính chủ và thuộc quyền sở hữu của bạn.
+            </Text>
+          </View>
       </ScrollView>
 
       <View style={styles.footer}>
@@ -357,10 +367,6 @@ const styles = StyleSheet.create({
     height: 40,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  backIcon: {
-    fontSize: 24,
-    color: LuxeColors.onSurface,
   },
   headerTitle: {
     fontSize: 18,
@@ -432,18 +438,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: LuxeSpacing.sm,
   },
-  pickerIcon: {
-    fontSize: 24,
-  },
   pickerText: {
     fontSize: 16,
     color: LuxeColors.onSurface,
   },
   pickerPlaceholder: {
-    color: LuxeColors.onSurfaceVariant,
-  },
-  pickerArrow: {
-    fontSize: 12,
     color: LuxeColors.onSurfaceVariant,
   },
   pickerList: {
@@ -466,9 +465,6 @@ const styles = StyleSheet.create({
   pickerItemSelected: {
     backgroundColor: LuxeColors.primaryContainer + '20',
   },
-  pickerItemIcon: {
-    fontSize: 24,
-  },
   pickerItemText: {
     fontSize: 16,
     color: LuxeColors.onSurface,
@@ -484,9 +480,7 @@ const styles = StyleSheet.create({
     padding: LuxeSpacing.md,
     marginTop: LuxeSpacing.xl,
     gap: LuxeSpacing.sm,
-  },
-  noteIcon: {
-    fontSize: 16,
+    alignItems: 'flex-start',
   },
   noteText: {
     flex: 1,
@@ -508,8 +502,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: LuxeSpacing.xl,
   },
-  imagePickerIcon: {
-    fontSize: 32,
+  imagePickerIconWrap: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: LuxeColors.primaryContainer + '20',
+    alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: LuxeSpacing.xs,
   },
   imagePickerText: {
