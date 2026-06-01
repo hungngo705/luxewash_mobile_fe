@@ -5,12 +5,19 @@
 
 import { LuxeColors } from "@/constants/luxeTheme";
 import { Tabs } from "expo-router";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
+import { Feather } from "@expo/vector-icons";
 
-function TabIcon({ icon, focused }: { icon: string; focused: boolean }) {
+type IconName = "home" | "calendar" | "award" | "user";
+
+function TabIcon({ icon, focused }: { icon: IconName; focused: boolean }) {
   return (
     <View style={styles.iconContainer}>
-      <Text style={styles.icon}>{icon}</Text>
+      <Feather
+        name={icon}
+        size={22}
+        color={focused ? LuxeColors.primaryContainer : LuxeColors.onSurfaceVariant}
+      />
       {focused && <View style={styles.focusedDot} />}
     </View>
   );
@@ -31,28 +38,28 @@ export default function MainTabsLayout() {
         name="index"
         options={{
           title: "Trang chủ",
-          tabBarIcon: ({ focused }) => <TabIcon icon="🏠" focused={focused} />,
+          tabBarIcon: ({ focused }) => <TabIcon icon="home" focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="appointments"
         options={{
           title: "Lịch hẹn",
-          tabBarIcon: ({ focused }) => <TabIcon icon="📅" focused={focused} />,
+          tabBarIcon: ({ focused }) => <TabIcon icon="calendar" focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="rewards"
         options={{
           title: "Phần thưởng",
-          tabBarIcon: ({ focused }) => <TabIcon icon="🏆" focused={focused} />,
+          tabBarIcon: ({ focused }) => <TabIcon icon="award" focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
           title: "Cá nhân",
-          tabBarIcon: ({ focused }) => <TabIcon icon="👤" focused={focused} />,
+          tabBarIcon: ({ focused }) => <TabIcon icon="user" focused={focused} />,
         }}
       />
     </Tabs>
@@ -84,9 +91,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     height: 28,
-  },
-  icon: {
-    fontSize: 22,
   },
   focusedDot: {
     width: 4,
