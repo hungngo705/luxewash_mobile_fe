@@ -23,7 +23,6 @@ import { Feather } from '@expo/vector-icons';
 import { LuxeColors, LuxeSpacing, LuxeBorderRadius } from '@/constants/luxeTheme';
 import { useAuth } from '@/contexts/AuthContext';
 import { vehicleService, VehicleType } from '@/services/api/vehicleService';
-import { uploadImage } from '@/services/api/uploadService';
 import { useConfirmDialog } from '@/components/ConfirmDialog';
 
 const VEHICLE_TYPE_ICONS: Record<string, string> = {
@@ -96,18 +95,20 @@ export default function AddVehicleScreen() {
       if (len === 3) return `${cleaned.slice(0, 2)}-${cleaned.slice(2)}`;
       if (len === 4) return `${cleaned.slice(0, 2)}-${cleaned.slice(2)}`;
       if (len === 5) return `${cleaned.slice(0, 2)}-${cleaned.slice(2)}`;
+      // Backend regex: ^[0-9]{2}[A-Z0-9]-[0-9]{3,5}(\.[0-9]{2})?$
+      // Max 5 digits after hyphen; decimal part must be exactly 2 digits
       return `${cleaned.slice(0, 2)}-${cleaned.slice(2, 5)}.${cleaned.slice(5, 7)}`;
     }
 
     const province = cleaned.slice(0, 2);
     const letter = cleaned.slice(2, 3);
-    const afterLetter = cleaned.slice(3);
+    const afterLetter = cleaned.slice(3, 3 + 5); // cap at 5 chars to satisfy backend regex
     const afterLen = afterLetter.length;
 
-    if (afterLen === 3) return `${province}${letter}-${afterLetter}`;
+    if (afterLen <= 3) return `${province}${letter}-${afterLetter}`;
     if (afterLen === 4) return `${province}${letter}-${afterLetter.slice(0, 3)}.${afterLetter.slice(3)}`;
-    if (afterLen === 5) return `${province}${letter}-${afterLetter.slice(0, 3)}.${afterLetter.slice(3, 5)}`;
-    return `${province}${letter}-${afterLetter}`;
+    // afterLen === 5: format as XXXXX.XX, strip excess
+    return `${province}${letter}-${afterLetter.slice(0, 3)}.${afterLetter.slice(3, 5)}`;
   };
 
   const handlePlateChange = (text: string) => {
@@ -152,6 +153,15 @@ export default function AddVehicleScreen() {
     }
   };
 
+  const getFileBlob = async (uri: string): Promise<Blob> => {
+    if (Platform.OS === 'web') {
+      const response = await fetch(uri);
+      return response.blob();
+    }
+    const response = await fetch(uri);
+    return response.blob();
+  };
+
   const handleSubmit = async () => {
     if (!licensePlate.trim()) {
       alert('Vui lòng nhập biển số xe');
@@ -174,28 +184,21 @@ export default function AddVehicleScreen() {
 
     try {
       const note = isOtherType ? otherVehicleType.trim() : undefined;
-      let photoUrl: string | undefined;
-
-      if (registrationPhoto) {
-        const uploadResult = await uploadImage(registrationPhoto);
-        if (!uploadResult.success) {
-          alert(uploadResult.error || 'Không thể tải ảnh lên. Vui lòng thử lại.');
-          setIsSubmitting(false);
-          return;
-        }
-        photoUrl = uploadResult.url;
-      }
-      const result = await addVehicle(licensePlate, selectedTypeId, photoUrl, note);
+      const photoBlob = await getFileBlob(registrationPhoto);
+      const result = await addVehicle(licensePlate, selectedTypeId, photoBlob, note);
       if (result.success) {
         confirm({
           title: 'Thành công',
           message: 'Xe đã được thêm vào tài khoản',
-          confirmText: 'OK',
+          confirmText: 'Xác nhận',
+          showCancel: false,
           onConfirm: () => router.back(),
         });
       } else {
         alert(result.error || 'Không thể thêm xe. Vui lòng thử lại.');
       }
+    } catch (error) {
+      alert('Đã xảy ra lỗi khi thêm xe. Vui lòng thử lại.');
     } finally {
       setIsSubmitting(false);
     }
@@ -278,7 +281,6 @@ export default function AddVehicleScreen() {
               </>
             )}
           </View>
-          </View>
 
           {isOtherType && (
             <View style={styles.inputGroup}>
@@ -327,6 +329,7 @@ export default function AddVehicleScreen() {
               Bằng cách thêm xe, bạn đồng ý rằng biển số xe là chính chủ và thuộc quyền sở hữu của bạn.
             </Text>
           </View>
+        </View>
       </ScrollView>
 
       <View style={styles.footer}>

@@ -45,7 +45,13 @@ export default function VehiclesScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+        <TouchableOpacity style={styles.backBtn} onPress={() => {
+          if (router.canGoBack()) {
+            router.back();
+          } else {
+            router.replace('/(main)' as any);
+          }
+        }}>
           <Feather name="chevron-left" size={24} color={LuxeColors.onSurface} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Xe của tôi</Text>
@@ -97,9 +103,15 @@ export default function VehiclesScreen() {
                       <Feather name="trash-2" size={18} color="#ef4444" />
                     </TouchableOpacity>
                   </View>
-                  <View style={styles.vehicleTypeBadge}>
-                    <Feather name="truck" size={14} color={LuxeColors.onSurfaceVariant} />
-                    <Text style={styles.vehicleTypeText}>{vehicle.brand}{vehicle.model ? ` · ${vehicle.model}` : ''}</Text>
+                  <Text style={styles.vehicleCarModel}>{vehicle.model || vehicle.brand}</Text>
+                  {vehicle.model && (
+                    <Text style={styles.vehicleBrand}>{vehicle.brand}</Text>
+                  )}
+                  <View style={styles.vehicleBadges}>
+                    <View style={styles.vehicleTypeBadge}>
+                      <Feather name="tag" size={11} color={LuxeColors.primaryContainer} />
+                      <Text style={styles.vehicleTypeText}>{vehicle.brand}</Text>
+                    </View>
                   </View>
                 </View>
               </View>
@@ -250,19 +262,41 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   licensePlate: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 16,
+    fontWeight: '800',
     color: LuxeColors.primaryContainer,
+    letterSpacing: 0.5,
+  },
+  vehicleCarModel: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: LuxeColors.onSurface,
+    marginTop: 2,
+  },
+  vehicleBrand: {
+    fontSize: 12,
+    color: LuxeColors.onSurfaceVariant,
+    marginTop: 1,
+    marginBottom: 6,
+  },
+  vehicleBadges: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
   },
   vehicleTypeBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    marginTop: 4,
+    gap: 4,
+    backgroundColor: LuxeColors.primaryContainer + '15',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
   },
   vehicleTypeText: {
-    fontSize: 14,
-    color: LuxeColors.onSurfaceVariant,
+    fontSize: 11,
+    fontWeight: '600',
+    color: LuxeColors.primaryContainer,
   },
   deleteBtn: {
     padding: 4,

@@ -1,7 +1,8 @@
 /**
- * Advance Booking Flow - Step 3: Select Vehicle(s)
- * After service + date/time are chosen, user selects their vehicle(s)
+ * Advance Booking Flow - Step 1: Select Vehicle(s)
+ * Entry point: user selects their vehicle(s) first
  * Supports 1-5 vehicles per booking
+ * Next: select-service.tsx
  */
 
 import React, { useState } from 'react';
@@ -15,25 +16,16 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { LuxeColors, LuxeSpacing, LuxeBorderRadius } from '@/constants/luxeTheme';
 import { useAuth } from '@/contexts/AuthContext';
 import { Vehicle } from '@/data/types';
 
 const MAX_VEHICLES = 5;
 
-export default function SelectVehicleScreen() {
+export default function SelectVehiclesScreen() {
   const router = useRouter();
   const { user } = useAuth();
-  const params = useLocalSearchParams();
-
-  const serviceIdParam = (params.serviceId as string) || '';
-  const serviceNameParam = (params.serviceName as string) || '';
-  const servicePriceParam = parseInt(params.servicePrice as string) || 0;
-  const membershipDiscountParam = parseFloat(params.membershipDiscount as string) || 0;
-  const dateParam = (params.date as string) || '';
-  const slotIdParam = (params.slotId as string) || '';
-  const timeRangeParam = (params.timeRange as string) || '';
 
   const [selectedVehicles, setSelectedVehicles] = useState<Vehicle[]>([]);
   const vehicles = user?.vehicles || [];
@@ -59,18 +51,11 @@ export default function SelectVehicleScreen() {
 
     const licensePlates = selectedVehicles.map(v => v.licensePlate).join(',');
     const vehicleTypeIds = selectedVehicles.map(v => String(v.vehicleTypeId ?? 1)).join(',');
-    const vehicleBrands = selectedVehicles.map(v => `${v.brand}${v.model ? ` · ${v.model}` : ''}`).join(', ');
+    const vehicleBrands = selectedVehicles.map(v => `${v.brand}${v.model ? ` · ${v.model}` : ''}`).join('|');
 
     router.push({
-      pathname: '/booking/confirmation',
+      pathname: '/booking/select-service',
       params: {
-        serviceId: serviceIdParam,
-        serviceName: serviceNameParam,
-        servicePrice: String(servicePriceParam),
-        membershipDiscount: String(membershipDiscountParam),
-        date: dateParam,
-        slotId: slotIdParam,
-        timeRange: timeRangeParam,
         vehicleIds: licensePlates,
         vehicleTypeIds,
         vehicleBrands,
@@ -81,10 +66,6 @@ export default function SelectVehicleScreen() {
   const handleAddVehicle = () => {
     router.push('/vehicles/add-vehicle');
   };
-
-  const totalPrice = selectedVehicles.length * servicePriceParam;
-  const totalDiscount = Math.round(totalPrice * membershipDiscountParam);
-  const finalTotal = Math.max(0, totalPrice - totalDiscount);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -100,34 +81,30 @@ export default function SelectVehicleScreen() {
       {/* Progress Steps */}
       <View style={styles.progressContainer}>
         <View style={styles.progressStep}>
-          <View style={[styles.progressDot, styles.progressDotCompleted]} />
-          <View style={styles.progressLineCompleted} />
-          <View style={[styles.progressDot, styles.progressDotCompleted]} />
-          <View style={styles.progressLineCompleted} />
           <View style={[styles.progressDot, styles.progressDotActive]} />
+          <View style={styles.progressLine} />
+          <View style={[styles.progressDot, styles.progressDotPending]} />
+          <View style={styles.progressLine} />
+          <View style={[styles.progressDot, styles.progressDotPending]} />
           <View style={styles.progressLine} />
           <View style={[styles.progressDot, styles.progressDotPending]} />
         </View>
       </View>
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-        {/* Booking Summary */}
-        <View style={styles.summaryCard}>
-          <View style={styles.summaryRow}>
-            <Feather name="droplet" size={18} color={LuxeColors.primaryContainer} />
-            <Text style={styles.summaryText}>{serviceNameParam}</Text>
-          </View>
-          <View style={styles.summaryRow}>
-            <Feather name="calendar" size={18} color={LuxeColors.primaryContainer} />
-            <Text style={styles.summaryText}>{dateParam} • {timeRangeParam}</Text>
-          </View>
+        {/* Welcome */}
+        <View style={styles.welcomeSection}>
+          <Text style={styles.welcomeTitle}>Chọn xe của bạn</Text>
+          <Text style={styles.welcomeSubtitle}>
+            Chọn tối đa {MAX_VEHICLES} xe để đặt lịch rửa
+          </Text>
         </View>
 
         {/* Vehicle Selection */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>
-              Chọn xe ({selectedVehicles.length}/{MAX_VEHICLES})
+              Xe của tôi ({selectedVehicles.length}/{MAX_VEHICLES})
             </Text>
             {vehicles.length < MAX_VEHICLES && (
               <TouchableOpacity style={styles.addVehicleBtn} onPress={handleAddVehicle}>
@@ -171,16 +148,9 @@ export default function SelectVehicleScreen() {
                       )}
                     </View>
                     <View style={styles.vehicleInfo}>
-                      <Text style={styles.vehicleName}>{vehicle.brand}{vehicle.model ? ` · ${vehicle.model}` : ''}</Text>
+                      <Text style={styles.vehicleName}>{vehicle.model ? `${vehicle.brand} · ${vehicle.model}` : vehicle.brand}</Text>
                       <Text style={styles.vehiclePlate}>{vehicle.licensePlate}</Text>
                     </View>
-                    {isSelected && (
-                      <View style={styles.vehiclePriceTag}>
-                        <Text style={styles.vehiclePriceTagText}>
-                          {servicePriceParam.toLocaleString('vi-VN')}đ
-                        </Text>
-                      </View>
-                    )}
                   </TouchableOpacity>
                 );
               })}
@@ -191,29 +161,12 @@ export default function SelectVehicleScreen() {
         {/* Selected Summary */}
         {selectedVehicles.length > 0 && (
           <View style={styles.selectedSummaryCard}>
-            <Text style={styles.selectedSummaryTitle}>Xe đã chọn:</Text>
+            <Text style={styles.selectedSummaryTitle}>Xe đã chọn ({selectedVehicles.length}):</Text>
             {selectedVehicles.map((v) => (
-              <Text key={v.licensePlate} style={styles.selectedSummaryItem}>
-                • {v.licensePlate} — {v.brand}{v.model ? ` · ${v.model}` : ''}
-              </Text>
-            ))}
-            <View style={styles.summaryDivider} />
-            <View style={styles.summaryTotalRow}>
-              <Text style={styles.summaryTotalLabel}>Tổng ({selectedVehicles.length} xe)</Text>
-              {membershipDiscountParam > 0 && (
-                <Text style={styles.summaryTotalOriginal}>
-                  {totalPrice.toLocaleString('vi-VN')}đ
+                <Text key={v.licensePlate} style={styles.selectedSummaryItem}>
+                  {`• ${v.licensePlate} — ${v.model ? `${v.brand} · ${v.model}` : v.brand}`}
                 </Text>
-              )}
-              <Text style={styles.summaryTotalValue}>
-                {finalTotal.toLocaleString('vi-VN')}đ
-              </Text>
-            </View>
-            {membershipDiscountParam > 0 && (
-              <Text style={styles.discountNote}>
-                Tiết kiệm {totalDiscount.toLocaleString('vi-VN')}đ nhờ ưu đãi thành viên
-              </Text>
-            )}
+            ))}
           </View>
         )}
       </ScrollView>
@@ -227,7 +180,7 @@ export default function SelectVehicleScreen() {
           activeOpacity={0.9}
         >
           <Text style={styles.continueBtnText}>
-            XÁC NHẬN ({selectedVehicles.length} xe)
+            TIẾP THEO ({selectedVehicles.length} xe)
           </Text>
           <Text style={styles.continueBtnIcon}>→</Text>
         </TouchableOpacity>
@@ -285,11 +238,6 @@ const styles = StyleSheet.create({
   },
   progressDotActive: {
     backgroundColor: LuxeColors.primaryContainer,
-    borderWidth: 2,
-    borderColor: LuxeColors.primary,
-  },
-  progressDotCompleted: {
-    backgroundColor: LuxeColors.primaryContainer,
   },
   progressDotPending: {
     backgroundColor: LuxeColors.surfaceVariant,
@@ -299,11 +247,6 @@ const styles = StyleSheet.create({
     height: 2,
     backgroundColor: LuxeColors.surfaceVariant,
   },
-  progressLineCompleted: {
-    width: 32,
-    height: 2,
-    backgroundColor: LuxeColors.primaryContainer,
-  },
   scrollView: {
     flex: 1,
   },
@@ -311,23 +254,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: LuxeSpacing.md,
     paddingBottom: 120,
   },
-  summaryCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.6)',
-    borderRadius: LuxeBorderRadius.lg,
-    padding: LuxeSpacing.md,
-    marginTop: LuxeSpacing.sm,
-    marginBottom: LuxeSpacing.lg,
-    gap: 8,
+  welcomeSection: {
+    paddingVertical: LuxeSpacing.lg,
   },
-  summaryRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  summaryText: {
-    fontSize: 14,
+  welcomeTitle: {
+    fontSize: 28,
+    fontWeight: '700',
     color: LuxeColors.onSurface,
-    fontWeight: '500',
+    marginBottom: 6,
+  },
+  welcomeSubtitle: {
+    fontSize: 14,
+    color: LuxeColors.onSurfaceVariant,
   },
   section: {
     marginBottom: LuxeSpacing.lg,
@@ -365,9 +303,6 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderStyle: 'dashed',
     borderColor: LuxeColors.outlineVariant,
-  },
-  emptyIconContainer: {
-    marginBottom: LuxeSpacing.md,
   },
   emptyText: {
     fontSize: 16,
@@ -460,17 +395,6 @@ const styles = StyleSheet.create({
     color: LuxeColors.primaryContainer,
     marginTop: 2,
   },
-  vehiclePriceTag: {
-    backgroundColor: LuxeColors.primaryContainer + '15',
-    borderRadius: LuxeBorderRadius.md,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  vehiclePriceTagText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: LuxeColors.primaryContainer,
-  },
   selectedSummaryCard: {
     backgroundColor: 'rgba(255, 255, 255, 0.6)',
     borderRadius: LuxeBorderRadius.xl,
@@ -488,37 +412,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: LuxeColors.onSurfaceVariant,
     marginBottom: 4,
-  },
-  summaryDivider: {
-    height: 1,
-    backgroundColor: LuxeColors.outlineVariant + '30',
-    marginVertical: LuxeSpacing.sm,
-  },
-  summaryTotalRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  summaryTotalLabel: {
-    flex: 1,
-    fontSize: 13,
-    color: LuxeColors.onSurfaceVariant,
-  },
-  summaryTotalOriginal: {
-    fontSize: 13,
-    color: LuxeColors.onSurfaceVariant,
-    textDecorationLine: 'line-through',
-  },
-  summaryTotalValue: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: LuxeColors.primaryContainer,
-  },
-  discountNote: {
-    fontSize: 12,
-    color: LuxeColors.primaryContainer,
-    fontWeight: '600',
-    marginTop: 4,
   },
   bottomAction: {
     position: 'absolute',

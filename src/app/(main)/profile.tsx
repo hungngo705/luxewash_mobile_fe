@@ -142,7 +142,7 @@ const formatCurrency = (amount: number): string => {
 
           {/* Quick Actions */}
           <View style={styles.quickActions}>
-            <TouchableOpacity style={styles.quickAction}>
+            <TouchableOpacity style={styles.quickAction} onPress={() => router.push('/appointments')}>
               <View
                 style={[
                   styles.quickActionIcon,
@@ -153,7 +153,7 @@ const formatCurrency = (amount: number): string => {
               </View>
               <Text style={styles.quickActionText}>Lịch hẹn</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.quickAction}>
+            <TouchableOpacity style={styles.quickAction} onPress={() => router.push('/vouchers')}>
               <View
                 style={[
                   styles.quickActionIcon,

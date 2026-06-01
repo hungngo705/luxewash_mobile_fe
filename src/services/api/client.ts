@@ -200,9 +200,108 @@ async function request<T>(
   return data;
 }
 
+async function requestFormData<T>(
+  method: 'POST' | 'PUT' | 'DELETE',
+  endpoint: string,
+  formData: FormData,
+  retryRefresh = false,
+): Promise<ApiResponse<T>> {
+  const { accessToken, refreshToken } = await getStoredTokens();
+
+  const headers: Record<string, string> = {};
+  if (accessToken) {
+    headers['Authorization'] = `Bearer ${accessToken}`;
+  }
+
+  let response: Response;
+
+  try {
+    response = await fetch(`${BASE_URL}${endpoint}`, {
+      method,
+      headers,
+      body: formData,
+    });
+  } catch (networkError) {
+    throw new ApiError(0, 'Network error. Please check your connection.', null);
+  }
+
+  if (response.status === 401 && !retryRefresh && refreshToken) {
+    if (!isRefreshing) {
+      isRefreshing = true;
+      try {
+        const refreshResponse = await fetch(`${BASE_URL}/auth/refresh-token`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refreshToken }),
+        });
+
+        if (refreshResponse.ok) {
+          const text = await refreshResponse.text();
+          if (text) {
+            const data = JSON.parse(text) as ApiResponse<{
+              token: string;
+              refreshToken: string;
+            }>;
+            if (data.statusCode === 200 && data.data?.token) {
+              await setTokens(data.data.token, data.data.refreshToken);
+              processQueue(null);
+              isRefreshing = false;
+              return requestFormData<T>(method, endpoint, formData, true);
+            }
+          }
+        }
+
+        await clearTokens();
+        processQueue(new ApiError(401, 'Session expired. Please login again.', null));
+      } catch {
+        await clearTokens();
+        processQueue(new ApiError(401, 'Session expired. Please login again.', null));
+      }
+      isRefreshing = false;
+    }
+
+    return new Promise(resolve => {
+      refreshQueue.push(() => {
+        resolve(requestFormData<T>(method, endpoint, formData, true));
+      });
+    });
+  }
+
+  let data: ApiResponse<T> | null = null;
+
+  try {
+    const text = await response.text();
+    if (text) {
+      data = JSON.parse(text) as ApiResponse<T>;
+    }
+  } catch {
+    // Non-JSON response
+  }
+
+  if (!response.ok) {
+    throw new ApiError(
+      response.status,
+      data?.message || `Request failed with status ${response.status}`,
+      data?.details,
+    );
+  }
+
+  if (data === null) {
+    return {
+      statusCode: response.status,
+      message: response.statusText,
+      data: null as T,
+      details: null,
+    };
+  }
+
+  return data;
+}
+
 export const apiClient = {
   get: <T>(endpoint: string) => request<T>('GET', endpoint),
   post: <T>(endpoint: string, body?: unknown) => request<T>('POST', endpoint, body),
+  postForm: <T>(endpoint: string, formData: FormData) => requestFormData<T>('POST', endpoint, formData),
   put: <T>(endpoint: string, body?: unknown) => request<T>('PUT', endpoint, body),
   delete: <T>(endpoint: string) => request<T>('DELETE', endpoint),
 };

@@ -41,6 +41,8 @@ export interface BookingDetailVehicle {
   detailId: number;
   licensePlate: string;
   vehicleType: string;
+  carModel: string | null;
+  registrationPhotoUrl: string | null;
   serviceName: string;
   status: string;
   subtotal: number;

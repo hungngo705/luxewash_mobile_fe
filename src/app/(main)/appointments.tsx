@@ -142,12 +142,25 @@ export default function AppointmentsScreen() {
               // Support both flat API (licensePlate/serviceName) and nested API (vehicles[0])
               const mainVehicle = (booking as any).vehicles?.[0];
               const hasNestedVehicles = !!mainVehicle;
+
+              // Prefer nested vehicle data, else use top-level licensePlate + map from user vehicle list
+              const apiPlate = (booking as any).licensePlate || '';
+              const userVehicle = !hasNestedVehicles && apiPlate
+                ? (user?.vehicles || []).find((v) => v.licensePlate === apiPlate)
+                : null;
+
               const vehicleDisplay = hasNestedVehicles
                 ? (mainVehicle?.carModel || mainVehicle?.vehicleType || 'Xe')
-                : ((booking as any).licensePlate ? 'Xe' : 'Xe');
-              const vehiclePlate = hasNestedVehicles ? (mainVehicle?.licensePlate || '') : ((booking as any).licensePlate || '');
-              const vehicleImage = hasNestedVehicles ? mainVehicle?.imageUrl : undefined;
-              const serviceName = hasNestedVehicles ? (mainVehicle?.serviceName || '') : ((booking as any).serviceName || '');
+                : (userVehicle?.model || userVehicle?.brand || 'Xe');
+              const vehiclePlate = hasNestedVehicles
+                ? (mainVehicle?.licensePlate || '')
+                : apiPlate;
+              const vehicleImage = hasNestedVehicles
+                ? mainVehicle?.registrationPhotoUrl
+                : (userVehicle?.imageUrl || undefined);
+              const vehicleType = hasNestedVehicles
+                ? (mainVehicle?.vehicleType || '')
+                : (userVehicle?.brand || '');
               const vehicleCount = hasNestedVehicles ? ((booking as any).vehicles?.length || 0) : (vehiclePlate ? 1 : 0);
               return (
                 <View key={String(booking.bookingId || 'unknown')} style={styles.appointmentCard}>
@@ -171,7 +184,12 @@ export default function AppointmentsScreen() {
                     )}
                     <View style={styles.vehicleInfo}>
                       <Text style={styles.vehicleName}>{vehicleDisplay}</Text>
-                      <Text style={styles.vehiclePlate}>{vehiclePlate}</Text>
+                      {vehicleType && vehicleDisplay !== vehicleType && (
+                        <Text style={styles.vehicleTypeLabel}>{vehicleType}</Text>
+                      )}
+                      <View style={styles.vehiclePlateBadge}>
+                        <Text style={styles.vehiclePlate}>{vehiclePlate}</Text>
+                      </View>
                     </View>
                   </View>
 
@@ -297,6 +315,7 @@ const styles = StyleSheet.create({
     height: 64,
     borderRadius: LuxeBorderRadius.lg,
     backgroundColor: LuxeColors.surfaceVariant,
+    flexShrink: 0,
   },
   vehicleImagePlaceholder: {
     width: 64,
@@ -307,17 +326,33 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   vehicleInfo: {
+    flex: 1,
     marginLeft: LuxeSpacing.md,
+    justifyContent: 'center',
   },
   vehicleName: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 16,
+    fontWeight: '700',
     color: LuxeColors.onSurface,
+    marginBottom: 2,
+  },
+  vehicleTypeLabel: {
+    fontSize: 12,
+    color: LuxeColors.onSurfaceVariant,
+    marginBottom: 4,
+  },
+  vehiclePlateBadge: {
+    backgroundColor: LuxeColors.primaryContainer + '15',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    alignSelf: 'flex-start',
   },
   vehiclePlate: {
-    fontSize: 14,
-    color: LuxeColors.onSurfaceVariant,
-    marginTop: 2,
+    fontSize: 12,
+    fontWeight: '800',
+    color: LuxeColors.primaryContainer,
+    letterSpacing: 0.5,
   },
   divider: {
     height: 1,

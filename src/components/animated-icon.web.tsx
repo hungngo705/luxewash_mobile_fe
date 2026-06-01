@@ -1,7 +1,6 @@
 import { StyleSheet, View } from 'react-native';
 import Animated, { Keyframe, Easing } from 'react-native-reanimated';
 
-import classes from './animated-icon.module.css';
 const DURATION = 300;
 
 export function AnimatedSplashOverlay() {
@@ -42,11 +41,11 @@ export function AnimatedIcon() {
   return (
     <View style={styles.iconContainer}>
       <Animated.View style={styles.background} entering={keyframe.duration(DURATION)}>
-        <div className={classes.expoLogoBackground} />
+        <View style={styles.webBackground} />
       </Animated.View>
 
       <Animated.View style={styles.imageContainer} entering={logoKeyframe.duration(DURATION)}>
-        <div className={classes.iconPlaceholder} />
+        <View style={styles.webPlaceholder} />
       </Animated.View>
     </View>
   );
@@ -79,5 +78,19 @@ const styles = StyleSheet.create({
     width: 128,
     height: 128,
     position: 'absolute',
+    borderRadius: 40,
+    backgroundImage: `linear-gradient(180deg, #3C9FFE, #0274DF)`,
+  },
+  webBackground: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 40,
+    backgroundImage: `linear-gradient(180deg, #3C9FFE, #0274DF)`,
+  },
+  webPlaceholder: {
+    width: 76,
+    height: 71,
+    borderRadius: 40,
+    backgroundColor: 'rgba(255,255,255,0.3)',
   },
 });

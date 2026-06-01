@@ -193,8 +193,8 @@ export default function WalletScreen() {
                       <Text style={styles.txnDate}>{formatDate(txn.createdAt)}</Text>
                     </View>
                   </View>
-                  <Text style={[styles.txnAmount, { color: isPositive ? '#10b981' : '#ef4444' }]}>
-                    {isPositive ? '+' : '-'}{formatCurrency(Math.abs(txn.amount))}
+                  <Text style={[styles.txnAmount, { color: isPositive ? '#10b981' : '#ef4444' }]} numberOfLines={1}>
+                    {`${isPositive ? '+' : '-'}${formatCurrency(Math.abs(txn.amount))}`}
                   </Text>
                 </View>
               );
