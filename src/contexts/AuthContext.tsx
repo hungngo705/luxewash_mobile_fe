@@ -40,7 +40,7 @@ interface AuthContextType extends AuthState {
   addVehicle: (
     licensePlate: string,
     vehicleTypeId: number,
-    registrationPhotoUrl?: string,
+    photoFile?: Blob,
     userNote?: string,
   ) => Promise<{ success: boolean; error?: string }>;
   removeVehicle: (
@@ -55,7 +55,7 @@ interface AuthContextType extends AuthState {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 function mapVehicleApiToVehicle(
-  v: { licensePlate: string; vehicleType: string; imageUrl?: string; carModel?: string },
+  v: import("../services/api/vehicleService").VehicleResponse,
   userId: string,
 ): Vehicle {
   return {
@@ -64,7 +64,8 @@ function mapVehicleApiToVehicle(
     brand: v.vehicleType,
     model: v.carModel || '',
     color: '',
-    imageUrl: v.imageUrl,
+    vehicleTypeId: v.vehicleTypeId,
+    imageUrl: v.registrationPhotoUrl,
     userId,
     createdAt: new Date(),
   };
@@ -98,20 +99,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const profile = profileRes.data;
           const userId = String(profile.userId);
 
-          const vehicleTypesRes = await vehicleService.getVehicleTypes();
-          const vehicleTypeMap: Record<string, number> = {};
-          if (vehicleTypesRes.statusCode === 200 && vehicleTypesRes.data) {
-            for (const vt of vehicleTypesRes.data) {
-              vehicleTypeMap[vt.name.toLowerCase()] = vt.id;
-            }
+        const vehicleTypesRes = await vehicleService.getVehicleTypes();
+        const vehiclesRes = await vehicleService.getMyVehicles();
+        const vehicleTypeMap: Record<string, number> = {};
+        if (vehicleTypesRes.statusCode === 200 && vehicleTypesRes.data) {
+          for (const vt of vehicleTypesRes.data) {
+            vehicleTypeMap[vt.name.toLowerCase()] = vt.id;
           }
+        }
 
-          const vehicles = profile.vehicles.map((v) => {
-            const vehicle = mapVehicleApiToVehicle(v, userId);
-            vehicle.vehicleTypeId =
-              vehicleTypeMap[v.vehicleType?.toLowerCase() ?? ""];
-            return vehicle;
-          });
+        const vehicles = (vehiclesRes.statusCode === 200 && vehiclesRes.data
+          ? vehiclesRes.data
+          : (profile?.vehicles ?? [])
+        ).map((v) => {
+          const vehicle = mapVehicleApiToVehicle(v, userId);
+          vehicle.vehicleTypeId =
+            vehicleTypeMap[v.vehicleType?.toLowerCase() ?? ""] ?? v.vehicleTypeId;
+          return vehicle;
+        });
 
           const authUser: AuthUser = {
             id: userId,
@@ -146,10 +151,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const fetchProfileAndWallet = async (userId: string) => {
-    const [profileRes, walletRes, vehicleTypesRes] = await Promise.all([
+    const [profileRes, walletRes, vehiclesRes] = await Promise.all([
       authService.getProfile(),
       walletService.getBalance(),
-      vehicleService.getVehicleTypes(),
+      vehicleService.getMyVehicles(),
     ]);
 
     const profile =
@@ -157,23 +162,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const wallet =
       walletRes.statusCode === 200 && walletRes.data ? walletRes.data : null;
 
-    const vehicleTypeMap: Record<string, number> = {};
-    if (vehicleTypesRes.statusCode === 200 && vehicleTypesRes.data) {
-      for (const vt of vehicleTypesRes.data) {
-        vehicleTypeMap[vt.name.toLowerCase()] = vt.id;
-      }
-    }
-
     return {
       profile,
       walletBalance: wallet?.balance ?? 0,
       vehicles:
-        profile?.vehicles.map((v) => {
-          const vehicle = mapVehicleApiToVehicle(v, userId);
-          vehicle.vehicleTypeId =
-            vehicleTypeMap[v.vehicleType?.toLowerCase() ?? ""];
-          return vehicle;
-        }) ?? [],
+        vehiclesRes.statusCode === 200 && vehiclesRes.data
+          ? vehiclesRes.data.map((v) => mapVehicleApiToVehicle(v, userId))
+          : [],
     };
   };
 
@@ -319,7 +314,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const addVehicle = async (
     licensePlate: string,
     vehicleTypeId: number,
-    registrationPhotoUrl?: string,
+    photoFile?: Blob,
     userNote?: string,
   ): Promise<{ success: boolean; error?: string }> => {
     if (!state.user) return { success: false, error: "Chưa đăng nhập" };
@@ -328,7 +323,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const response = await vehicleService.addVehicle({
         licensePlate,
         vehicleTypeId,
-        registrationPhotoUrl,
+        photoFile,
         userNote,
       });
       if (response.statusCode === 200 || response.statusCode === 201) {

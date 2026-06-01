@@ -177,7 +177,7 @@ export interface Voucher {
   title: string;
   description: string;
   discountType: 'percentage' | 'fixed';
-  discountValue: number;
+  discountAmount: number;
   minOrderAmount: number;
   maxDiscount: number;
   validFrom: Date;
@@ -625,7 +625,7 @@ export const mockVouchers: Voucher[] = [
     title: 'Ưu đãi Khai trương',
     description: 'Giảm 50% cho lần đầu sử dụng dịch vụ',
     discountType: 'percentage',
-    discountValue: 50,
+    discountAmount: 50,
     minOrderAmount: 0,
     maxDiscount: 150000,
     validFrom: new Date('2024-01-01'),
@@ -640,7 +640,7 @@ export const mockVouchers: Voucher[] = [
     title: 'Voucher Giáng sinh',
     description: 'Đồng giá 99k cho gói vệ sinh nội thất',
     discountType: 'fixed',
-    discountValue: 99000,
+    discountAmount: 99000,
     minOrderAmount: 200000,
     maxDiscount: 99000,
     validFrom: new Date('2024-12-01'),

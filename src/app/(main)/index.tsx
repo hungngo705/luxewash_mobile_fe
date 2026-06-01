@@ -12,6 +12,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Dimensions,
+  Image,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -31,7 +32,6 @@ export default function HomeScreen() {
 
   const currentUser = user;
   const vehicles = user?.vehicles || [];
-  const currentVehicle = vehicles[0];
   const membershipInfo = currentUser ? MembershipConfig[currentUser.membershipTier] : MembershipConfig.standard;
 
   useEffect(() => {
@@ -77,7 +77,7 @@ export default function HomeScreen() {
   };
 
   const handleBooking = () => {
-    router.push('/booking/select-service');
+    router.push('/booking/select-vehicles');
   };
 
   return (
@@ -108,7 +108,7 @@ export default function HomeScreen() {
               </View>
               <View style={[styles.membershipBadge, { backgroundColor: membershipInfo.color }]}>
                 <Text style={styles.membershipBadgeText}>
-                  {currentUser?.loyaltyPoints?.toLocaleString() || '0'} điểm
+                  {`${currentUser?.loyaltyPoints?.toLocaleString() || '0'} điểm`}
                 </Text>
               </View>
             </View>
@@ -127,50 +127,62 @@ export default function HomeScreen() {
             </View>
           </View>
 
-          {/* Current Vehicle Card */}
-          {currentVehicle ? (
+          {/* Vehicle List */}
+          {vehicles.length > 0 ? (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Phương tiện hiện tại</Text>
-              <View style={styles.currentVehicleCard}>
-                <View style={styles.vehicleImagePlaceholder}>
-                  <Feather name="truck" size={40} color={LuxeColors.primaryContainer} />
-                </View>
-                <View style={styles.vehicleInfo}>
-                  <Text style={styles.vehicleName}>{currentVehicle.brand} {currentVehicle.model}</Text>
-                  <Text style={styles.vehiclePlate}>{currentVehicle.licensePlate}</Text>
-                  <View style={styles.vehicleBadge}>
-                    <Text style={styles.vehicleBadgeText}>{membershipInfo.nameVi} Member</Text>
-                  </View>
-                </View>
-                <TouchableOpacity style={styles.chevronBtn}>
-                  <Text style={styles.chevronIcon}>›</Text>
+              <View style={styles.sectionHeaderRow}>
+                <Text style={styles.sectionTitle}>Phương tiện</Text>
+                <TouchableOpacity onPress={() => router.push('/vehicles')}>
+                  <Text style={styles.seeAllText}>Xem tất cả</Text>
                 </TouchableOpacity>
               </View>
-            </View>
-          ) : (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Phương tiện</Text>
-              <View style={styles.currentVehicleCard}>
-                <Text style={styles.vehiclePlate}>Chưa có xe nào. Thêm xe để đặt lịch.</Text>
-              </View>
-            </View>
-          )}
-
-          {/* Vehicle Selector */}
-          {vehicles.length > 1 && (
-            <View style={styles.vehicleSelector}>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                {vehicles.map((vehicle) => (
-                  <TouchableOpacity key={vehicle.id} style={styles.vehicleSelectorItem}>
-                  <View style={styles.vehicleSelectorImage}>
-                    <Feather name="truck" size={28} color={LuxeColors.onSurfaceVariant} />
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.vehicleScrollContent}>
+                {vehicles.map((vehicle, idx) => (
+                  <TouchableOpacity
+                    key={vehicle.id}
+                    style={[styles.vehicleCard, idx === 0 && styles.vehicleCardFirst]}
+                    onPress={() => router.push('/vehicles')}
+                    activeOpacity={0.85}
+                  >
+                    <View style={styles.vehicleCardImage}>
+                      {vehicle.imageUrl ? (
+                        <Image source={{ uri: vehicle.imageUrl }} style={styles.vehicleCardImg} resizeMode="cover" />
+                      ) : (
+                        <View style={styles.vehicleCardImgPlaceholder}>
+                          <Feather name="truck" size={24} color={LuxeColors.onSurfaceVariant} />
+                        </View>
+                      )}
                     </View>
-                    <Text style={styles.vehicleSelectorPlate} numberOfLines={1}>
-                      {vehicle.licensePlate}
+                    <View style={styles.vehicleCardInfo}>
+                      <Text style={styles.vehicleCardModel} numberOfLines={1}>
+                      {vehicle.model || vehicle.brand || 'Phương tiện'}
                     </Text>
+                      {vehicle.model && vehicle.brand ? (
+                        <Text style={styles.vehicleCardBrand} numberOfLines={1}>{vehicle.brand}</Text>
+                      ) : null}
+                      <View style={styles.vehicleCardPlate}>
+                        <Text style={styles.vehicleCardPlateText}>{vehicle.licensePlate}</Text>
+                      </View>
+                    </View>
                   </TouchableOpacity>
                 ))}
               </ScrollView>
+            </View>
+          ) : (
+            <View style={styles.section}>
+              <View style={styles.sectionHeaderRow}>
+                <Text style={styles.sectionTitle}>Phương tiện</Text>
+              </View>
+              <TouchableOpacity style={styles.emptyVehicleCard} onPress={() => router.push('/vehicles/add-vehicle')}>
+                <View style={styles.emptyVehicleIconWrap}>
+                  <Feather name="plus-circle" size={36} color={LuxeColors.primaryContainer} />
+                </View>
+                <View style={styles.emptyVehicleText}>
+                  <Text style={styles.emptyVehicleTitle}>Thêm phương tiện</Text>
+                  <Text style={styles.emptyVehicleSubtitle}>Đăng ký xe để đặt lịch rửa xe nhanh hơn</Text>
+                </View>
+                <Feather name="chevron-right" size={20} color={LuxeColors.onSurfaceVariant} />
+              </TouchableOpacity>
             </View>
           )}
 
@@ -257,7 +269,7 @@ export default function HomeScreen() {
                 <View key={voucher.id} style={styles.promoCard}>
                   <View style={styles.promoBadge}>
                     <Text style={styles.promoBadgeText}>
-                      {voucher.discountType === 'percentage' ? `${voucher.discountValue}%` : `${voucher.discountValue.toLocaleString('vi-VN')}đ`}
+                      {voucher.discountType === 'percentage' ? `${voucher.discountAmount}%` : `${voucher.discountAmount.toLocaleString('vi-VN')}đ`}
                     </Text>
                   </View>
                   <Text style={styles.promoTitle}>{voucher.title}</Text>
@@ -412,88 +424,105 @@ const styles = StyleSheet.create({
     color: LuxeColors.primaryContainer,
     fontWeight: '500',
   },
-  currentVehicleCard: {
+  sectionHeaderRow: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    marginBottom: LuxeSpacing.sm,
+  },
+  vehicleScrollContent: {
+    paddingRight: LuxeSpacing.lg,
+  },
+  vehicleCard: {
+    width: 150,
+    marginRight: LuxeSpacing.md,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
     borderRadius: LuxeBorderRadius.xl,
-    padding: LuxeSpacing.md,
+    overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.8)',
+    borderColor: LuxeColors.outlineVariant + '30',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    elevation: 3,
   },
-  vehicleImage: {
-    width: 60,
-    height: 60,
-    borderRadius: 12,
-    backgroundColor: LuxeColors.surfaceContainer,
+  vehicleCardFirst: {
+    marginLeft: LuxeSpacing.lg,
+  },
+  vehicleCardImage: {
+    width: '100%',
+    height: 100,
+    backgroundColor: LuxeColors.surfaceContainerHighest,
+  },
+  vehicleCardImg: {
+    width: '100%',
+    height: '100%',
+  },
+  vehicleCardImgPlaceholder: {
+    width: '100%',
+    height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  vehicleImagePlaceholder: {
-    width: 60,
-    height: 60,
-    borderRadius: 12,
-    backgroundColor: LuxeColors.surfaceContainer,
-    alignItems: 'center',
-    justifyContent: 'center',
+  vehicleCardInfo: {
+    padding: 10,
   },
-  vehicleInfo: {
-    flex: 1,
-    marginLeft: LuxeSpacing.md,
-  },
-  vehicleName: {
-    fontSize: 15,
-    fontWeight: '600',
+  vehicleCardModel: {
+    fontSize: 14,
+    fontWeight: '700',
     color: LuxeColors.onSurface,
+    marginBottom: 2,
   },
-  vehiclePlate: {
-    fontSize: 13,
-    color: LuxeColors.onSurfaceVariant,
-    marginTop: 2,
-  },
-  vehicleBadge: {
-    backgroundColor: LuxeColors.primaryContainer + '20',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 4,
-    alignSelf: 'flex-start',
-    marginTop: 4,
-  },
-  vehicleBadgeText: {
+  vehicleCardBrand: {
     fontSize: 11,
-    fontWeight: '600',
+    color: LuxeColors.onSurfaceVariant,
+    marginBottom: 6,
+  },
+  vehicleCardPlate: {
+    backgroundColor: LuxeColors.primaryContainer + '15',
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    alignSelf: 'flex-start',
+  },
+  vehicleCardPlateText: {
+    fontSize: 11,
+    fontWeight: '800',
     color: LuxeColors.primaryContainer,
   },
-  chevronBtn: {
-    width: 32,
-    height: 32,
+  emptyVehicleCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+    borderRadius: LuxeBorderRadius.xl,
+    padding: 16,
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    borderColor: LuxeColors.primaryContainer + '50',
+  },
+  emptyVehicleIconWrap: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: LuxeColors.primaryContainer + '15',
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
   },
-  chevronIcon: {
-    fontSize: 24,
+  emptyVehicleText: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  emptyVehicleTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: LuxeColors.onSurface,
+    marginBottom: 2,
+  },
+  emptyVehicleSubtitle: {
+    fontSize: 12,
     color: LuxeColors.onSurfaceVariant,
-  },
-  vehicleSelector: {
-    paddingLeft: LuxeSpacing.lg,
-    marginBottom: LuxeSpacing.md,
-  },
-  vehicleSelectorItem: {
-    alignItems: 'center',
-    marginRight: LuxeSpacing.md,
-    opacity: 0.7,
-  },
-  vehicleSelectorImage: {
-    width: 50,
-    height: 50,
-    borderRadius: 10,
-    backgroundColor: LuxeColors.surfaceContainer,
-  },
-  vehicleSelectorPlate: {
-    fontSize: 10,
-    color: LuxeColors.onSurfaceVariant,
-    marginTop: 4,
-    maxWidth: 60,
   },
   quickActions: {
     flexDirection: 'row',

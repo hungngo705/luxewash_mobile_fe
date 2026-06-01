@@ -137,9 +137,9 @@ export default function TransactionsScreen() {
                     </View>
                   </View>
                   <View style={styles.txnRight}>
-                    <Text style={[styles.txnAmount, { color: positive ? config.color : '#ef4444' }]}>
-                      {positive ? '+' : '-'}{formatCurrency(Math.abs(txn.amount))}
-                    </Text>
+                      <Text style={styles.txnAmount} numberOfLines={1}>
+                        {`${positive ? '+' : '-'}${formatCurrency(Math.abs(txn.amount))}`}
+                      </Text>
                     <Text style={styles.txnDate}>{formatDate(txn.createdAt)}</Text>
                   </View>
                 </View>

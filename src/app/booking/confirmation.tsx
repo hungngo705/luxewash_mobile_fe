@@ -113,7 +113,7 @@ export default function BookingConfirmationScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-          <Text style={styles.backIcon}>←</Text>
+          <Feather name="chevron-left" size={24} color={LuxeColors.onSurface} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Xác nhận đặt lịch</Text>
         <View style={styles.placeholder} />
@@ -137,7 +137,7 @@ export default function BookingConfirmationScreen() {
         <View style={styles.card}>
           <View style={styles.cardRow}>
             <View style={styles.cardIconContainer}>
-              <Feather name="droplet" size={22} color={LuxeColors.primaryContainer} />
+              <Feather name="award" size={22} color={LuxeColors.primaryContainer} />
             </View>
             <View style={styles.cardInfo}>
               <Text style={styles.cardTitle}>{serviceNameParam}</Text>
@@ -206,7 +206,9 @@ export default function BookingConfirmationScreen() {
               <View style={[styles.paymentRadio, selectedPaymentMethod === 'wallet' && styles.paymentRadioSelected]}>
                 {selectedPaymentMethod === 'wallet' && <View style={styles.paymentRadioInner} />}
               </View>
-              <Text style={styles.paymentIcon}>👛</Text>
+              <View style={styles.paymentIconWrap}>
+                <Feather name="credit-card" size={22} color={LuxeColors.primaryContainer} />
+              </View>
               <View style={styles.paymentInfo}>
                 <Text style={styles.paymentTitle}>Số dư ví</Text>
                 <Text style={[styles.paymentBalance, walletBalance < finalPrice && styles.paymentBalanceDanger]}>
@@ -228,10 +230,12 @@ export default function BookingConfirmationScreen() {
               <View style={[styles.paymentRadio, selectedPaymentMethod === 'bank' && styles.paymentRadioSelected]}>
                 {selectedPaymentMethod === 'bank' && <View style={styles.paymentRadioInner} />}
               </View>
-              <Text style={styles.paymentIcon}>🏦</Text>
+              <View style={styles.paymentIconWrap}>
+                <Feather name="grid" size={22} color={LuxeColors.primaryContainer} />
+              </View>
               <View style={styles.paymentInfo}>
                 <Text style={styles.paymentTitle}>Chuyển khoản ngân hàng</Text>
-                <Text style={styles.paymentSubtitle}>Thanh toán sau khi hoàn thành</Text>
+                <Text style={styles.paymentSubtitle}>Thanh toán QR / chuyển khoản</Text>
               </View>
             </View>
           </TouchableOpacity>
@@ -284,7 +288,7 @@ export default function BookingConfirmationScreen() {
             <ActivityIndicator color="#fff" size="small" />
           ) : (
             <>
-              <Text style={styles.confirmBtnIcon}>🔒</Text>
+              <Feather name="check-circle" size={18} color="#ffffff" />
               <Text style={styles.confirmBtnText}>XÁC NHẬN ĐẶT LỊCH</Text>
             </>
           )}
@@ -314,10 +318,6 @@ const styles = StyleSheet.create({
     height: 40,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  backIcon: {
-    fontSize: 24,
-    color: LuxeColors.onSurface,
   },
   headerTitle: {
     fontSize: 18,
@@ -466,11 +466,16 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     backgroundColor: LuxeColors.primaryContainer,
   },
-  paymentIcon: {
-    fontSize: 24,
-  },
   paymentInfo: {
     flex: 1,
+  },
+  paymentIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: LuxeBorderRadius.lg,
+    backgroundColor: LuxeColors.primaryContainer + '15',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   paymentTitle: {
     fontSize: 15,
@@ -574,9 +579,6 @@ const styles = StyleSheet.create({
   },
   confirmBtnDisabled: {
     opacity: 0.7,
-  },
-  confirmBtnIcon: {
-    fontSize: 18,
   },
   confirmBtnText: {
     fontSize: 14,

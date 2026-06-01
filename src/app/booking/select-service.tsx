@@ -1,7 +1,7 @@
 /**
- * Advance Booking Flow - Step 1: Select Service
- * User selects a wash service first
- * Next: select-date.tsx to pick date + time
+ * Advance Booking Flow - Step 2: Select Service
+ * After selecting vehicles, user picks a service for their booking
+ * Next: select-date.tsx
  */
 
 import React, { useState, useEffect } from 'react';
@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { LuxeColors, LuxeSpacing, LuxeBorderRadius, MembershipConfig } from '@/constants/luxeTheme';
 import { useAuth } from '@/contexts/AuthContext';
 import { bookingService, type Service } from '@/services/api';
@@ -32,6 +32,15 @@ const getServiceIconName = (name: string): string => {
 export default function SelectServiceScreen() {
   const router = useRouter();
   const { user } = useAuth();
+  const params = useLocalSearchParams();
+
+  const vehicleIdsParam = (params.vehicleIds as string) || '';
+  const vehicleTypeIdsParam = (params.vehicleTypeIds as string) || '';
+  const vehicleBrandsParam = (params.vehicleBrands as string) || '';
+
+  const vehiclePlateList = vehicleIdsParam ? vehicleIdsParam.split(',') : [];
+  const vehicleBrandList = vehicleBrandsParam ? vehicleBrandsParam.split('|') : [];
+
   const membershipInfo = user ? MembershipConfig[user.membershipTier] : MembershipConfig.standard;
   const membershipDiscount = membershipInfo.discountRate;
 
@@ -71,6 +80,9 @@ export default function SelectServiceScreen() {
         serviceName: selectedService.serviceName,
         servicePrice: String(minPrice),
         membershipDiscount: String(membershipDiscount),
+        vehicleIds: vehicleIdsParam,
+        vehicleTypeIds: vehicleTypeIdsParam,
+        vehicleBrands: vehicleBrandsParam,
       },
     });
   };
@@ -89,9 +101,9 @@ export default function SelectServiceScreen() {
       {/* Progress Steps */}
       <View style={styles.progressContainer}>
         <View style={styles.progressStep}>
+          <View style={[styles.progressDot, styles.progressDotCompleted]} />
+          <View style={styles.progressLineCompleted} />
           <View style={[styles.progressDot, styles.progressDotActive]} />
-          <View style={styles.progressLine} />
-          <View style={[styles.progressDot, styles.progressDotPending]} />
           <View style={styles.progressLine} />
           <View style={[styles.progressDot, styles.progressDotPending]} />
           <View style={styles.progressLine} />
@@ -100,6 +112,19 @@ export default function SelectServiceScreen() {
       </View>
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+        {/* Selected Vehicles Summary */}
+        <View style={styles.vehicleSummaryCard}>
+          <Feather name="truck" size={20} color={LuxeColors.primaryContainer} />
+          <View style={styles.vehicleSummaryContent}>
+            <Text style={styles.vehicleSummaryTitle}>
+              {vehiclePlateList.length} xe đã chọn
+            </Text>
+            <Text style={styles.vehicleSummarySubtitle} numberOfLines={1}>
+              {vehicleBrandList.join(' • ')}
+            </Text>
+          </View>
+        </View>
+
         {/* Welcome text */}
         <View style={styles.welcomeSection}>
           <Text style={styles.welcomeTitle}>Chọn dịch vụ</Text>
@@ -193,9 +218,9 @@ export default function SelectServiceScreen() {
 
         {/* Membership card */}
         {membershipDiscount > 0 && (
-        <View style={styles.membershipCard}>
-          <Feather name="star" size={24} color={LuxeColors.primaryContainer} />
-          <View style={styles.membershipContent}>
+          <View style={styles.membershipCard}>
+            <Feather name="star" size={24} color={LuxeColors.primaryContainer} />
+            <View style={styles.membershipContent}>
               <Text style={styles.membershipTitle}>Ưu đãi {membershipInfo.nameVi}</Text>
               <Text style={styles.membershipDesc}>
                 Giảm {Math.round(membershipDiscount * 100)}% cho tất cả dịch vụ
@@ -213,7 +238,7 @@ export default function SelectServiceScreen() {
           disabled={!selectedService}
           activeOpacity={0.9}
         >
-          <Text style={styles.continueBtnText}>TIẾP TỤC</Text>
+          <Text style={styles.continueBtnText}>TIẾP THEO</Text>
           <Text style={styles.continueBtnIcon}>→</Text>
         </TouchableOpacity>
       </View>
@@ -271,10 +296,18 @@ const styles = StyleSheet.create({
   progressDotActive: {
     backgroundColor: LuxeColors.primaryContainer,
   },
+  progressDotCompleted: {
+    backgroundColor: LuxeColors.primaryContainer,
+  },
   progressDotPending: {
     backgroundColor: LuxeColors.surfaceVariant,
   },
   progressLine: {
+    width: 32,
+    height: 2,
+    backgroundColor: LuxeColors.surfaceVariant,
+  },
+  progressLineCompleted: {
     width: 32,
     height: 2,
     backgroundColor: LuxeColors.primaryContainer,
@@ -285,6 +318,28 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: LuxeSpacing.md,
     paddingBottom: 120,
+  },
+  vehicleSummaryCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.6)',
+    borderRadius: LuxeBorderRadius.lg,
+    padding: LuxeSpacing.md,
+    marginTop: LuxeSpacing.sm,
+    gap: LuxeSpacing.md,
+  },
+  vehicleSummaryContent: {
+    flex: 1,
+  },
+  vehicleSummaryTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: LuxeColors.onSurface,
+  },
+  vehicleSummarySubtitle: {
+    fontSize: 12,
+    color: LuxeColors.onSurfaceVariant,
+    marginTop: 2,
   },
   welcomeSection: {
     paddingVertical: LuxeSpacing.lg,

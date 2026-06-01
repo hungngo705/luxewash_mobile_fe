@@ -36,7 +36,10 @@ export interface UserProfile {
   churnScore: number;
   vehicles: Array<{
     licensePlate: string;
+    vehicleTypeId: number;
     vehicleType: string;
+    registrationPhotoUrl: string;
+    carModel: string | null;
   }>;
 }
 

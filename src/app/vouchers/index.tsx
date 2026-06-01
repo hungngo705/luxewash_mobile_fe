@@ -18,8 +18,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { LuxeColors, LuxeSpacing, LuxeBorderRadius } from '@/constants/luxeTheme';
 import { useAuth } from '@/contexts/AuthContext';
-import { loyaltyService, type VoucherCatalogItem, type Voucher } from '@/services/api';
-import { useConfirmDialog } from '@/components/ConfirmDialog';
+import { loyaltyService, type Voucher } from '@/services/api';
 
 const formatCurrency = (amount: number): string => {
   return new Intl.NumberFormat('vi-VN').format(amount);
@@ -30,23 +29,13 @@ const formatDate = (dateStr: string): string => {
   return date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
 };
 
-const isExpiringSoon = (dateStr: string): boolean => {
-  const expiry = new Date(dateStr);
-  const now = new Date();
-  const diff = (expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
-  return diff <= 7 && diff > 0;
-};
-
 export default function VouchersScreen() {
   const router = useRouter();
   const { user, refreshProfile } = useAuth();
-  const { confirm } = useConfirmDialog();
 
-  const [catalog, setCatalog] = useState<VoucherCatalogItem[]>([]);
   const [myVouchers, setMyVouchers] = useState<Voucher[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [redeemingId, setRedeemingId] = useState<number | null>(null);
   const [codeInput, setCodeInput] = useState('');
   const [codeRedeeming, setCodeRedeeming] = useState(false);
 
@@ -54,18 +43,12 @@ export default function VouchersScreen() {
     if (isRefresh) setRefreshing(true);
     else setLoading(true);
     try {
-      const [catalogRes, myVouchersRes] = await Promise.all([
-        loyaltyService.getCatalog(),
-        loyaltyService.getMyVouchers(),
-      ]);
-      if (catalogRes.statusCode === 200 && catalogRes.data) {
-        setCatalog(catalogRes.data);
-      }
-      if (myVouchersRes.statusCode === 200 && myVouchersRes.data) {
-        setMyVouchers(myVouchersRes.data);
+      const res = await loyaltyService.getMyVouchers();
+      if (res.statusCode === 200 && res.data) {
+        setMyVouchers(res.data);
       }
     } catch (e) {
-      console.error('Failed to load vouchers:', e);
+      console.warn('Could not load vouchers:', e);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -75,32 +58,6 @@ export default function VouchersScreen() {
   useEffect(() => {
     loadData();
   }, [loadData]);
-
-  const handleRedeem = async (item: VoucherCatalogItem) => {
-    confirm({
-      title: 'Xác nhận đổi voucher',
-      message: `Bạn có muốn đổi voucher "${item.title || item.code}" không?`,
-      confirmText: 'Đổi',
-      onConfirm: async () => {
-        setRedeemingId(item.voucherId);
-        try {
-          const res = await loyaltyService.redeemVoucher(item.code);
-          if (res.statusCode === 200) {
-            alert('Bạn đã đổi voucher thành công!');
-            await refreshProfile?.();
-            loadData();
-          } else {
-            alert(res.message || 'Đổi voucher thất bại.');
-          }
-        } catch (e: any) {
-          const msg = e?.message || 'Đổi voucher thất bại.';
-          alert(msg);
-        } finally {
-          setRedeemingId(null);
-        }
-      },
-    });
-  };
 
   const handleRedeemByCode = async () => {
     if (!codeInput.trim()) {
@@ -188,7 +145,7 @@ export default function VouchersScreen() {
               <View key={v.voucherId} style={[styles.myVoucherCard, v.isUsed && styles.myVoucherCardUsed]}>
                 <View style={styles.voucherLeft}>
                   <Text style={styles.voucherAmount}>
-                    {formatCurrency(v.discountAmount)}đ
+                    -{formatCurrency(v.discountAmount)}đ
                   </Text>
                   <Text style={styles.voucherCode}>{v.code}</Text>
                 </View>
@@ -211,60 +168,6 @@ export default function VouchersScreen() {
           </View>
         )}
 
-        {/* Catalog */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Kho voucher</Text>
-          {loading ? (
-            <ActivityIndicator color={LuxeColors.primaryContainer} style={{ marginVertical: 20 }} />
-          ) : catalog.length === 0 ? (
-            <Text style={styles.emptyText}>Không có voucher nào khả dụng</Text>
-          ) : (
-            catalog.map(item => (
-              <View key={item.voucherId} style={styles.catalogCard}>
-                <View style={styles.catalogLeft}>
-                  <Text style={styles.catalogDiscount}>
-                    -{formatCurrency(item.discountAmount)}đ
-                  </Text>
-                  <Text style={styles.catalogTitle} numberOfLines={2}>
-                    {item.title || item.code}
-                  </Text>
-                  {item.description && (
-                    <Text style={styles.catalogDesc} numberOfLines={2}>
-                      {item.description}
-                    </Text>
-                  )}
-                  <View style={styles.catalogMeta}>
-                    <Text style={styles.catalogPoints}>
-                      {item.pointsRequired} điểm
-                    </Text>
-                    {isExpiringSoon(item.expiryDate) && (
-                      <Text style={styles.expirySoon}>Sắp hết hạn</Text>
-                    )}
-                  </View>
-                </View>
-                <View style={styles.catalogRight}>
-                  {item.isRedeemed ? (
-                    <View style={styles.redeemedBtn}>
-                      <Text style={styles.redeemedBtnText}>Đã đổi</Text>
-                    </View>
-                  ) : (
-                    <TouchableOpacity
-                      style={[styles.redeemBtn, redeemingId === item.voucherId && styles.redeemBtnDisabled]}
-                      onPress={() => handleRedeem(item)}
-                      disabled={redeemingId === item.voucherId}
-                    >
-                      {redeemingId === item.voucherId ? (
-                        <ActivityIndicator color="#ffffff" size="small" />
-                      ) : (
-                        <Text style={styles.redeemBtnText}>Đổi</Text>
-                      )}
-                    </TouchableOpacity>
-                  )}
-                </View>
-              </View>
-            ))
-          )}
-        </View>
       </ScrollView>
     </SafeAreaView>
   );

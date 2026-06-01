@@ -1,7 +1,8 @@
 /**
- * Advance Booking Flow - Step 2: Select Date & Time
- * After selecting service, user picks date and time slot
+ * Advance Booking Flow - Step 3: Select Date & Time
+ * After selecting vehicles + service, user picks date and time slot
  * Uses POST /api/v1/bookings/available-slots to get available slots
+ * Next: confirmation.tsx
  */
 
 import React, { useState, useMemo } from 'react';
@@ -29,8 +30,14 @@ const toLocalDateString = (date: Date): string => {
   return `${y}-${m}-${d}`;
 };
 
-const toISOString = (date: Date): string => {
-  return date.toISOString();
+const toUTCMidnight = (date: Date): string => {
+  const utc = new Date(Date.UTC(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate(),
+    0, 0, 0, 0
+  ));
+  return utc.toISOString();
 };
 
 interface DayCell {
@@ -54,6 +61,13 @@ export default function SelectDateScreen() {
   const serviceNameParam = (params.serviceName as string) || '';
   const servicePriceParam = parseInt(params.servicePrice as string) || 0;
   const membershipDiscountParam = parseFloat(params.membershipDiscount as string) || 0;
+  const vehicleIdsParam = (params.vehicleIds as string) || '';
+  const vehicleTypeIdsParam = (params.vehicleTypeIds as string) || '';
+  const vehicleBrandsParam = (params.vehicleBrands as string) || '';
+
+  const vehiclePlateList = vehicleIdsParam ? vehicleIdsParam.split(',') : [];
+  const vehicleTypeIdList = vehicleTypeIdsParam ? vehicleTypeIdsParam.split(',').map(Number) : [];
+  const vehicleBrandList = vehicleBrandsParam ? vehicleBrandsParam.split('|') : [];
 
   const membershipInfo = user ? MembershipConfig[user.membershipTier] : MembershipConfig.standard;
   const maxAdvanceDays = membershipInfo.maxAdvanceDays;
@@ -70,15 +84,20 @@ export default function SelectDateScreen() {
   const [slots, setSlots] = useState<TimeSlot[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
 
+  const bookingVehicles = useMemo(() => {
+    return vehiclePlateList.map((plate, i) => ({
+      vehicleTypeId: vehicleTypeIdList[i] ?? 1,
+      serviceId: serviceIdParam,
+    }));
+  }, [vehiclePlateList, vehicleTypeIdList, serviceIdParam]);
+
   const loadSlots = async (date: Date) => {
     setLoadingSlots(true);
     setSlots([]);
     setSelectedSlot(null);
     try {
-      const isoDate = toISOString(date);
-      const res = await bookingService.getAvailableSlots(isoDate, [
-        { vehicleTypeId: 1, serviceId: serviceIdParam },
-      ]);
+      const isoDate = toUTCMidnight(date);
+      const res = await bookingService.getAvailableSlots(isoDate, bookingVehicles);
       if (res.statusCode === 200 && res.data) {
         setSlots(res.data);
       } else {
@@ -151,12 +170,15 @@ export default function SelectDateScreen() {
   const handleContinue = () => {
     if (!selectedDate || !selectedSlot) return;
     router.push({
-      pathname: '/booking/select-vehicle',
+      pathname: '/booking/confirmation',
       params: {
         serviceId: String(serviceIdParam),
         serviceName: serviceNameParam,
         servicePrice: String(servicePriceParam),
         membershipDiscount: String(membershipDiscountParam),
+        vehicleIds: vehicleIdsParam,
+        vehicleTypeIds: vehicleTypeIdsParam,
+        vehicleBrands: vehicleBrandsParam,
         date: toLocalDateString(selectedDate),
         slotId: String(selectedSlot.slotId),
         timeRange: selectedSlot.timeRange,
@@ -200,22 +222,27 @@ export default function SelectDateScreen() {
         <View style={styles.progressStep}>
           <View style={[styles.progressDot, styles.progressDotCompleted]} />
           <View style={styles.progressLineCompleted} />
+          <View style={[styles.progressDot, styles.progressDotCompleted]} />
+          <View style={styles.progressLineCompleted} />
           <View style={[styles.progressDot, styles.progressDotActive]} />
-          <View style={styles.progressLine} />
-          <View style={[styles.progressDot, styles.progressDotPending]} />
           <View style={styles.progressLine} />
           <View style={[styles.progressDot, styles.progressDotPending]} />
         </View>
       </View>
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-        {/* Service info */}
-        <View style={styles.serviceInfoCard}>
-          <Text style={styles.serviceIcon}>🚿</Text>
-          <Text style={styles.serviceName}>{serviceNameParam}</Text>
-          <Text style={styles.servicePrice}>
-            Từ {servicePriceParam.toLocaleString('vi-VN')}đ/xe
-          </Text>
+        {/* Booking Summary */}
+        <View style={styles.summaryCard}>
+          <View style={styles.summaryRow}>
+            <Feather name="truck" size={16} color={LuxeColors.primaryContainer} />
+            <Text style={styles.summaryText}>
+              {vehiclePlateList.length} xe: {vehicleBrandList.join(', ')}
+            </Text>
+          </View>
+          <View style={styles.summaryRow}>
+            <Feather name="droplet" size={16} color={LuxeColors.primaryContainer} />
+            <Text style={styles.summaryText}>{serviceNameParam}</Text>
+          </View>
         </View>
 
         {/* Calendar */}
@@ -370,7 +397,7 @@ export default function SelectDateScreen() {
           disabled={!selectedDate || !selectedSlot}
           activeOpacity={0.9}
         >
-          <Text style={styles.continueBtnText}>TIẾP TỤC</Text>
+          <Text style={styles.continueBtnText}>TIẾP THEO</Text>
           <Text style={styles.continueBtnIcon}>→</Text>
         </TouchableOpacity>
       </View>
@@ -453,27 +480,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: LuxeSpacing.md,
     paddingBottom: 120,
   },
-  serviceInfoCard: {
+  summaryCard: {
     backgroundColor: 'rgba(255, 255, 255, 0.6)',
     borderRadius: LuxeBorderRadius.lg,
     padding: LuxeSpacing.md,
-    alignItems: 'center',
     marginTop: LuxeSpacing.sm,
-    marginBottom: LuxeSpacing.lg,
-    gap: 4,
+    marginBottom: LuxeSpacing.md,
+    gap: 6,
   },
-  serviceIcon: {
-    fontSize: 32,
+  summaryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
-  serviceName: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: LuxeColors.onSurface,
-  },
-  servicePrice: {
+  summaryText: {
     fontSize: 13,
-    color: LuxeColors.primaryContainer,
-    fontWeight: '600',
+    color: LuxeColors.onSurface,
+    fontWeight: '500',
   },
   section: {
     marginBottom: LuxeSpacing.lg,
@@ -607,9 +630,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.5)',
     borderRadius: LuxeBorderRadius.lg,
     gap: 8,
-  },
-  noSlotsIconContainer: {
-    marginBottom: 8,
   },
   noSlotsText: {
     fontSize: 14,

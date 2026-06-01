@@ -3,8 +3,9 @@
  * Handles auth state and redirects
  */
 
-import { useEffect, useState, ReactNode } from 'react';
-import { useRouter, usePathname, Stack } from 'expo-router';
+import { useEffect } from 'react';
+import { BackHandler } from 'react-native';
+import { useRouter, usePathname, Stack, useNavigationContainerRef } from 'expo-router';
 import { DefaultTheme, ThemeProvider } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -76,10 +77,15 @@ export default function RootLayout() {
   );
 }
 
-function AppNavigator() {
+/**
+ * Inner navigator — must be rendered inside expo-router's context
+ * so that useRootNavigation() and useRootNavigator() work.
+ */
+function InnerNavigator() {
   const { isLoading, isAuthenticated } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+  const containerRef = useNavigationContainerRef();
 
   useEffect(() => {
     if (isLoading) return;
@@ -92,6 +98,34 @@ function AppNavigator() {
       router.replace('/login');
     }
   }, [isLoading, isAuthenticated, pathname]);
+
+  useEffect(() => {
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+      const state = containerRef.current?.getRootState();
+      if (state && state.routes.length <= 1) {
+        router.replace('/(main)' as any);
+        return true;
+      }
+      return false;
+    });
+    return () => backHandler.remove();
+  }, []);
+
+  useEffect(() => {
+    const originalError = console.error;
+    console.error = (...args: unknown[]) => {
+      if (
+        typeof args[0] === 'string' &&
+        args[0].includes("The action 'GO_BACK' was not handled by any navigator")
+      ) {
+        return;
+      }
+      originalError.apply(console, args as Parameters<typeof console.error>);
+    };
+    return () => {
+      console.error = originalError as typeof console.error;
+    };
+  }, []);
 
   if (isLoading) {
     return <LoadingScreen />;
@@ -129,4 +163,8 @@ function AppNavigator() {
       />
     </Stack>
   );
+}
+
+function AppNavigator() {
+  return <InnerNavigator />;
 }
