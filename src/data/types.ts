@@ -52,6 +52,7 @@ export interface Vehicle {
   brand: string;
   model: string;
   color: string;
+  vehicleTypeId?: number;
   imageUrl?: string;
   userId: string;
   createdAt: Date;
@@ -94,13 +95,23 @@ export interface Lane {
 // Booking Types
 export type BookingStatus = 'pending' | 'confirmed' | 'checked_in' | 'in_progress' | 'completed' | 'cancelled';
 
+// Vehicle in booking (each booking can have up to 5 vehicles)
+export interface BookingVehicle {
+  id: string;
+  vehicleId: string;
+  serviceId: string;
+  laneId?: string;
+  status: 'pending' | 'in_service' | 'completed';
+  subtotal: number;
+  discountAmount: number;
+  finalAmount: number;
+}
+
 export interface Booking {
   id: string;
   userId: string;
-  vehicleId: string;
-  serviceId: string;
+  vehicles: BookingVehicle[]; // 1-5 vehicles per booking
   stationId: string;
-  laneId?: string;
   scheduledDate: string; // YYYY-MM-DD
   scheduledTime: string; // HH:mm
   status: BookingStatus;
@@ -216,7 +227,7 @@ export interface Notification {
 
 // Login credentials
 export interface LoginCredentials {
-  phoneNumber: string;
+  phoneOrEmail: string;
   password: string;
 }
 
@@ -519,8 +530,9 @@ export const mockBookings: Booking[] = [
   {
     id: 'book_001',
     userId: 'user_001',
-    vehicleId: 'veh_001',
-    serviceId: 'svc_002',
+    vehicles: [
+      { id: 'bv_001', vehicleId: 'veh_001', serviceId: 'svc_002', status: 'pending', subtotal: 300000, discountAmount: 30000, finalAmount: 270000 },
+    ],
     stationId: 'stn_001',
     scheduledDate: '2024-12-26',
     scheduledTime: '09:00',
@@ -536,8 +548,9 @@ export const mockBookings: Booking[] = [
   {
     id: 'book_002',
     userId: 'user_001',
-    vehicleId: 'veh_002',
-    serviceId: 'svc_003',
+    vehicles: [
+      { id: 'bv_002', vehicleId: 'veh_002', serviceId: 'svc_003', status: 'completed', subtotal: 500000, discountAmount: 50000, finalAmount: 450000 },
+    ],
     stationId: 'stn_001',
     scheduledDate: '2024-12-22',
     scheduledTime: '14:00',
@@ -555,8 +568,9 @@ export const mockBookings: Booking[] = [
   {
     id: 'book_003',
     userId: 'user_001',
-    vehicleId: 'veh_001',
-    serviceId: 'svc_001',
+    vehicles: [
+      { id: 'bv_003', vehicleId: 'veh_001', serviceId: 'svc_001', status: 'completed', subtotal: 150000, discountAmount: 0, finalAmount: 150000 },
+    ],
     stationId: 'stn_001',
     scheduledDate: '2024-12-15',
     scheduledTime: '10:30',

@@ -3,61 +3,58 @@
  * Phone number and password authentication
  */
 
-import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
+  LuxeBorderRadius,
+  LuxeColors,
+  LuxeSpacing,
+} from "@/constants/luxeTheme";
+import { useAuth } from "@/contexts/AuthContext";
+import { useRouter } from "expo-router";
+import React, { useState } from "react";
+import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  ActivityIndicator,
-  Alert,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import { useAuth, DEMO_ACCOUNTS } from '@/contexts/AuthContext';
-import { LuxeColors, LuxeSpacing, LuxeBorderRadius } from '@/constants/luxeTheme';
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Feather } from "@expo/vector-icons";
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { login, isLoading } = useAuth();
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [password, setPassword] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { login, isLoggingIn } = useAuth();
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleLogin = async () => {
     if (!phoneNumber.trim()) {
-      Alert.alert('Lỗi', 'Vui lòng nhập số điện thoại');
+      alert("Vui lòng nhập số điện thoại");
       return;
     }
     if (!password.trim()) {
-      Alert.alert('Lỗi', 'Vui lòng nhập mật khẩu');
+      alert("Vui lòng nhập mật khẩu");
       return;
     }
 
-    setIsSubmitting(true);
-    const result = await login({ phoneNumber: phoneNumber.trim(), password });
-    setIsSubmitting(false);
+    const result = await login({ phoneOrEmail: phoneNumber.trim(), password });
 
     if (result.success) {
-      router.replace('/(main)' as any);
+      router.replace("/(main)" as any);
     } else {
-      Alert.alert('Đăng nhập thất bại', result.error || 'Vui lòng thử lại');
+      alert(result.error || "Vui lòng thử lại");
     }
-  };
-
-  const handleDemoLogin = (phone: string, pass: string) => {
-    setPhoneNumber(phone);
-    setPassword(pass);
   };
 
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.keyboardView}
       >
         <ScrollView
@@ -67,7 +64,7 @@ export default function LoginScreen() {
           {/* Logo & Title */}
           <View style={styles.header}>
             <View style={styles.logoContainer}>
-              <Text style={styles.logoIcon}>✨</Text>
+              <Feather name="sun" size={40} color={LuxeColors.primaryContainer} />
             </View>
             <Text style={styles.title}>LuxeWash</Text>
             <Text style={styles.subtitle}>Rửa xe cao cấp</Text>
@@ -78,37 +75,51 @@ export default function LoginScreen() {
             <Text style={styles.formTitle}>Đăng nhập</Text>
 
             <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Số điện thoại</Text>
+              <Text style={styles.inputLabel}>Số điện thoại / Email</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Nhập số điện thoại"
+                placeholder="Nhập số điện thoại hoặc email"
                 placeholderTextColor={LuxeColors.onSurfaceVariant}
                 value={phoneNumber}
                 onChangeText={setPhoneNumber}
-                keyboardType="phone-pad"
-                autoComplete="tel"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoComplete="email"
               />
             </View>
 
             <View style={styles.inputContainer}>
               <Text style={styles.inputLabel}>Mật khẩu</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Nhập mật khẩu"
-                placeholderTextColor={LuxeColors.onSurfaceVariant}
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-                autoComplete="password"
-              />
+              <View style={styles.passwordWrapper}>
+                <TextInput
+                  style={styles.passwordInput}
+                  placeholder="Nhập mật khẩu"
+                  placeholderTextColor={LuxeColors.onSurfaceVariant}
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry={!showPassword}
+                  autoComplete="password"
+                />
+                <TouchableOpacity
+                  style={styles.eyeBtn}
+                  onPress={() => setShowPassword((prev) => !prev)}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <Feather
+                    name={showPassword ? "eye-off" : "eye"}
+                    size={20}
+                    color={LuxeColors.onSurfaceVariant}
+                  />
+                </TouchableOpacity>
+              </View>
             </View>
 
             <TouchableOpacity
-              style={[styles.loginBtn, isSubmitting && styles.loginBtnDisabled]}
+              style={[styles.loginBtn, isLoggingIn && styles.loginBtnDisabled]}
               onPress={handleLogin}
-              disabled={isSubmitting}
+              disabled={isLoggingIn}
             >
-              {isSubmitting ? (
+              {isLoggingIn ? (
                 <ActivityIndicator color="#ffffff" />
               ) : (
                 <Text style={styles.loginBtnText}>Đăng nhập</Text>
@@ -116,26 +127,12 @@ export default function LoginScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Demo Accounts */}
-          <View style={styles.demoSection}>
-            <Text style={styles.demoTitle}>Tài khoản demo (tap để điền):</Text>
-            <View style={styles.demoList}>
-              {DEMO_ACCOUNTS.slice(0, 5).map((account, index) => (
-                <TouchableOpacity
-                  key={index}
-                  style={styles.demoItem}
-                  onPress={() => handleDemoLogin(account.phone, account.password)}
-                >
-                  <Text style={styles.demoRole}>
-                    {account.role === 'staff' ? '👔' : '👤'}
-                  </Text>
-                  <View style={styles.demoInfo}>
-                    <Text style={styles.demoName}>{account.name}</Text>
-                    <Text style={styles.demoCredentials}>{account.phone} / {account.password}</Text>
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </View>
+          {/* Register Link */}
+          <View style={styles.registerSection}>
+            <Text style={styles.registerText}>Chưa có tài khoản? </Text>
+            <TouchableOpacity onPress={() => router.push("/register" as any)}>
+              <Text style={styles.registerLink}>Đăng ký ngay</Text>
+            </TouchableOpacity>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -156,7 +153,7 @@ const styles = StyleSheet.create({
     padding: LuxeSpacing.lg,
   },
   header: {
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: LuxeSpacing.xl * 2,
     marginBottom: LuxeSpacing.xl,
   },
@@ -164,17 +161,14 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: LuxeColors.primaryContainer + '20',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: LuxeColors.primaryContainer + "20",
+    alignItems: "center",
+    justifyContent: "center",
     marginBottom: LuxeSpacing.md,
-  },
-  logoIcon: {
-    fontSize: 40,
   },
   title: {
     fontSize: 32,
-    fontWeight: '700',
+    fontWeight: "700",
     color: LuxeColors.primaryContainer,
     letterSpacing: 2,
   },
@@ -184,14 +178,14 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   form: {
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    backgroundColor: "rgba(255, 255, 255, 0.9)",
     borderRadius: LuxeBorderRadius.xl,
     padding: LuxeSpacing.lg,
     marginBottom: LuxeSpacing.lg,
   },
   formTitle: {
     fontSize: 20,
-    fontWeight: '600',
+    fontWeight: "600",
     color: LuxeColors.onSurface,
     marginBottom: LuxeSpacing.lg,
   },
@@ -200,7 +194,7 @@ const styles = StyleSheet.create({
   },
   inputLabel: {
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: "500",
     color: LuxeColors.onSurfaceVariant,
     marginBottom: 8,
   },
@@ -211,13 +205,30 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: LuxeColors.onSurface,
     borderWidth: 1,
-    borderColor: LuxeColors.outlineVariant + '30',
+    borderColor: LuxeColors.outlineVariant + "30",
+  },
+  passwordWrapper: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: LuxeColors.surfaceContainer,
+    borderRadius: LuxeBorderRadius.md,
+    borderWidth: 1,
+    borderColor: LuxeColors.outlineVariant + "30",
+  },
+  passwordInput: {
+    flex: 1,
+    padding: LuxeSpacing.md,
+    fontSize: 16,
+    color: LuxeColors.onSurface,
+  },
+  eyeBtn: {
+    padding: LuxeSpacing.md,
   },
   loginBtn: {
     backgroundColor: LuxeColors.primaryContainer,
     borderRadius: LuxeBorderRadius.lg,
     padding: LuxeSpacing.md,
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: LuxeSpacing.md,
     shadowColor: LuxeColors.primaryContainer,
     shadowOffset: { width: 0, height: 4 },
@@ -229,44 +240,24 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   loginBtnText: {
-    color: '#ffffff',
+    color: "#ffffff",
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: "700",
     letterSpacing: 1,
   },
-  demoSection: {
+  registerSection: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
     marginTop: LuxeSpacing.md,
   },
-  demoTitle: {
-    fontSize: 12,
+  registerText: {
+    fontSize: 14,
     color: LuxeColors.onSurfaceVariant,
-    marginBottom: LuxeSpacing.sm,
-    textAlign: 'center',
   },
-  demoList: {
-    gap: 8,
-  },
-  demoItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.7)',
-    borderRadius: LuxeBorderRadius.md,
-    padding: LuxeSpacing.sm,
-    gap: LuxeSpacing.sm,
-  },
-  demoRole: {
-    fontSize: 20,
-  },
-  demoInfo: {
-    flex: 1,
-  },
-  demoName: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: LuxeColors.onSurface,
-  },
-  demoCredentials: {
-    fontSize: 11,
-    color: LuxeColors.onSurfaceVariant,
+  registerLink: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: LuxeColors.primaryContainer,
   },
 });

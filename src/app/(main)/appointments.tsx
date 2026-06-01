@@ -3,64 +3,72 @@
  * Shows user's booking history and upcoming appointments
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  ActivityIndicator,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Feather } from '@expo/vector-icons';
 import { LuxeColors, LuxeSpacing, LuxeBorderRadius } from '@/constants/luxeTheme';
 import { useAuth } from '@/contexts/AuthContext';
-import { mockBookings } from '@/data/types';
+import { bookingService, type BookingDetail } from '@/services/api';
 
-type TabType = 'all' | 'upcoming' | 'completed';
+type TabType = 'all' | 'pending' | 'completed';
+
+const statusMap: Record<string, string> = {
+  Pending: 'pending',
+  Confirmed: 'pending',
+  CheckedIn: 'pending',
+  InProgress: 'pending',
+  Completed: 'completed',
+  Cancelled: 'cancelled',
+  NoShow: 'cancelled',
+};
 
 export default function AppointmentsScreen() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>('all');
+  const [bookings, setBookings] = useState<BookingDetail[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Mock appointment data
-  const appointments = [
-    {
-      id: '1',
-      date: '15/10/2024',
-      time: '10:00',
-      vehicle: 'Mercedes-Benz S500',
-      plate: '30A-888.88',
-      service: 'Rửa xe cao cấp + Phủ Ceramic',
-      status: 'completed',
-      amount: '1.000.000đ',
-    },
-    {
-      id: '2',
-      date: '02/10/2024',
-      time: '09:00',
-      vehicle: 'Porsche Taycan',
-      plate: '51F-999.99',
-      service: 'Vệ sinh nội thất chuyên sâu',
-      status: 'completed',
-      amount: '500.000đ',
-    },
-    {
-      id: '3',
-      date: '28/09/2024',
-      time: '16:00',
-      vehicle: 'Mercedes-Benz S500',
-      plate: '30A-888.88',
-      service: 'Rửa xe tiêu chuẩn',
-      status: 'cancelled',
-      amount: '300.000đ',
-    },
-  ];
+  useEffect(() => {
+    const loadBookings = async () => {
+      setLoading(true);
+      try {
+        const res = await bookingService.getMyBookings();
+        if (res.statusCode === 200 && res.data) {
+          setBookings(Array.isArray(res.data) ? res.data : []);
+        } else {
+          setBookings([]);
+        }
+      } catch (e) {
+        console.error('Failed to load bookings:', e);
+      }
+      setLoading(false);
+    };
+    loadBookings();
+  }, []);
+
+  const filteredBookings = (bookings || []).filter((b) => {
+    if (!b) return false;
+    if (activeTab === 'all') return true;
+    if (activeTab === 'pending') return statusMap[b.status] === 'pending';
+    if (activeTab === 'completed') return statusMap[b.status] === 'completed' || statusMap[b.status] === 'cancelled';
+    return true;
+  });
 
   const getStatusStyle = (status: string) => {
-    switch (status) {
+    const mapped = statusMap[status] || status;
+    switch (mapped) {
       case 'completed':
         return { bg: LuxeColors.primary + '10', text: LuxeColors.primary, dot: LuxeColors.primary };
-      case 'upcoming':
+      case 'pending':
         return { bg: LuxeColors.tertiaryContainer + '30', text: LuxeColors.tertiary, dot: LuxeColors.tertiary };
       case 'cancelled':
         return { bg: LuxeColors.surfaceContainer, text: LuxeColors.onSurfaceVariant, dot: LuxeColors.onSurfaceVariant };
@@ -70,12 +78,24 @@ export default function AppointmentsScreen() {
   };
 
   const getStatusLabel = (status: string) => {
-    switch (status) {
+    const mapped = statusMap[status] || status;
+    switch (mapped) {
       case 'completed': return 'Hoàn thành';
-      case 'upcoming': return 'Sắp tới';
+      case 'pending': return 'Đang chờ';
       case 'cancelled': return 'Đã hủy';
       default: return status;
     }
+  };
+
+  const formatDate = (dateStr: string) => {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('vi-VN');
+  };
+
+  const formatTime = (isoDateStr: string) => {
+    if (!isoDateStr) return '';
+    const date = new Date(isoDateStr);
+    return date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
   };
 
   return (
@@ -88,59 +108,93 @@ export default function AppointmentsScreen() {
 
         {/* Tabs */}
         <View style={styles.tabs}>
-          {(['all', 'upcoming', 'completed'] as TabType[]).map((tab) => (
+          {(['all', 'pending', 'completed'] as TabType[]).map((tab) => (
             <TouchableOpacity
               key={tab}
               style={[styles.tab, activeTab === tab && styles.tabActive]}
               onPress={() => setActiveTab(tab)}
             >
               <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
-                {tab === 'all' ? 'Tất cả' : tab === 'upcoming' ? 'Sắp tới' : 'Hoàn thành'}
+                {tab === 'all' ? 'Tất cả' : tab === 'pending' ? 'Đang chờ' : 'Hoàn thành'}
               </Text>
             </TouchableOpacity>
           ))}
         </View>
 
         <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-          {appointments.map((appointment) => {
-            const statusStyle = getStatusStyle(appointment.status);
-            return (
-              <View key={appointment.id} style={styles.appointmentCard}>
-                <View style={styles.cardHeader}>
-                  <Text style={styles.appointmentDate}>{appointment.date} • {appointment.time}</Text>
-                  <View style={[styles.statusBadge, { backgroundColor: statusStyle.bg }]}>
-                    <View style={[styles.statusDot, { backgroundColor: statusStyle.dot }]} />
-                    <Text style={[styles.statusText, { color: statusStyle.text }]}>
-                      {getStatusLabel(appointment.status)}
+          {loading ? (
+            <ActivityIndicator size="large" color={LuxeColors.primaryContainer} style={{ marginTop: 40 }} />
+          ) : filteredBookings.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Feather name="calendar" size={48} color={LuxeColors.outlineVariant} />
+              <Text style={styles.emptyText}>Chưa có lịch hẹn nào</Text>
+              <TouchableOpacity style={styles.emptyActionBtn}>
+                <Text style={styles.emptyActionBtnText}>Đặt lịch ngay</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            filteredBookings.map((booking) => {
+              if (!booking) return null;
+              const statusStyle = getStatusStyle(booking.status || 'unknown');
+              const date = booking.scheduledDate ? formatDate(booking.scheduledDate) : '';
+              const time = booking.scheduledDate ? formatTime(booking.scheduledDate) : '';
+
+              // Support both flat API (licensePlate/serviceName) and nested API (vehicles[0])
+              const mainVehicle = (booking as any).vehicles?.[0];
+              const hasNestedVehicles = !!mainVehicle;
+              const vehicleDisplay = hasNestedVehicles
+                ? (mainVehicle?.carModel || mainVehicle?.vehicleType || 'Xe')
+                : ((booking as any).licensePlate ? 'Xe' : 'Xe');
+              const vehiclePlate = hasNestedVehicles ? (mainVehicle?.licensePlate || '') : ((booking as any).licensePlate || '');
+              const vehicleImage = hasNestedVehicles ? mainVehicle?.imageUrl : undefined;
+              const serviceName = hasNestedVehicles ? (mainVehicle?.serviceName || '') : ((booking as any).serviceName || '');
+              const vehicleCount = hasNestedVehicles ? ((booking as any).vehicles?.length || 0) : (vehiclePlate ? 1 : 0);
+              return (
+                <View key={String(booking.bookingId || 'unknown')} style={styles.appointmentCard}>
+                  <View style={styles.cardHeader}>
+                    <Text style={styles.appointmentDate}>{date} • {time}</Text>
+                    <View style={[styles.statusBadge, { backgroundColor: statusStyle.bg }]}>
+                      <View style={[styles.statusDot, { backgroundColor: statusStyle.dot }]} />
+                      <Text style={[styles.statusText, { color: statusStyle.text }]}>
+                        {getStatusLabel(booking.status)}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.vehicleRow}>
+                    {vehicleImage ? (
+                      <Image source={{ uri: vehicleImage }} style={styles.vehicleImage} />
+                    ) : (
+                      <View style={[styles.vehicleImage, styles.vehicleImagePlaceholder]}>
+                        <Feather name="truck" size={24} color={LuxeColors.onSurfaceVariant} />
+                      </View>
+                    )}
+                    <View style={styles.vehicleInfo}>
+                      <Text style={styles.vehicleName}>{vehicleDisplay}</Text>
+                      <Text style={styles.vehiclePlate}>{vehiclePlate}</Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.divider} />
+
+                  <View style={styles.serviceRow}>
+                    <View style={styles.serviceInfo}>
+                      <Text style={styles.serviceLabel}>Tổng cộng</Text>
+                      <Text style={styles.serviceName}>
+                        {vehicleCount} xe • {(booking.finalAmount || 0).toLocaleString('vi-VN')}đ
+                      </Text>
+                    </View>
+                    <Text style={[
+                      styles.serviceAmount,
+                      statusMap[booking.status] === 'cancelled' && styles.serviceAmountCancelled
+                    ]}>
+                      {(booking.finalAmount || 0).toLocaleString('vi-VN')}đ
                     </Text>
                   </View>
                 </View>
-
-                <View style={styles.vehicleRow}>
-                  <View style={styles.vehicleImage} />
-                  <View style={styles.vehicleInfo}>
-                    <Text style={styles.vehicleName}>{appointment.vehicle}</Text>
-                    <Text style={styles.vehiclePlate}>{appointment.plate}</Text>
-                  </View>
-                </View>
-
-                <View style={styles.divider} />
-
-                <View style={styles.serviceRow}>
-                  <View style={styles.serviceInfo}>
-                    <Text style={styles.serviceLabel}>Dịch vụ</Text>
-                    <Text style={styles.serviceName}>{appointment.service}</Text>
-                  </View>
-                  <Text style={[
-                    styles.serviceAmount,
-                    appointment.status === 'cancelled' && styles.serviceAmountCancelled
-                  ]}>
-                    {appointment.amount}
-                  </Text>
-                </View>
-              </View>
-            );
-          })}
+              );
+            })
+          )}
         </ScrollView>
       </SafeAreaView>
     </View>
@@ -244,6 +298,14 @@ const styles = StyleSheet.create({
     borderRadius: LuxeBorderRadius.lg,
     backgroundColor: LuxeColors.surfaceVariant,
   },
+  vehicleImagePlaceholder: {
+    width: 64,
+    height: 64,
+    borderRadius: LuxeBorderRadius.lg,
+    backgroundColor: LuxeColors.surfaceVariant,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   vehicleInfo: {
     marginLeft: LuxeSpacing.md,
   },
@@ -286,5 +348,27 @@ const styles = StyleSheet.create({
   serviceAmountCancelled: {
     color: LuxeColors.onSurfaceVariant,
     textDecorationLine: 'line-through',
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  emptyIconContainer: {
+    marginBottom: 12,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: LuxeColors.onSurfaceVariant,
+    marginBottom: 16,
+  },
+  emptyActionBtn: {
+    backgroundColor: LuxeColors.primaryContainer,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: LuxeBorderRadius.md,
+  },
+  emptyActionBtnText: {
+    color: '#fff',
+    fontWeight: '600',
   },
 });
