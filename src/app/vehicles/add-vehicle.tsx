@@ -20,10 +20,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { Feather } from '@expo/vector-icons';
+import { File } from 'expo-file-system';
+import { fetch as expoFetch } from 'expo/fetch';
 import { LuxeColors, LuxeSpacing, LuxeBorderRadius } from '@/constants/luxeTheme';
-import { useAuth } from '@/contexts/AuthContext';
 import { vehicleService, VehicleType } from '@/services/api/vehicleService';
 import { useConfirmDialog } from '@/components/ConfirmDialog';
+import { useAuth } from '@/contexts/AuthContext';
+import { getStoredTokens, BASE_URL } from '@/services/api/client';
 
 const VEHICLE_TYPE_ICONS: Record<string, string> = {
   Sedan: 'truck',
@@ -37,8 +40,8 @@ const VEHICLE_TYPE_ICONS: Record<string, string> = {
 
 export default function AddVehicleScreen() {
   const router = useRouter();
-  const { addVehicle } = useAuth();
   const { confirm } = useConfirmDialog();
+  const { refreshProfile } = useAuth();
 
   const OTHER_TYPE_ID = -1;
 
@@ -46,6 +49,7 @@ export default function AddVehicleScreen() {
   const [selectedTypeId, setSelectedTypeId] = useState<number | null>(null);
   const [otherVehicleType, setOtherVehicleType] = useState('');
   const [registrationPhoto, setRegistrationPhoto] = useState<string | null>(null);
+  const webFileRef = useRef<globalThis.File | null>(null);
   const [vehicleTypes, setVehicleTypes] = useState<VehicleType[]>([]);
   const [loadingTypes, setLoadingTypes] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -142,24 +146,19 @@ export default function AddVehicleScreen() {
   const handleWebFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        const result = ev.target?.result;
-        if (typeof result === 'string') {
-          setRegistrationPhoto(result);
-        }
-      };
-      reader.readAsDataURL(file);
+      webFileRef.current = file;
+      setRegistrationPhoto(URL.createObjectURL(file));
     }
   };
 
-  const getFileBlob = async (uri: string): Promise<Blob> => {
-    if (Platform.OS === 'web') {
-      const response = await fetch(uri);
-      return response.blob();
+  const getFileObject = (): File | Blob => {
+    if (Platform.OS === 'web' && webFileRef.current) {
+      return webFileRef.current;
     }
-    const response = await fetch(uri);
-    return response.blob();
+    if (registrationPhoto) {
+      return new File(registrationPhoto);
+    }
+    throw new Error('No image selected');
   };
 
   const handleSubmit = async () => {
@@ -184,21 +183,46 @@ export default function AddVehicleScreen() {
 
     try {
       const note = isOtherType ? otherVehicleType.trim() : undefined;
-      const photoBlob = await getFileBlob(registrationPhoto);
-      const result = await addVehicle(licensePlate, selectedTypeId, photoBlob, note);
-      if (result.success) {
+
+      const formData = new FormData();
+      formData.append('licensePlate', licensePlate);
+      formData.append('vehicleTypeId', String(selectedTypeId));
+      if (note) {
+        formData.append('userNote', note);
+      }
+
+      const file = getFileObject();
+      formData.append('PhotoFile', file as unknown as Blob);
+
+      const { accessToken } = await getStoredTokens();
+      const response = await expoFetch(`${BASE_URL}/vehicles`, {
+        method: 'POST',
+        headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+        body: formData,
+      });
+
+      if (response.ok) {
         confirm({
           title: 'Thành công',
           message: 'Xe đã được thêm vào tài khoản',
           confirmText: 'Xác nhận',
           showCancel: false,
-          onConfirm: () => router.back(),
+          onConfirm: async () => {
+          await refreshProfile();
+          router.replace('/vehicles');
+        },
         });
       } else {
-        alert(result.error || 'Không thể thêm xe. Vui lòng thử lại.');
+        const errorData = response.json ? await response.json().catch(() => null) : null;
+        const errorMessage =
+          errorData?.message || `Lỗi ${response.status}: Không thể thêm xe.`;
+        alert(errorMessage);
       }
     } catch (error) {
-      alert('Đã xảy ra lỗi khi thêm xe. Vui lòng thử lại.');
+      console.error('Add vehicle error:', error);
+      const message =
+        error instanceof Error ? error.message : 'Đã xảy ra lỗi khi thêm xe. Vui lòng thử lại.';
+      alert(message);
     } finally {
       setIsSubmitting(false);
     }
@@ -265,7 +289,7 @@ export default function AddVehicleScreen() {
                           setShowTypePicker(false);
                         }}
                       >
-                          <Feather name={VEHICLE_TYPE_ICONS[type.name] as any || 'truck'} size={16} color={LuxeColors.primaryContainer} />
+                        <Feather name={VEHICLE_TYPE_ICONS[type.name] as any || 'truck'} size={16} color={LuxeColors.primaryContainer} />
                         <Text
                           style={[
                             styles.pickerItemText,
@@ -363,7 +387,7 @@ const styles = StyleSheet.create({
     paddingVertical: LuxeSpacing.md,
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
     borderBottomWidth: 1,
-    borderBottomColor: LuxeColors.outlineVariant + '30',
+    borderBottomColor: '#bec8cf50',
   },
   backBtn: {
     width: 40,
@@ -463,10 +487,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: LuxeSpacing.md,
     paddingVertical: LuxeSpacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: LuxeColors.outlineVariant + '30',
+    borderBottomColor: '#bec8cf50',
   },
   pickerItemSelected: {
-    backgroundColor: LuxeColors.primaryContainer + '20',
+    backgroundColor: '#4aa9d733',
   },
   pickerItemText: {
     fontSize: 16,
@@ -478,7 +502,7 @@ const styles = StyleSheet.create({
   },
   note: {
     flexDirection: 'row',
-    backgroundColor: LuxeColors.primaryContainer + '10',
+    backgroundColor: '#4aa9d71a',
     borderRadius: LuxeBorderRadius.md,
     padding: LuxeSpacing.md,
     marginTop: LuxeSpacing.xl,
@@ -509,7 +533,7 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 26,
-    backgroundColor: LuxeColors.primaryContainer + '20',
+    backgroundColor: '#4aa9d733',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: LuxeSpacing.xs,
@@ -531,7 +555,7 @@ const styles = StyleSheet.create({
     padding: LuxeSpacing.lg,
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
     borderTopWidth: 1,
-    borderTopColor: LuxeColors.outlineVariant + '30',
+    borderTopColor: '#bec8cf50',
   },
   submitBtn: {
     backgroundColor: LuxeColors.primaryContainer,

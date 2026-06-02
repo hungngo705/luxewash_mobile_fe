@@ -152,7 +152,7 @@ const styles = StyleSheet.create({
     paddingVertical: LuxeSpacing.md,
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
     borderBottomWidth: 1,
-    borderBottomColor: LuxeColors.outlineVariant + '30',
+    borderBottomColor: '#bec8cf50',
   },
   backBtn: {
     width: 40,
@@ -168,7 +168,7 @@ const styles = StyleSheet.create({
   addBtn: {
     paddingHorizontal: LuxeSpacing.md,
     paddingVertical: LuxeSpacing.xs,
-    backgroundColor: LuxeColors.primaryContainer + '20',
+    backgroundColor: '#4aa9d733',
     borderRadius: LuxeBorderRadius.md,
   },
   addBtnText: {
@@ -232,6 +232,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 10,
     elevation: 2,
+    marginBottom: LuxeSpacing.md,
   },
   vehicleImageContainer: {
     width: 80,
@@ -288,7 +289,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: LuxeColors.primaryContainer + '15',
+    backgroundColor: '#4aa9d726',
     borderRadius: 6,
     paddingHorizontal: 8,
     paddingVertical: 3,
@@ -317,7 +318,7 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: LuxeColors.primaryContainer + '20',
+    backgroundColor: '#4aa9d733',
     alignItems: 'center',
     justifyContent: 'center',
   },
