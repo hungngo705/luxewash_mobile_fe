@@ -3,30 +3,38 @@
  * Browse and redeem vouchers
  */
 
-import React, { useEffect, useState, useCallback } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  ActivityIndicator,
-  RefreshControl,
-  TextInput,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import { LuxeColors, LuxeSpacing, LuxeBorderRadius } from '@/constants/luxeTheme';
-import { useAuth } from '@/contexts/AuthContext';
-import { loyaltyService, type Voucher } from '@/services/api';
+    LuxeBorderRadius,
+    LuxeColors,
+    LuxeSpacing,
+} from "@/constants/luxeTheme";
+import { useAuth } from "@/contexts/AuthContext";
+import { loyaltyService, type Voucher } from "@/services/api";
+import { useRouter } from "expo-router";
+import React, { useCallback, useEffect, useState } from "react";
+import {
+    ActivityIndicator,
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 const formatCurrency = (amount: number): string => {
-  return new Intl.NumberFormat('vi-VN').format(amount);
+  return new Intl.NumberFormat("vi-VN").format(amount);
 };
 
 const formatDate = (dateStr: string): string => {
   const date = new Date(dateStr);
-  return date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  return date.toLocaleDateString("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
 };
 
 export default function VouchersScreen() {
@@ -36,7 +44,7 @@ export default function VouchersScreen() {
   const [myVouchers, setMyVouchers] = useState<Voucher[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [codeInput, setCodeInput] = useState('');
+  const [codeInput, setCodeInput] = useState("");
   const [codeRedeeming, setCodeRedeeming] = useState(false);
 
   const loadData = useCallback(async (isRefresh = false) => {
@@ -48,7 +56,7 @@ export default function VouchersScreen() {
         setMyVouchers(res.data);
       }
     } catch (e) {
-      console.warn('Could not load vouchers:', e);
+      console.warn("Could not load vouchers:", e);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -61,22 +69,24 @@ export default function VouchersScreen() {
 
   const handleRedeemByCode = async () => {
     if (!codeInput.trim()) {
-      alert('Vui lòng nhập mã voucher');
+      alert("Vui lòng nhập mã voucher");
       return;
     }
     setCodeRedeeming(true);
     try {
-      const res = await loyaltyService.redeemVoucher(codeInput.trim().toUpperCase());
+      const res = await loyaltyService.redeemVoucher(
+        codeInput.trim().toUpperCase(),
+      );
       if (res.statusCode === 200) {
-        alert('Bạn đã đổi voucher thành công!');
-        setCodeInput('');
+        alert("Bạn đã đổi voucher thành công!");
+        setCodeInput("");
         await refreshProfile?.();
         loadData();
       } else {
-        alert(res.message || 'Mã voucher không hợp lệ.');
+        alert(res.message || "Mã voucher không hợp lệ.");
       }
     } catch (e: any) {
-      const msg = e?.message || 'Mã voucher không hợp lệ.';
+      const msg = e?.message || "Mã voucher không hợp lệ.";
       alert(msg);
     } finally {
       setCodeRedeeming(false);
@@ -84,7 +94,7 @@ export default function VouchersScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={["top"]}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
@@ -98,14 +108,17 @@ export default function VouchersScreen() {
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={() => loadData(true)} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => loadData(true)}
+          />
         }
       >
         {/* Points Balance */}
         <View style={styles.pointsBanner}>
           <Text style={styles.pointsLabel}>Điểm hiện có</Text>
           <Text style={styles.pointsValue}>
-            {user?.loyaltyPoints?.toLocaleString('vi-VN') || '0'}
+            {user?.loyaltyPoints?.toLocaleString("vi-VN") || "0"}
           </Text>
           <Text style={styles.pointsUnit}>điểm</Text>
         </View>
@@ -141,8 +154,14 @@ export default function VouchersScreen() {
         {myVouchers.length > 0 && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Voucher của tôi</Text>
-            {myVouchers.map(v => (
-              <View key={v.voucherId} style={[styles.myVoucherCard, v.isUsed && styles.myVoucherCardUsed]}>
+            {myVouchers.map((v) => (
+              <View
+                key={v.voucherId}
+                style={[
+                  styles.myVoucherCard,
+                  v.isUsed && styles.myVoucherCardUsed,
+                ]}
+              >
                 <View style={styles.voucherLeft}>
                   <Text style={styles.voucherAmount}>
                     -{formatCurrency(v.discountAmount)}đ
@@ -167,7 +186,6 @@ export default function VouchersScreen() {
             ))}
           </View>
         )}
-
       </ScrollView>
     </SafeAreaView>
   );
@@ -179,20 +197,20 @@ const styles = StyleSheet.create({
     backgroundColor: LuxeColors.background,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: LuxeSpacing.md,
     paddingVertical: LuxeSpacing.md,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    backgroundColor: "rgba(255, 255, 255, 0.95)",
     borderBottomWidth: 1,
-    borderBottomColor: LuxeColors.outlineVariant + '20',
+    borderBottomColor: LuxeColors.outlineVariant + "20",
   },
   backBtn: {
     width: 40,
     height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   backIcon: {
     fontSize: 24,
@@ -200,7 +218,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: "600",
     color: LuxeColors.onSurface,
   },
   placeholder: {
@@ -217,7 +235,7 @@ const styles = StyleSheet.create({
     backgroundColor: LuxeColors.primaryContainer,
     borderRadius: LuxeBorderRadius.xl,
     padding: LuxeSpacing.lg,
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: LuxeSpacing.lg,
   },
   pointsLabel: {
@@ -227,7 +245,7 @@ const styles = StyleSheet.create({
   },
   pointsValue: {
     fontSize: 36,
-    fontWeight: '700',
+    fontWeight: "700",
     color: LuxeColors.onPrimaryContainer,
     marginVertical: 4,
   },
@@ -241,47 +259,47 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: "700",
     color: LuxeColors.onSurface,
     marginBottom: LuxeSpacing.md,
   },
   codeInputRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: LuxeSpacing.sm,
   },
   codeInput: {
     flex: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    backgroundColor: "rgba(255, 255, 255, 0.9)",
     borderRadius: LuxeBorderRadius.lg,
     padding: LuxeSpacing.md,
     fontSize: 15,
     color: LuxeColors.onSurface,
     borderWidth: 1,
-    borderColor: LuxeColors.outlineVariant + '30',
+    borderColor: LuxeColors.outlineVariant + "30",
   },
   codeBtn: {
     backgroundColor: LuxeColors.primaryContainer,
     borderRadius: LuxeBorderRadius.lg,
     paddingHorizontal: LuxeSpacing.lg,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   codeBtnDisabled: {
     opacity: 0.7,
   },
   codeBtnText: {
-    color: '#ffffff',
-    fontWeight: '700',
+    color: "#ffffff",
+    fontWeight: "700",
     fontSize: 14,
   },
   myVoucherCard: {
-    flexDirection: 'row',
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    flexDirection: "row",
+    backgroundColor: "rgba(255, 255, 255, 0.9)",
     borderRadius: LuxeBorderRadius.lg,
     padding: LuxeSpacing.md,
     marginBottom: LuxeSpacing.sm,
     borderWidth: 1,
-    borderColor: LuxeColors.primaryContainer + '40',
+    borderColor: LuxeColors.primaryContainer + "40",
   },
   myVoucherCardUsed: {
     opacity: 0.6,
@@ -291,28 +309,28 @@ const styles = StyleSheet.create({
   },
   voucherAmount: {
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: "700",
     color: LuxeColors.primaryContainer,
     marginBottom: 4,
   },
   voucherCode: {
     fontSize: 12,
     color: LuxeColors.onSurfaceVariant,
-    fontFamily: 'monospace',
+    fontFamily: "monospace",
   },
   voucherRight: {
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
+    alignItems: "flex-end",
+    justifyContent: "space-between",
   },
   activeBadge: {
-    backgroundColor: LuxeColors.primaryContainer + '20',
+    backgroundColor: LuxeColors.primaryContainer + "20",
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
   },
   activeBadgeText: {
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: "600",
     color: LuxeColors.primaryContainer,
   },
   usedBadge: {
@@ -323,7 +341,7 @@ const styles = StyleSheet.create({
   },
   usedBadgeText: {
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: "600",
     color: LuxeColors.onSurfaceVariant,
   },
   voucherExpiry: {
@@ -332,13 +350,13 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   catalogCard: {
-    flexDirection: 'row',
-    backgroundColor: 'rgba(255, 255, 255, 0.85)',
+    flexDirection: "row",
+    backgroundColor: "rgba(255, 255, 255, 0.85)",
     borderRadius: LuxeBorderRadius.lg,
     padding: LuxeSpacing.md,
     marginBottom: LuxeSpacing.sm,
     borderWidth: 1,
-    borderColor: LuxeColors.outlineVariant + '20',
+    borderColor: LuxeColors.outlineVariant + "20",
   },
   catalogLeft: {
     flex: 1,
@@ -346,13 +364,13 @@ const styles = StyleSheet.create({
   },
   catalogDiscount: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: "700",
     color: LuxeColors.primaryContainer,
     marginBottom: 4,
   },
   catalogTitle: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
     color: LuxeColors.onSurface,
     marginBottom: 4,
   },
@@ -363,27 +381,27 @@ const styles = StyleSheet.create({
     lineHeight: 16,
   },
   catalogMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: LuxeSpacing.sm,
   },
   catalogPoints: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: "600",
     color: LuxeColors.primaryContainer,
   },
   expirySoon: {
     fontSize: 11,
-    fontWeight: '600',
-    color: '#f97316',
-    backgroundColor: '#fff7ed',
+    fontWeight: "600",
+    color: "#f97316",
+    backgroundColor: "#fff7ed",
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 8,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   catalogRight: {
-    justifyContent: 'center',
+    justifyContent: "center",
   },
   redeemBtn: {
     backgroundColor: LuxeColors.primaryContainer,
@@ -391,14 +409,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     minWidth: 60,
-    alignItems: 'center',
+    alignItems: "center",
   },
   redeemBtnDisabled: {
     opacity: 0.7,
   },
   redeemBtnText: {
-    color: '#ffffff',
-    fontWeight: '700',
+    color: "#ffffff",
+    fontWeight: "700",
     fontSize: 13,
   },
   redeemedBtn: {
@@ -407,17 +425,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     minWidth: 60,
-    alignItems: 'center',
+    alignItems: "center",
   },
   redeemedBtnText: {
     color: LuxeColors.onSurfaceVariant,
-    fontWeight: '600',
+    fontWeight: "600",
     fontSize: 13,
   },
   emptyText: {
     fontSize: 14,
     color: LuxeColors.onSurfaceVariant,
-    textAlign: 'center',
+    textAlign: "center",
     paddingVertical: LuxeSpacing.xl,
   },
 });

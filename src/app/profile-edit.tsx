@@ -3,23 +3,27 @@
  * Allows user to update their name, phone, and email
  */
 
-import React, { useState, useEffect } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  TextInput,
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import { LuxeColors, LuxeSpacing, LuxeBorderRadius } from '@/constants/luxeTheme';
-import { useAuth } from '@/contexts/AuthContext';
-import { authService, ApiError } from '@/services/api';
+    LuxeBorderRadius,
+    LuxeColors,
+    LuxeSpacing,
+} from "@/constants/luxeTheme";
+import { useAuth } from "@/contexts/AuthContext";
+import { ApiError, authService } from "@/services/api";
+import { useRouter } from "expo-router";
+import React, { useEffect, useState } from "react";
+import {
+    ActivityIndicator,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 const PHONE_REGEX = /^(0[3|5|7|8|9])+([0-9]{8})$/;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -35,17 +39,17 @@ export default function ProfileEditScreen() {
   const router = useRouter();
   const { user, refreshProfile } = useAuth();
 
-  const [fullName, setFullName] = useState('');
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [email, setEmail] = useState('');
+  const [fullName, setFullName] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [email, setEmail] = useState("");
   const [errors, setErrors] = useState<FormErrors>({});
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (user) {
-      setFullName(user.name || '');
-      setPhoneNumber(user.phoneNumber || '');
-      setEmail(user.email || '');
+      setFullName(user.name || "");
+      setPhoneNumber(user.phoneNumber || "");
+      setEmail(user.email || "");
     }
   }, [user]);
 
@@ -53,21 +57,21 @@ export default function ProfileEditScreen() {
     const newErrors: FormErrors = {};
 
     if (!fullName.trim()) {
-      newErrors.fullName = 'Họ tên không được để trống';
+      newErrors.fullName = "Họ tên không được để trống";
     } else if (fullName.trim().length < 2) {
-      newErrors.fullName = 'Họ tên phải có ít nhất 2 ký tự';
+      newErrors.fullName = "Họ tên phải có ít nhất 2 ký tự";
     }
 
     if (!phoneNumber.trim()) {
-      newErrors.phoneNumber = 'Số điện thoại không được để trống';
+      newErrors.phoneNumber = "Số điện thoại không được để trống";
     } else if (!PHONE_REGEX.test(phoneNumber.trim())) {
-      newErrors.phoneNumber = 'Số điện thoại không hợp lệ (VD: 0912345678)';
+      newErrors.phoneNumber = "Số điện thoại không hợp lệ (VD: 0912345678)";
     }
 
     if (!email.trim()) {
-      newErrors.email = 'Email không được để trống';
+      newErrors.email = "Email không được để trống";
     } else if (!EMAIL_REGEX.test(email.trim())) {
-      newErrors.email = 'Email không đúng định dạng';
+      newErrors.email = "Email không đúng định dạng";
     }
 
     setErrors(newErrors);
@@ -91,13 +95,13 @@ export default function ProfileEditScreen() {
         await refreshProfile?.();
         router.back();
       } else {
-        setErrors({ api: response.message || 'Cập nhật thất bại.' });
+        setErrors({ api: response.message || "Cập nhật thất bại." });
       }
     } catch (err) {
       if (err instanceof ApiError) {
         setErrors({ api: err.message });
       } else {
-        setErrors({ api: 'Đã xảy ra lỗi. Vui lòng thử lại.' });
+        setErrors({ api: "Đã xảy ra lỗi. Vui lòng thử lại." });
       }
     } finally {
       setSubmitting(false);
@@ -105,19 +109,22 @@ export default function ProfileEditScreen() {
   };
 
   const hasChanges =
-    fullName.trim() !== (user?.name || '') ||
-    phoneNumber.trim() !== (user?.phoneNumber || '') ||
-    email.trim() !== (user?.email || '');
+    fullName.trim() !== (user?.name || "") ||
+    phoneNumber.trim() !== (user?.phoneNumber || "") ||
+    email.trim() !== (user?.email || "");
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={["top"]}>
       <KeyboardAvoidingView
         style={styles.keyboardView}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+          <TouchableOpacity
+            style={styles.backBtn}
+            onPress={() => router.back()}
+          >
             <Text style={styles.backIcon}>←</Text>
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Chỉnh sửa hồ sơ</Text>
@@ -140,7 +147,7 @@ export default function ProfileEditScreen() {
           <View style={styles.avatarSection}>
             <View style={styles.avatar}>
               <Text style={styles.avatarText}>
-                {fullName.charAt(0)?.toUpperCase() || 'U'}
+                {fullName.charAt(0)?.toUpperCase() || "U"}
               </Text>
             </View>
             <Text style={styles.avatarHint}>Ảnh đại diện</Text>
@@ -221,7 +228,10 @@ export default function ProfileEditScreen() {
           </TouchableOpacity>
 
           {/* Cancel Button */}
-          <TouchableOpacity style={styles.cancelBtn} onPress={() => router.back()}>
+          <TouchableOpacity
+            style={styles.cancelBtn}
+            onPress={() => router.back()}
+          >
             <Text style={styles.cancelBtnText}>Hủy bỏ</Text>
           </TouchableOpacity>
         </ScrollView>
@@ -239,20 +249,20 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: LuxeSpacing.md,
     paddingVertical: LuxeSpacing.md,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    backgroundColor: "rgba(255, 255, 255, 0.95)",
     borderBottomWidth: 1,
-    borderBottomColor: LuxeColors.outlineVariant + '20',
+    borderBottomColor: LuxeColors.outlineVariant + "20",
   },
   backBtn: {
     width: 40,
     height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   backIcon: {
     fontSize: 24,
@@ -260,7 +270,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: "600",
     color: LuxeColors.onSurface,
   },
   placeholder: {
@@ -274,20 +284,20 @@ const styles = StyleSheet.create({
     paddingBottom: 100,
   },
   errorBanner: {
-    backgroundColor: '#FEE2E2',
+    backgroundColor: "#FEE2E2",
     borderRadius: LuxeBorderRadius.lg,
     padding: LuxeSpacing.md,
     marginBottom: LuxeSpacing.lg,
     borderWidth: 1,
-    borderColor: '#FECACA',
+    borderColor: "#FECACA",
   },
   errorBannerText: {
     fontSize: 13,
-    color: '#DC2626',
-    textAlign: 'center',
+    color: "#DC2626",
+    textAlign: "center",
   },
   avatarSection: {
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: LuxeSpacing.xl,
   },
   avatar: {
@@ -295,8 +305,8 @@ const styles = StyleSheet.create({
     height: 100,
     borderRadius: 50,
     backgroundColor: LuxeColors.primaryContainer,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginBottom: LuxeSpacing.sm,
     shadowColor: LuxeColors.primaryContainer,
     shadowOffset: { width: 0, height: 4 },
@@ -306,15 +316,15 @@ const styles = StyleSheet.create({
   },
   avatarText: {
     fontSize: 40,
-    fontWeight: '700',
-    color: '#ffffff',
+    fontWeight: "700",
+    color: "#ffffff",
   },
   avatarHint: {
     fontSize: 13,
     color: LuxeColors.onSurfaceVariant,
   },
   form: {
-    backgroundColor: 'rgba(255, 255, 255, 0.85)',
+    backgroundColor: "rgba(255, 255, 255, 0.85)",
     borderRadius: LuxeBorderRadius.xl,
     padding: LuxeSpacing.lg,
     marginBottom: LuxeSpacing.lg,
@@ -324,10 +334,10 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: "600",
     color: LuxeColors.onSurfaceVariant,
     marginBottom: LuxeSpacing.sm,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
     letterSpacing: 1,
   },
   input: {
@@ -337,21 +347,21 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: LuxeColors.onSurface,
     borderWidth: 1,
-    borderColor: LuxeColors.outlineVariant + '40',
+    borderColor: LuxeColors.outlineVariant + "40",
   },
   inputError: {
-    borderColor: '#DC2626',
+    borderColor: "#DC2626",
   },
   fieldError: {
     fontSize: 12,
-    color: '#DC2626',
+    color: "#DC2626",
     marginTop: 4,
   },
   saveBtn: {
     backgroundColor: LuxeColors.primaryContainer,
     borderRadius: LuxeBorderRadius.lg,
     padding: LuxeSpacing.md,
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: LuxeSpacing.md,
   },
   saveBtnDisabled: {
@@ -359,19 +369,19 @@ const styles = StyleSheet.create({
   },
   saveBtnText: {
     fontSize: 16,
-    fontWeight: '700',
-    color: '#ffffff',
+    fontWeight: "700",
+    color: "#ffffff",
   },
   cancelBtn: {
     borderRadius: LuxeBorderRadius.lg,
     padding: LuxeSpacing.md,
-    alignItems: 'center',
+    alignItems: "center",
     borderWidth: 1,
-    borderColor: LuxeColors.outlineVariant + '40',
+    borderColor: LuxeColors.outlineVariant + "40",
   },
   cancelBtnText: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
     color: LuxeColors.onSurfaceVariant,
   },
 });

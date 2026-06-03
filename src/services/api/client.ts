@@ -97,6 +97,17 @@ const processQueue = (error: ApiError | null) => {
   refreshQueue = [];
 };
 
+const buildQueryString = (params: Record<string, unknown>): string => {
+  const searchParams = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null) {
+      searchParams.append(key, String(value));
+    }
+  });
+  const qs = searchParams.toString();
+  return qs ? `?${qs}` : '';
+};
+
 async function request<T>(
   method: 'GET' | 'POST' | 'PUT' | 'DELETE',
   endpoint: string,
@@ -115,14 +126,17 @@ async function request<T>(
 
   const config: RequestInit = { method, headers };
 
-  if (body && method !== 'GET') {
+  let finalEndpoint = endpoint;
+  if (body && method === 'GET') {
+    finalEndpoint = endpoint + buildQueryString(body as Record<string, unknown>);
+  } else if (body && method !== 'GET') {
     config.body = JSON.stringify(body);
   }
 
   let response: Response;
 
   try {
-    response = await fetch(`${BASE_URL}${endpoint}`, config);
+    response = await fetch(`${BASE_URL}${finalEndpoint}`, config);
   } catch (networkError) {
     throw new ApiError(0, 'Network error. Please check your connection.', null);
   }
@@ -148,7 +162,7 @@ async function request<T>(
               await setTokens(data.data.token, data.data.refreshToken);
               processQueue(null);
               isRefreshing = false;
-              return request<T>(method, endpoint, body, true);
+              return request<T>(method, finalEndpoint, undefined, true);
             }
           }
         }
@@ -299,7 +313,10 @@ async function requestFormData<T>(
 }
 
 export const apiClient = {
-  get: <T>(endpoint: string) => request<T>('GET', endpoint),
+  get: <T>(endpoint: string, params?: Record<string, unknown>) => {
+    const qs = params ? buildQueryString(params) : '';
+    return request<T>('GET', endpoint + qs);
+  },
   post: <T>(endpoint: string, body?: unknown) => request<T>('POST', endpoint, body),
   postForm: <T>(endpoint: string, formData: FormData) => requestFormData<T>('POST', endpoint, formData),
   put: <T>(endpoint: string, body?: unknown) => request<T>('PUT', endpoint, body),

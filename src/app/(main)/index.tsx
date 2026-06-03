@@ -290,9 +290,9 @@ export default function HomeScreen() {
                 <Text style={styles.statValue}>{vehicles.length}</Text>
               </View>
               <View style={styles.statCard}>
-                <Feather name="dollar-sign" size={20} color={LuxeColors.primaryContainer} />
-                <Text style={styles.statLabel}>Số dư ví</Text>
-                <Text style={styles.statValue}>{walletBalance > 0 ? `${(walletBalance / 1000000).toFixed(1)}M` : '0đ'}</Text>
+                <Feather name="star" size={20} color={LuxeColors.primaryContainer} />
+                <Text style={styles.statLabel}>Điểm</Text>
+                <Text style={styles.statValue}>{user?.loyaltyPoints ? `${(user.loyaltyPoints / 1000).toFixed(1)}K` : '0'}</Text>
               </View>
               <View style={styles.statCard}>
                 <Feather name="star" size={20} color={LuxeColors.primaryContainer} />

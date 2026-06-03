@@ -11,6 +11,7 @@ import {
 } from "@/constants/luxeTheme";
 import { useAuth } from "@/contexts/AuthContext";
 import { mockVehicles } from "@/data/types";
+import { vndToPoints } from "@/utils/format";
 import { useRouter } from "expo-router";
 import React from "react";
 import {
@@ -34,16 +35,15 @@ export default function ProfileScreen() {
     ? MembershipConfig[currentUser.membershipTier]
     : MembershipConfig.standard;
 
-const formatCurrency = (amount: number): string => {
-  return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
-};
+  const walletPoints = vndToPoints(walletBalance);
+  const displayPoints = currentUser?.loyaltyPoints ?? walletPoints;
 
   const menuItems = [
     {
-      icon: "dollar-sign",
-      iconColor: "#1565C0",
+      icon: "star",
+      iconColor: "#006689",
       title: "Ví & Thanh toán",
-      subtitle: `Số dư: ${formatCurrency(walletBalance)}`,
+      subtitle: `Số dư: ${displayPoints.toLocaleString('vi-VN')} điểm`,
       onPress: () => router.push("/wallet" as any),
     },
     {

@@ -3,21 +3,26 @@
  * Summary of service, vehicle(s), date/time, and payment
  */
 
-import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  ActivityIndicator,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Feather } from '@expo/vector-icons';
-import { useRouter, useLocalSearchParams } from 'expo-router';
-import { LuxeColors, LuxeSpacing, LuxeBorderRadius } from '@/constants/luxeTheme';
-import { useAuth } from '@/contexts/AuthContext';
-import { bookingService } from '@/services/api';
+    LuxeBorderRadius,
+    LuxeColors,
+    LuxeSpacing,
+} from "@/constants/luxeTheme";
+import { useAuth } from "@/contexts/AuthContext";
+import { bookingService } from "@/services/api";
+import { Feather } from "@expo/vector-icons";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import React, { useState } from "react";
+import {
+    ActivityIndicator,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { vndToPoints, formatVnd, pointsToVnd } from "@/utils/format";
 
 export default function BookingConfirmationScreen() {
   const router = useRouter();
@@ -25,55 +30,61 @@ export default function BookingConfirmationScreen() {
   const params = useLocalSearchParams();
 
   const serviceIdParam = parseInt(params.serviceId as string) || 0;
-  const serviceNameParam = (params.serviceName as string) || '';
+  const serviceNameParam = (params.serviceName as string) || "";
   const servicePriceParam = parseInt(params.servicePrice as string) || 0;
-  const membershipDiscountParam = parseFloat(params.membershipDiscount as string) || 0;
-  const dateParam = (params.date as string) || '';
+  const membershipDiscountParam =
+    parseFloat(params.membershipDiscount as string) || 0;
+  const dateParam = (params.date as string) || "";
   const slotIdParam = parseInt(params.slotId as string) || 0;
-  const timeRangeParam = (params.timeRange as string) || '';
-  const vehicleIdsParam = (params.vehicleIds as string) || '';
-  const vehicleTypeIdsParam = (params.vehicleTypeIds as string) || '';
-  const vehicleBrandsParam = (params.vehicleBrands as string) || '';
+  const timeRangeParam = (params.timeRange as string) || "";
+  const vehicleIdsParam = (params.vehicleIds as string) || "";
+  const vehicleBrandsParam = (params.vehicleBrands as string) || "";
 
-  const vehiclePlateList = vehicleIdsParam ? vehicleIdsParam.split(',') : [];
-  const vehicleTypeIdList = vehicleTypeIdsParam ? vehicleTypeIdsParam.split(',').map(Number) : [];
+  const vehiclePlateList = vehicleIdsParam ? vehicleIdsParam.split(",") : [];
 
   const vehicleCount = vehiclePlateList.length;
   const subtotal = servicePriceParam * vehicleCount;
-  const membershipDiscountAmount = Math.round(subtotal * membershipDiscountParam);
+  const membershipDiscountAmount = Math.round(
+    subtotal * membershipDiscountParam,
+  );
   const finalPrice = Math.max(0, subtotal - membershipDiscountAmount);
 
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'wallet' | 'bank'>('wallet');
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<
+    "wallet" | "bank"
+  >("wallet");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const formatDateDisplay = (dateStr: string): string => {
-    if (!dateStr) return '';
-    const [year, month, day] = dateStr.split('-').map(Number);
+    if (!dateStr) return "";
+    const [year, month, day] = dateStr.split("-").map(Number);
     const date = new Date(year, month - 1, day);
-    return date.toLocaleDateString('vi-VN', {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'numeric',
-      year: 'numeric',
+    return date.toLocaleDateString("vi-VN", {
+      weekday: "long",
+      day: "numeric",
+      month: "numeric",
+      year: "numeric",
     });
   };
 
   const handleConfirmBooking = async () => {
-    if (selectedPaymentMethod === 'wallet' && walletBalance < finalPrice) {
-      alert('Số dư không đủ. Vui lòng nạp thêm tiền vào ví hoặc chọn phương thức thanh toán khác.');
+    if (selectedPaymentMethod === "wallet" && walletBalance < finalPrice) {
+      alert(
+        "Số dư không đủ. Vui lòng nạp thêm tiền vào ví hoặc chọn phương thức thanh toán khác.",
+      );
       return;
     }
 
     setIsSubmitting(true);
     try {
-      const bookingVehicles = vehiclePlateList.map((plate, i) => ({
+      const bookingVehicles = vehiclePlateList.map((plate) => ({
         licensePlate: plate,
         serviceId: serviceIdParam,
-        vehicleTypeId: vehicleTypeIdList[i] ?? 1,
       }));
 
-      const [year, month, day] = dateParam.split('-').map(Number);
-      const scheduledDate = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0)).toISOString();
+      const [year, month, day] = dateParam.split("-").map(Number);
+      const scheduledDate = new Date(
+        Date.UTC(year, month - 1, day, 0, 0, 0, 0),
+      ).toISOString();
 
       const res = await bookingService.createBooking({
         scheduledDate,
@@ -86,30 +97,32 @@ export default function BookingConfirmationScreen() {
       if (res.statusCode === 200 || res.statusCode === 201) {
         const bookingId = (res.data as any)?.bookingId || 0;
         await refreshWallet?.();
+        // Fire-and-forget: trigger email confirmation (backend returns 202 immediately)
+        bookingService.triggerEmail(bookingId);
         router.replace({
-          pathname: '/booking/success',
+          pathname: "/booking/success",
           params: {
             bookingId: String(bookingId),
             serviceName: serviceNameParam,
             date: dateParam,
-            timeRange: timeRangeParam,
+            timeSlot: timeRangeParam,
             vehicleCount: String(vehicleCount),
             finalAmount: String(finalPrice),
           },
         });
       } else {
-        alert(res.message || 'Tạo đặt lịch thất bại');
+        alert(res.message || "Tạo đặt lịch thất bại");
       }
     } catch (e: unknown) {
       const err = e as { message?: string };
-      alert(err?.message || 'Đã xảy ra lỗi khi tạo đặt lịch');
+      alert(err?.message || "Đã xảy ra lỗi khi tạo đặt lịch");
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={["top"]}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
@@ -132,17 +145,25 @@ export default function BookingConfirmationScreen() {
         </View>
       </View>
 
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+      >
         {/* Service Card */}
         <View style={styles.card}>
           <View style={styles.cardRow}>
             <View style={styles.cardIconContainer}>
-              <Feather name="award" size={22} color={LuxeColors.primaryContainer} />
+              <Feather
+                name="award"
+                size={22}
+                color={LuxeColors.primaryContainer}
+              />
             </View>
             <View style={styles.cardInfo}>
               <Text style={styles.cardTitle}>{serviceNameParam}</Text>
               <Text style={styles.cardSubtitle}>
-                {vehicleCount} xe • {servicePriceParam.toLocaleString('vi-VN')}đ/xe
+                {vehicleCount} xe • {servicePriceParam.toLocaleString("vi-VN")}
+                đ/xe
               </Text>
             </View>
           </View>
@@ -151,15 +172,25 @@ export default function BookingConfirmationScreen() {
         {/* Date & Time Card */}
         <View style={styles.card}>
           <View style={styles.cardRow}>
-            <Feather name="calendar" size={18} color={LuxeColors.primaryContainer} />
+            <Feather
+              name="calendar"
+              size={18}
+              color={LuxeColors.primaryContainer}
+            />
             <View style={styles.cardInfo}>
               <Text style={styles.cardLabel}>Ngày</Text>
-              <Text style={styles.cardValue}>{formatDateDisplay(dateParam)}</Text>
+              <Text style={styles.cardValue}>
+                {formatDateDisplay(dateParam)}
+              </Text>
             </View>
           </View>
           <View style={styles.cardDivider} />
           <View style={styles.cardRow}>
-            <Feather name="clock" size={18} color={LuxeColors.primaryContainer} />
+            <Feather
+              name="clock"
+              size={18}
+              color={LuxeColors.primaryContainer}
+            />
             <View style={styles.cardInfo}>
               <Text style={styles.cardLabel}>Giờ</Text>
               <Text style={styles.cardValue}>{timeRangeParam}</Text>
@@ -167,16 +198,28 @@ export default function BookingConfirmationScreen() {
           </View>
           <View style={styles.cardDivider} />
           <View style={styles.cardRow}>
-            <Feather name="truck" size={18} color={LuxeColors.primaryContainer} />
+            <Feather
+              name="truck"
+              size={18}
+              color={LuxeColors.primaryContainer}
+            />
             <View style={styles.cardInfo}>
               <Text style={styles.cardLabel}>Xe ({vehicleCount})</Text>
-              <Text style={styles.cardValue}>{vehicleBrandsParam || vehiclePlateList.join(', ')}</Text>
-              <Text style={styles.cardSubtitle}>{vehiclePlateList.join(', ')}</Text>
+              <Text style={styles.cardValue}>
+                {vehicleBrandsParam || vehiclePlateList.join(", ")}
+              </Text>
+              <Text style={styles.cardSubtitle}>
+                {vehiclePlateList.join(", ")}
+              </Text>
             </View>
           </View>
           <View style={styles.cardDivider} />
           <View style={styles.cardRow}>
-            <Feather name="map-pin" size={18} color={LuxeColors.primaryContainer} />
+            <Feather
+              name="map-pin"
+              size={18}
+              color={LuxeColors.primaryContainer}
+            />
             <View style={styles.cardInfo}>
               <Text style={styles.cardLabel}>Trạm</Text>
               <Text style={styles.cardValue}>LuxeWash</Text>
@@ -193,26 +236,48 @@ export default function BookingConfirmationScreen() {
           <TouchableOpacity
             style={[
               styles.paymentMethod,
-              selectedPaymentMethod === 'wallet' && styles.paymentMethodSelected,
+              selectedPaymentMethod === "wallet" &&
+                styles.paymentMethodSelected,
               walletBalance < finalPrice && styles.paymentMethodDisabled,
             ]}
             onPress={() => {
-              if (walletBalance >= finalPrice) setSelectedPaymentMethod('wallet');
+              if (walletBalance >= finalPrice)
+                setSelectedPaymentMethod("wallet");
             }}
             disabled={walletBalance < finalPrice}
             activeOpacity={0.8}
           >
             <View style={styles.paymentLeft}>
-              <View style={[styles.paymentRadio, selectedPaymentMethod === 'wallet' && styles.paymentRadioSelected]}>
-                {selectedPaymentMethod === 'wallet' && <View style={styles.paymentRadioInner} />}
+              <View
+                style={[
+                  styles.paymentRadio,
+                  selectedPaymentMethod === "wallet" &&
+                    styles.paymentRadioSelected,
+                ]}
+              >
+                {selectedPaymentMethod === "wallet" && (
+                  <View style={styles.paymentRadioInner} />
+                )}
               </View>
               <View style={styles.paymentIconWrap}>
-                <Feather name="credit-card" size={22} color={LuxeColors.primaryContainer} />
+                <Feather
+                  name="credit-card"
+                  size={22}
+                  color={LuxeColors.primaryContainer}
+                />
               </View>
               <View style={styles.paymentInfo}>
-                <Text style={styles.paymentTitle}>Số dư ví</Text>
-                <Text style={[styles.paymentBalance, walletBalance < finalPrice && styles.paymentBalanceDanger]}>
-                  {walletBalance.toLocaleString('vi-VN')} VND
+                <Text style={styles.paymentTitle}>Thanh toán bằng điểm</Text>
+                <Text
+                  style={[
+                    styles.paymentBalance,
+                    walletBalance < finalPrice && styles.paymentBalanceDanger,
+                  ]}
+                >
+                  {vndToPoints(walletBalance).toLocaleString("vi-VN")} điểm
+                </Text>
+                <Text style={styles.paymentBalanceVnd}>
+                  (≈ {formatVnd(walletBalance)})
                 </Text>
               </View>
             </View>
@@ -222,20 +287,37 @@ export default function BookingConfirmationScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.paymentMethod, selectedPaymentMethod === 'bank' && styles.paymentMethodSelected]}
-            onPress={() => setSelectedPaymentMethod('bank')}
+            style={[
+              styles.paymentMethod,
+              selectedPaymentMethod === "bank" && styles.paymentMethodSelected,
+            ]}
+            onPress={() => setSelectedPaymentMethod("bank")}
             activeOpacity={0.8}
           >
             <View style={styles.paymentLeft}>
-              <View style={[styles.paymentRadio, selectedPaymentMethod === 'bank' && styles.paymentRadioSelected]}>
-                {selectedPaymentMethod === 'bank' && <View style={styles.paymentRadioInner} />}
+              <View
+                style={[
+                  styles.paymentRadio,
+                  selectedPaymentMethod === "bank" &&
+                    styles.paymentRadioSelected,
+                ]}
+              >
+                {selectedPaymentMethod === "bank" && (
+                  <View style={styles.paymentRadioInner} />
+                )}
               </View>
               <View style={styles.paymentIconWrap}>
-                <Feather name="grid" size={22} color={LuxeColors.primaryContainer} />
+                <Feather
+                  name="grid"
+                  size={22}
+                  color={LuxeColors.primaryContainer}
+                />
               </View>
               <View style={styles.paymentInfo}>
                 <Text style={styles.paymentTitle}>Chuyển khoản ngân hàng</Text>
-                <Text style={styles.paymentSubtitle}>Thanh toán QR / chuyển khoản</Text>
+                <Text style={styles.paymentSubtitle}>
+                  Thanh toán QR / chuyển khoản
+                </Text>
               </View>
             </View>
           </TouchableOpacity>
@@ -251,28 +333,35 @@ export default function BookingConfirmationScreen() {
             <Text style={styles.billingLabel}>
               {serviceNameParam} × {vehicleCount} xe
             </Text>
-            <Text style={styles.billingValue}>{subtotal.toLocaleString('vi-VN')}đ</Text>
+            <Text style={styles.billingValue}>
+              {subtotal.toLocaleString("vi-VN")}đ
+            </Text>
           </View>
           {membershipDiscountAmount > 0 && (
             <View style={styles.billingRow}>
               <Text style={[styles.billingLabel, styles.billingDiscountLabel]}>
                 Giảm thành viên ({Math.round(membershipDiscountParam * 100)}%)
               </Text>
-              <Text style={styles.billingDiscount}>-{membershipDiscountAmount.toLocaleString('vi-VN')}đ</Text>
+              <Text style={styles.billingDiscount}>
+                -{membershipDiscountAmount.toLocaleString("vi-VN")}đ
+              </Text>
             </View>
           )}
           <View style={styles.billingDivider} />
           <View style={styles.billingRow}>
             <Text style={styles.billingTotalLabel}>Tổng thanh toán</Text>
-            <Text style={styles.billingTotalValue}>{finalPrice.toLocaleString('vi-VN')}đ</Text>
+            <Text style={styles.billingTotalValue}>
+              {finalPrice.toLocaleString("vi-VN")}đ
+            </Text>
           </View>
         </View>
 
         {/* Terms */}
         <Text style={styles.termsText}>
-          Bằng việc xác nhận đặt lịch, bạn đồng ý với{' '}
-          <Text style={styles.termsLink}>�iều khoản dịch vụ</Text> và{' '}
-          <Text style={styles.termsLink}>chính sách hủy lịch</Text> của LuxeWash.
+          Bằng việc xác nhận đặt lịch, bạn đồng ý với{" "}
+          <Text style={styles.termsLink}>�iều khoản dịch vụ</Text> và{" "}
+          <Text style={styles.termsLink}>chính sách hủy lịch</Text> của
+          LuxeWash.
         </Text>
       </ScrollView>
 
@@ -304,24 +393,24 @@ const styles = StyleSheet.create({
     backgroundColor: LuxeColors.background,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: LuxeSpacing.md,
     paddingVertical: LuxeSpacing.md,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    backgroundColor: "rgba(255, 255, 255, 0.95)",
     borderBottomWidth: 1,
-    borderBottomColor: LuxeColors.outlineVariant + '20',
+    borderBottomColor: LuxeColors.outlineVariant + "20",
   },
   backBtn: {
     width: 40,
     height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   headerTitle: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: "600",
     color: LuxeColors.onSurface,
   },
   placeholder: {
@@ -330,11 +419,11 @@ const styles = StyleSheet.create({
   progressContainer: {
     paddingHorizontal: LuxeSpacing.md,
     paddingVertical: LuxeSpacing.sm,
-    alignItems: 'center',
+    alignItems: "center",
   },
   progressStep: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   progressDot: {
     width: 8,
@@ -362,16 +451,16 @@ const styles = StyleSheet.create({
     paddingBottom: 120,
   },
   card: {
-    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+    backgroundColor: "rgba(255, 255, 255, 0.7)",
     borderRadius: LuxeBorderRadius.xl,
     padding: LuxeSpacing.md,
     marginBottom: LuxeSpacing.md,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.4)',
+    borderColor: "rgba(255, 255, 255, 0.4)",
   },
   cardRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: LuxeSpacing.md,
     paddingVertical: 6,
   },
@@ -379,16 +468,16 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: LuxeBorderRadius.lg,
-    backgroundColor: LuxeColors.primaryContainer + '15',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: LuxeColors.primaryContainer + "15",
+    alignItems: "center",
+    justifyContent: "center",
   },
   cardInfo: {
     flex: 1,
   },
   cardTitle: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: "700",
     color: LuxeColors.onSurface,
   },
   cardLabel: {
@@ -397,19 +486,19 @@ const styles = StyleSheet.create({
   },
   cardValue: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
     color: LuxeColors.onSurface,
     marginTop: 1,
   },
   cardSubtitle: {
     fontSize: 12,
     color: LuxeColors.primaryContainer,
-    fontWeight: '600',
+    fontWeight: "600",
     marginTop: 1,
   },
   cardDivider: {
     height: 1,
-    backgroundColor: LuxeColors.outlineVariant + '20',
+    backgroundColor: LuxeColors.outlineVariant + "20",
     marginVertical: 6,
   },
   sectionHeader: {
@@ -417,9 +506,9 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: "700",
     color: LuxeColors.onSurfaceVariant,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
     letterSpacing: 1,
   },
   paymentMethods: {
@@ -427,25 +516,25 @@ const styles = StyleSheet.create({
     marginBottom: LuxeSpacing.lg,
   },
   paymentMethod: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "rgba(255, 255, 255, 0.7)",
     borderRadius: LuxeBorderRadius.xl,
     padding: LuxeSpacing.md,
     borderWidth: 1.5,
-    borderColor: 'transparent',
+    borderColor: "transparent",
   },
   paymentMethodSelected: {
     borderColor: LuxeColors.primaryContainer,
-    backgroundColor: LuxeColors.primaryContainer + '08',
+    backgroundColor: LuxeColors.primaryContainer + "08",
   },
   paymentMethodDisabled: {
     opacity: 0.6,
   },
   paymentLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: LuxeSpacing.md,
   },
   paymentRadio: {
@@ -454,8 +543,8 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 2,
     borderColor: LuxeColors.outline,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   paymentRadioSelected: {
     borderColor: LuxeColors.primaryContainer,
@@ -473,13 +562,13 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: LuxeBorderRadius.lg,
-    backgroundColor: LuxeColors.primaryContainer + '15',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: LuxeColors.primaryContainer + "15",
+    alignItems: "center",
+    justifyContent: "center",
   },
   paymentTitle: {
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: "600",
     color: LuxeColors.onSurface,
   },
   paymentSubtitle: {
@@ -497,17 +586,17 @@ const styles = StyleSheet.create({
   },
   paymentWarning: {
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: "700",
     color: LuxeColors.error,
-    backgroundColor: LuxeColors.error + '15',
+    backgroundColor: LuxeColors.error + "15",
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 4,
   },
   billingRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingVertical: 6,
   },
   billingLabel: {
@@ -519,54 +608,54 @@ const styles = StyleSheet.create({
   },
   billingValue: {
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: "500",
     color: LuxeColors.onSurface,
   },
   billingDiscount: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
     color: LuxeColors.primaryContainer,
   },
   billingDivider: {
     height: 1,
-    backgroundColor: LuxeColors.outlineVariant + '30',
+    backgroundColor: LuxeColors.outlineVariant + "30",
     marginVertical: LuxeSpacing.sm,
   },
   billingTotalLabel: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: "700",
     color: LuxeColors.onSurface,
   },
   billingTotalValue: {
     fontSize: 22,
-    fontWeight: '700',
+    fontWeight: "700",
     color: LuxeColors.primaryContainer,
   },
   termsText: {
     fontSize: 12,
     color: LuxeColors.onSurfaceVariant,
-    textAlign: 'center',
+    textAlign: "center",
     lineHeight: 18,
     paddingHorizontal: LuxeSpacing.md,
   },
   termsLink: {
     color: LuxeColors.primaryContainer,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   bottomAction: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
     padding: LuxeSpacing.md,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    backgroundColor: "rgba(255, 255, 255, 0.95)",
     borderTopWidth: 1,
-    borderTopColor: LuxeColors.outlineVariant + '20',
+    borderTopColor: LuxeColors.outlineVariant + "20",
   },
   confirmBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: 8,
     backgroundColor: LuxeColors.primaryContainer,
     paddingVertical: 16,
@@ -582,8 +671,8 @@ const styles = StyleSheet.create({
   },
   confirmBtnText: {
     fontSize: 14,
-    fontWeight: '700',
-    color: '#ffffff',
+    fontWeight: "700",
+    color: "#ffffff",
     letterSpacing: 1,
   },
 });

@@ -10,6 +10,12 @@ export interface VehicleType {
   name: string;
 }
 
+export interface CarModel {
+  id: number;
+  brand: string;
+  name: string;
+}
+
 export interface VehicleResponse {
   licensePlate: string;
   vehicleTypeId: number;
@@ -21,6 +27,10 @@ export interface VehicleResponse {
 export const vehicleService = {
   getVehicleTypes: async (): Promise<ApiResponse<VehicleType[]>> => {
     return apiClient.get<VehicleType[]>('/admin/vehicle-types');
+  },
+
+  getCarModels: async (): Promise<ApiResponse<CarModel[]>> => {
+    return apiClient.get<CarModel[]>('/carModels');
   },
 
   getMyVehicles: async (): Promise<ApiResponse<VehicleResponse[]>> => {
@@ -35,7 +45,8 @@ export const vehicleService = {
   addVehicle: async (data: {
     licensePlate: string;
     vehicleTypeId: number;
-    carModel: string;
+    carModel?: string;
+    carModelId?: number;
     registrationPhotoUrl?: string;
     photoFile?: Blob;
     userNote?: string;
@@ -43,9 +54,12 @@ export const vehicleService = {
     const formData = new FormData();
     formData.append('licensePlate', data.licensePlate);
     formData.append('vehicleTypeId', String(data.vehicleTypeId));
-    formData.append('carModel', data.carModel);
+    if (data.carModelId != null) {
+      formData.append('carModelId', String(data.carModelId));
+    } else if (data.carModel) {
+      formData.append('carModel', data.carModel);
+    }
     if (data.photoFile) {
-      // Backend expects field name 'PhotoFile'
       formData.append('PhotoFile', data.photoFile);
     }
     if (data.registrationPhotoUrl) {

@@ -5,24 +5,24 @@
 
 import { useConfirmDialog } from "@/components/ConfirmDialog";
 import {
-  LuxeBorderRadius,
-  LuxeColors,
-  LuxeSpacing,
+    LuxeBorderRadius,
+    LuxeColors,
+    LuxeSpacing,
 } from "@/constants/luxeTheme";
 import { useAuth } from "@/contexts/AuthContext";
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -183,7 +183,11 @@ export default function ChangePasswordScreen() {
         >
           {/* Icon */}
           <View style={styles.iconContainer}>
-            <Feather name="lock" size={40} color={LuxeColors.primaryContainer} />
+            <Feather
+              name="lock"
+              size={40}
+              color={LuxeColors.primaryContainer}
+            />
           </View>
 
           {/* Description */}
