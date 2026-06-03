@@ -1,12 +1,13 @@
 /**
  * Login Screen - LuxeWash
- * Phone number and password authentication
+ * Professional bold redesign with solid white cards and brand accents
  */
 
 import {
   LuxeBorderRadius,
   LuxeColors,
   LuxeSpacing,
+  LuxeShadows,
 } from "@/constants/luxeTheme";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "expo-router";
@@ -53,6 +54,9 @@ export default function LoginScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* Top Brand Accent Bar */}
+      <View style={styles.brandStrip} />
+
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.keyboardView}
@@ -60,41 +64,57 @@ export default function LoginScreen() {
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
-          {/* Logo & Title */}
+          {/* Header */}
           <View style={styles.header}>
-            <View style={styles.logoContainer}>
-              <Feather name="sun" size={40} color={LuxeColors.primaryContainer} />
+            <View style={styles.logoWrap}>
+              <View style={styles.logoCircle}>
+                <Feather name="sun" size={36} color={LuxeColors.primaryContainer} />
+              </View>
             </View>
-            <Text style={styles.title}>LuxeWash</Text>
-            <Text style={styles.subtitle}>Rửa xe cao cấp</Text>
+            <Text style={styles.brandName}>LuxeWash</Text>
+            <Text style={styles.brandTagline}>Premium Car Care</Text>
           </View>
 
-          {/* Login Form */}
-          <View style={styles.form}>
+          {/* Form Card */}
+          <View style={styles.formCard}>
             <Text style={styles.formTitle}>Đăng nhập</Text>
+            <Text style={styles.formSubtitle}>
+              Chào mừng bạn quay trở lại
+            </Text>
 
-            <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Số điện thoại / Email</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Nhập số điện thoại hoặc email"
-                placeholderTextColor={LuxeColors.onSurfaceVariant}
-                value={phoneNumber}
-                onChangeText={setPhoneNumber}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoComplete="email"
-              />
+            {/* Phone / Email Field */}
+            <View style={styles.fieldGroup}>
+              <Text style={styles.fieldLabel}>Số điện thoại / Email</Text>
+              <View style={styles.inputWrap}>
+                <View style={styles.inputIcon}>
+                  <Feather name="user" size={18} color={LuxeColors.onSurfaceVariant} />
+                </View>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Nhập số điện thoại hoặc email"
+                  placeholderTextColor={LuxeColors.outline}
+                  value={phoneNumber}
+                  onChangeText={setPhoneNumber}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoComplete="email"
+                />
+              </View>
             </View>
 
-            <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Mật khẩu</Text>
-              <View style={styles.passwordWrapper}>
+            {/* Password Field */}
+            <View style={styles.fieldGroup}>
+              <Text style={styles.fieldLabel}>Mật khẩu</Text>
+              <View style={styles.inputWrap}>
+                <View style={styles.inputIcon}>
+                  <Feather name="lock" size={18} color={LuxeColors.onSurfaceVariant} />
+                </View>
                 <TextInput
-                  style={styles.passwordInput}
+                  style={styles.input}
                   placeholder="Nhập mật khẩu"
-                  placeholderTextColor={LuxeColors.onSurfaceVariant}
+                  placeholderTextColor={LuxeColors.outline}
                   value={password}
                   onChangeText={setPassword}
                   secureTextEntry={!showPassword}
@@ -107,22 +127,27 @@ export default function LoginScreen() {
                 >
                   <Feather
                     name={showPassword ? "eye-off" : "eye"}
-                    size={20}
+                    size={18}
                     color={LuxeColors.onSurfaceVariant}
                   />
                 </TouchableOpacity>
               </View>
             </View>
 
+            {/* Login Button */}
             <TouchableOpacity
               style={[styles.loginBtn, isLoggingIn && styles.loginBtnDisabled]}
               onPress={handleLogin}
               disabled={isLoggingIn}
+              activeOpacity={0.85}
             >
               {isLoggingIn ? (
                 <ActivityIndicator color="#ffffff" />
               ) : (
-                <Text style={styles.loginBtnText}>Đăng nhập</Text>
+                <>
+                  <Text style={styles.loginBtnText}>Đăng nhập</Text>
+                  <Feather name="arrow-right" size={18} color="#ffffff" />
+                </>
               )}
             </TouchableOpacity>
           </View>
@@ -134,6 +159,9 @@ export default function LoginScreen() {
               <Text style={styles.registerLink}>Đăng ký ngay</Text>
             </TouchableOpacity>
           </View>
+
+          {/* Footer */}
+          <Text style={styles.footer}>LuxeWash v1.0.0</Text>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -145,96 +173,112 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: LuxeColors.background,
   },
+  brandStrip: {
+    height: 5,
+    backgroundColor: LuxeColors.primaryContainer,
+  },
   keyboardView: {
     flex: 1,
   },
   scrollContent: {
     flexGrow: 1,
-    padding: LuxeSpacing.lg,
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    paddingBottom: 32,
   },
   header: {
     alignItems: "center",
-    marginTop: LuxeSpacing.xl * 2,
-    marginBottom: LuxeSpacing.xl,
+    marginTop: 8,
+    marginBottom: 32,
   },
-  logoContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: LuxeColors.primaryContainer + "20",
+  logoWrap: {
+    marginBottom: 12,
+  },
+  logoCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: LuxeColors.primaryContainer + '20',
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: LuxeSpacing.md,
+    borderWidth: 2,
+    borderColor: LuxeColors.primaryContainer + '40',
   },
-  title: {
-    fontSize: 32,
-    fontWeight: "700",
+  brandName: {
+    fontSize: 30,
+    fontWeight: "800",
     color: LuxeColors.primaryContainer,
     letterSpacing: 2,
   },
-  subtitle: {
-    fontSize: 14,
+  brandTagline: {
+    fontSize: 13,
     color: LuxeColors.onSurfaceVariant,
     marginTop: 4,
+    fontWeight: '500',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
   },
-  form: {
-    backgroundColor: "rgba(255, 255, 255, 0.9)",
+  formCard: {
+    backgroundColor: "#ffffff",
     borderRadius: LuxeBorderRadius.xl,
-    padding: LuxeSpacing.lg,
-    marginBottom: LuxeSpacing.lg,
+    padding: 24,
+    ...LuxeShadows.lg,
+    marginBottom: 24,
   },
   formTitle: {
-    fontSize: 20,
-    fontWeight: "600",
+    fontSize: 22,
+    fontWeight: "800",
     color: LuxeColors.onSurface,
-    marginBottom: LuxeSpacing.lg,
+    marginBottom: 4,
   },
-  inputContainer: {
-    marginBottom: LuxeSpacing.md,
-  },
-  inputLabel: {
+  formSubtitle: {
     fontSize: 14,
-    fontWeight: "500",
+    color: LuxeColors.onSurfaceVariant,
+    marginBottom: 24,
+  },
+  fieldGroup: {
+    marginBottom: 16,
+  },
+  fieldLabel: {
+    fontSize: 13,
+    fontWeight: "600",
     color: LuxeColors.onSurfaceVariant,
     marginBottom: 8,
+    letterSpacing: 0.3,
   },
-  input: {
-    backgroundColor: LuxeColors.surfaceContainer,
-    borderRadius: LuxeBorderRadius.md,
-    padding: LuxeSpacing.md,
-    fontSize: 16,
-    color: LuxeColors.onSurface,
-    borderWidth: 1,
-    borderColor: LuxeColors.outlineVariant + "30",
-  },
-  passwordWrapper: {
+  inputWrap: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: LuxeColors.surfaceContainer,
-    borderRadius: LuxeBorderRadius.md,
-    borderWidth: 1,
-    borderColor: LuxeColors.outlineVariant + "30",
+    backgroundColor: LuxeColors.background,
+    borderRadius: LuxeBorderRadius.lg,
+    borderWidth: 1.5,
+    borderColor: LuxeColors.outlineVariant,
+    overflow: "hidden",
   },
-  passwordInput: {
+  inputIcon: {
+    paddingLeft: 14,
+  },
+  input: {
     flex: 1,
-    padding: LuxeSpacing.md,
-    fontSize: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 10,
+    fontSize: 15,
     color: LuxeColors.onSurface,
   },
   eyeBtn: {
-    padding: LuxeSpacing.md,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
   },
   loginBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
     backgroundColor: LuxeColors.primaryContainer,
     borderRadius: LuxeBorderRadius.lg,
-    padding: LuxeSpacing.md,
-    alignItems: "center",
-    marginTop: LuxeSpacing.md,
-    shadowColor: LuxeColors.primaryContainer,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
+    paddingVertical: 16,
+    marginTop: 8,
+    ...LuxeShadows.primary,
   },
   loginBtnDisabled: {
     opacity: 0.7,
@@ -243,13 +287,12 @@ const styles = StyleSheet.create({
     color: "#ffffff",
     fontSize: 16,
     fontWeight: "700",
-    letterSpacing: 1,
   },
   registerSection: {
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
-    marginTop: LuxeSpacing.md,
+    marginBottom: 24,
   },
   registerText: {
     fontSize: 14,
@@ -257,7 +300,13 @@ const styles = StyleSheet.create({
   },
   registerLink: {
     fontSize: 14,
-    fontWeight: "600",
+    fontWeight: "700",
     color: LuxeColors.primaryContainer,
+  },
+  footer: {
+    textAlign: "center",
+    fontSize: 12,
+    color: LuxeColors.outline,
+    marginTop: 8,
   },
 });

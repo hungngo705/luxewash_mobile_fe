@@ -152,7 +152,7 @@ export default function RewardsScreen() {
                 </View>
                 <View style={styles.earnInfo}>
                   <Text style={styles.earnTitle}>Sử dụng dịch vụ</Text>
-                  <Text style={styles.earnDesc}>1 điểm/10.000đ thanh toán</Text>
+                  <Text style={styles.earnDesc}>1 điểm/1.000đ thanh toán</Text>
                 </View>
               </View>
               <View style={styles.earnItem}>

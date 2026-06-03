@@ -1,17 +1,20 @@
 /**
  * Advance Booking Flow - Success Screen
- * Shows successful booking confirmation
+ * Bold professional redesign with clean, confident layout
  */
 
 import {
     LuxeBorderRadius,
     LuxeColors,
     LuxeSpacing,
+    LuxeShadows,
 } from "@/constants/luxeTheme";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Feather } from "@expo/vector-icons";
+import { PrimaryButton, SecondaryButton } from "@/components/ui/Button";
 
 export function BookingSuccessScreen() {
   const router = useRouter();
@@ -42,71 +45,99 @@ export function BookingSuccessScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
-        {/* Success Animation */}
-        <View style={styles.successIcon}>
-          <Text style={styles.successEmoji}>✅</Text>
+        {/* Success Icon */}
+        <View style={styles.successIconWrap}>
+          <View style={styles.successCircle}>
+            <Feather name="check" size={48} color="#ffffff" />
+          </View>
           <View style={styles.successRing} />
         </View>
 
-        {/* Success Message */}
-        <View style={styles.messageContainer}>
+        {/* Message */}
+        <View style={styles.messageSection}>
           <Text style={styles.successTitle}>Đặt lịch thành công!</Text>
           <Text style={styles.successSubtitle}>
-            Cảm ơn bạn đã đặt lịch tại LuxeWash. Chúng tôi đã gửi xác nhận đến
-            số điện thoại của bạn.
+            Cảm ơn bạn đã đặt lịch tại LuxeWash. Chúng tôi đã gửi xác nhận đến số điện thoại của bạn.
           </Text>
         </View>
 
         {/* Booking Details Card */}
         <View style={styles.detailsCard}>
           <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Mã đặt lịch</Text>
-            <Text style={styles.detailValue}>{bookingId}</Text>
+            <View style={styles.detailLeft}>
+              <View style={styles.detailIconWrap}>
+                <Feather name="hash" size={16} color={LuxeColors.primaryContainer} />
+              </View>
+              <Text style={styles.detailLabel}>Mã đặt lịch</Text>
+            </View>
+            <Text style={styles.detailValue}>#{bookingId}</Text>
           </View>
+
+          <View style={styles.detailDivider} />
+
           <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Ngày</Text>
+            <View style={styles.detailLeft}>
+              <View style={styles.detailIconWrap}>
+                <Feather name="calendar" size={16} color={LuxeColors.primaryContainer} />
+              </View>
+              <Text style={styles.detailLabel}>Ngày</Text>
+            </View>
             <Text style={styles.detailValue}>{formattedDate}</Text>
           </View>
+
+          <View style={styles.detailDivider} />
+
           <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Giờ</Text>
+            <View style={styles.detailLeft}>
+              <View style={styles.detailIconWrap}>
+                <Feather name="clock" size={16} color={LuxeColors.primaryContainer} />
+              </View>
+              <Text style={styles.detailLabel}>Giờ</Text>
+            </View>
             <Text style={styles.detailValue}>{timeSlot}</Text>
           </View>
+
+          <View style={styles.detailDivider} />
+
           <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Trạm</Text>
-            <Text style={styles.detailValue}>LuxeWash Quận 1</Text>
+            <View style={styles.detailLeft}>
+              <View style={styles.detailIconWrap}>
+                <Feather name="map-pin" size={16} color={LuxeColors.primaryContainer} />
+              </View>
+              <Text style={styles.detailLabel}>Trạm</Text>
+            </View>
+            <Text style={styles.detailValue}>LuxeWash</Text>
           </View>
-          <View style={styles.divider} />
-          <View style={styles.detailRow}>
+
+          <View style={styles.totalDivider} />
+
+          <View style={styles.totalRow}>
             <Text style={styles.totalLabel}>Tổng thanh toán</Text>
-            <Text style={styles.totalValue}>
-              {parseInt(finalAmount || "0").toLocaleString("vi-VN")}đ
-            </Text>
+            <Text style={styles.totalValue}>{parseInt(finalAmount || "0").toLocaleString("vi-VN")}đ</Text>
           </View>
         </View>
 
         {/* Info Box */}
         <View style={styles.infoBox}>
-          <Text style={styles.infoIcon}>💡</Text>
+          <View style={styles.infoIconWrap}>
+            <Feather name="info" size={18} color={LuxeColors.primaryContainer} />
+          </View>
           <Text style={styles.infoText}>
-            Vui lòng đến đúng giờ hoặc trước 5 phút. Nếu cần hủy lịch, vui lòng
-            thông báo trước ít nhất 2 giờ.
+            Vui lòng đến đúng giờ hoặc trước 5 phút. Nếu cần hủy lịch, vui lòng thông báo trước ít nhất 2 giờ.
           </Text>
         </View>
 
         {/* Actions */}
         <View style={styles.actions}>
-          <TouchableOpacity
-            style={styles.primaryBtn}
+          <PrimaryButton
+            title="Xem lịch hẹn"
             onPress={handleViewDetails}
-          >
-            <Text style={styles.primaryBtnText}>Xem lịch hẹn</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.secondaryBtn}
+            icon={<Feather name="calendar" size={18} color="#ffffff" />}
+          />
+          <SecondaryButton
+            title="Quay về trang chủ"
             onPress={handleBackToHome}
-          >
-            <Text style={styles.secondaryBtnText}>Quay về trang chủ</Text>
-          </TouchableOpacity>
+          />
         </View>
       </View>
     </SafeAreaView>
@@ -114,143 +145,47 @@ export function BookingSuccessScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: LuxeColors.background,
+  container: { flex: 1, backgroundColor: LuxeColors.background },
+  content: { flex: 1, paddingHorizontal: 24, paddingTop: 40, alignItems: "center" },
+  successIconWrap: {
+    width: 120, height: 120, alignItems: "center", justifyContent: "center", marginBottom: 32,
   },
-  content: {
-    flex: 1,
-    paddingHorizontal: LuxeSpacing.lg,
-    paddingTop: LuxeSpacing.xxl * 2,
-    alignItems: "center",
-  },
-  successIcon: {
-    width: 120,
-    height: 120,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: LuxeSpacing.xl,
-  },
-  successEmoji: {
-    fontSize: 64,
-    position: "absolute",
+  successCircle: {
+    width: 96, height: 96, borderRadius: 48,
+    backgroundColor: LuxeColors.primaryContainer,
+    alignItems: "center", justifyContent: "center",
+    ...LuxeShadows.xl,
   },
   successRing: {
     position: "absolute",
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    borderWidth: 4,
-    borderColor: LuxeColors.primaryContainer + "40",
+    width: 120, height: 120, borderRadius: 60,
+    borderWidth: 3, borderColor: LuxeColors.primaryContainer + '30',
   },
-  messageContainer: {
-    alignItems: "center",
-    marginBottom: LuxeSpacing.xl,
-  },
-  successTitle: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: LuxeColors.onSurface,
-    marginBottom: LuxeSpacing.sm,
-  },
-  successSubtitle: {
-    fontSize: 14,
-    color: LuxeColors.onSurfaceVariant,
-    textAlign: "center",
-    lineHeight: 22,
-    paddingHorizontal: LuxeSpacing.lg,
-  },
+  messageSection: { alignItems: "center", marginBottom: 32 },
+  successTitle: { fontSize: 24, fontWeight: "800", color: LuxeColors.onSurface, marginBottom: 10, textAlign: "center" },
+  successSubtitle: { fontSize: 14, color: LuxeColors.onSurfaceVariant, textAlign: "center", lineHeight: 22, paddingHorizontal: 16 },
   detailsCard: {
     width: "100%",
-    backgroundColor: "rgba(255, 255, 255, 0.85)",
-    borderRadius: LuxeBorderRadius.xl,
-    padding: LuxeSpacing.lg,
-    marginBottom: LuxeSpacing.lg,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 20,
-    elevation: 5,
+    backgroundColor: "#ffffff",
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 16,
+    ...LuxeShadows.md,
   },
-  detailRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingVertical: 10,
-  },
-  detailLabel: {
-    fontSize: 14,
-    color: LuxeColors.onSurfaceVariant,
-  },
-  detailValue: {
-    fontSize: 14,
-    fontWeight: "500",
-    color: LuxeColors.onSurface,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: LuxeColors.outlineVariant + "30",
-    marginVertical: LuxeSpacing.sm,
-  },
-  totalLabel: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: LuxeColors.onSurface,
-  },
-  totalValue: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: LuxeColors.primaryContainer,
-  },
-  infoBox: {
-    flexDirection: "row",
-    backgroundColor: LuxeColors.primaryContainer + "10",
-    borderRadius: LuxeBorderRadius.lg,
-    padding: LuxeSpacing.md,
-    gap: LuxeSpacing.sm,
-    marginBottom: LuxeSpacing.xl,
-  },
-  infoIcon: {
-    fontSize: 16,
-  },
-  infoText: {
-    flex: 1,
-    fontSize: 13,
-    color: LuxeColors.onSurfaceVariant,
-    lineHeight: 20,
-  },
-  actions: {
-    width: "100%",
-    gap: LuxeSpacing.md,
-  },
-  primaryBtn: {
-    width: "100%",
-    backgroundColor: LuxeColors.primaryContainer,
-    paddingVertical: 16,
-    borderRadius: LuxeBorderRadius.lg,
-    alignItems: "center",
-    shadowColor: LuxeColors.primaryContainer,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
-    elevation: 8,
-  },
-  primaryBtnText: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#ffffff",
-  },
-  secondaryBtn: {
-    width: "100%",
-    backgroundColor: "transparent",
-    paddingVertical: 16,
-    borderRadius: LuxeBorderRadius.lg,
-    alignItems: "center",
-  },
-  secondaryBtnText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: LuxeColors.primaryContainer,
-  },
+  detailRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 10 },
+  detailLeft: { flexDirection: "row", alignItems: "center", gap: 10 },
+  detailIconWrap: { width: 32, height: 32, borderRadius: 10, backgroundColor: LuxeColors.primaryContainer + '18', alignItems: "center", justifyContent: "center" },
+  detailLabel: { fontSize: 14, color: LuxeColors.onSurfaceVariant },
+  detailValue: { fontSize: 14, fontWeight: '700', color: LuxeColors.onSurface },
+  detailDivider: { height: 1, backgroundColor: LuxeColors.outlineVariant + '25' },
+  totalDivider: { height: 2, backgroundColor: LuxeColors.primaryContainer + '30', marginVertical: 8, borderRadius: 1 },
+  totalRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 6 },
+  totalLabel: { fontSize: 16, fontWeight: "800", color: LuxeColors.onSurface },
+  totalValue: { fontSize: 22, fontWeight: "800", color: LuxeColors.primaryContainer },
+  infoBox: { flexDirection: "row", backgroundColor: LuxeColors.primaryContainer + '10', borderRadius: 16, padding: 16, gap: 12, marginBottom: 32, ...LuxeShadows.sm },
+  infoIconWrap: { width: 36, height: 36, borderRadius: 12, backgroundColor: '#ffffff', alignItems: "center", justifyContent: "center", flexShrink: 0 },
+  infoText: { flex: 1, fontSize: 13, color: LuxeColors.onSurfaceVariant, lineHeight: 20 },
+  actions: { width: "100%", gap: 12 },
 });
 
 export default BookingSuccessScreen;

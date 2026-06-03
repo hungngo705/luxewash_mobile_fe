@@ -1,28 +1,22 @@
 /**
  * Wallet Home Screen
- * Shows wallet balance as points and transaction history
+ * Bold professional redesign with gradient balance card and clean solid cards
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  ActivityIndicator,
-  RefreshControl,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
-import { LuxeColors, LuxeSpacing, LuxeBorderRadius } from '@/constants/luxeTheme';
+import { LuxeColors, LuxeSpacing, LuxeBorderRadius, LuxeShadows } from '@/constants/luxeTheme';
 import { useAuth } from '@/contexts/AuthContext';
 import { walletService, type WalletBalance, type Transaction } from '@/services/api';
-import { vndToPoints, formatVnd, pointsToVnd } from '@/utils/format';
+import { vndToPoints, VND_PER_POINT } from '@/utils/format';
+import { Header } from '@/components/ui/Header';
 
 const POINTS_LABEL = 'điểm';
-const VND_PER_POINT = 10000;
 
 const transactionTypeLabel: Record<string, string> = {
   TopUp: 'Nạp điểm',
@@ -38,8 +32,8 @@ const transactionTypeColor: Record<string, string> = {
   Refund: '#10b981',
   Booking: '#ef4444',
   Upsell: '#ef4444',
-  PointReward: '#f59e0b',
-  PointRedeem: '#8b5cf6',
+  PointReward: '#F59E0B',
+  PointRedeem: '#8B5CF6',
 };
 
 export default function WalletScreen() {
@@ -83,32 +77,23 @@ export default function WalletScreen() {
     return d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
   };
 
-  // Primary balance in points
   const primaryBalance = wallet?.balance ?? walletBalance ?? 0;
-  const primaryPoints = vndToPoints(primaryBalance);
-  const mainPoints = wallet?.totalPoints ?? primaryPoints;
-  const promoPoints = wallet?.promotionPoints ?? 0;
+  const mainPoints = wallet?.totalPoints || Math.floor(primaryBalance / VND_PER_POINT);
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <View style={styles.container}>
+        <Header title="Ví của tôi" onBack={() => router.back()} />
         <View style={styles.loading}>
           <ActivityIndicator size="large" color={LuxeColors.primaryContainer} />
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-          <Feather name="chevron-left" size={24} color={LuxeColors.onSurface} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Ví của tôi</Text>
-        <View style={styles.placeholder} />
-      </View>
+    <View style={styles.container}>
+      <Header title="Ví của tôi" onBack={() => router.back()} />
 
       <ScrollView
         style={styles.scrollView}
@@ -116,73 +101,44 @@ export default function WalletScreen() {
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={LuxeColors.primaryContainer} />
         }
+        showsVerticalScrollIndicator={false}
       >
-        {/* Points Balance Card */}
+        {/* Balance Card - Bold Gradient */}
         <View style={styles.balanceCard}>
-          <View style={styles.balanceCardTop}>
-            <View style={styles.gemIconWrap}>
-              <Feather name="star" size={28} color="#fff" />
+          <View style={styles.balanceTopRow}>
+            <View>
+              <Text style={styles.balanceLabel}>Số dư điểm</Text>
+              <Text style={styles.balancePoints}>{mainPoints.toLocaleString('vi-VN')}</Text>
+              <Text style={styles.balanceUnit}>{POINTS_LABEL}</Text>
             </View>
-            <Text style={styles.balanceLabel}>Số dư điểm</Text>
           </View>
-          <Text style={styles.balancePoints}>{mainPoints.toLocaleString('vi-VN')}</Text>
-          <Text style={styles.balanceUnit}>{POINTS_LABEL}</Text>
-          <Text style={styles.balanceSubtitle}>≈ {formatVnd(pointsToVnd(mainPoints))}</Text>
-          <TouchableOpacity
-            style={styles.topUpBtn}
-            onPress={() => router.push('/wallet/top-up')}
-          >
-            <Feather name="plus-circle" size={18} color={LuxeColors.primaryContainer} />
-            <Text style={styles.topUpBtnText}>Nạp điểm</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Points Breakdown */}
-        <View style={styles.pointsRow}>
-          <View style={[styles.pointCard, { flex: 1 }]}>
-            <View style={[styles.pointIconWrap, { backgroundColor: '#00668915' }]}>
-              <Feather name="star" size={18} color={LuxeColors.primary} />
-            </View>
-            <Text style={styles.pointLabel}>Điểm chính</Text>
-            <Text style={styles.pointValue}>{mainPoints.toLocaleString('vi-VN')}</Text>
-            <Text style={styles.pointSubtext}>1 điểm = {VND_PER_POINT.toLocaleString('vi-VN')}đ</Text>
-          </View>
-          <View style={{ width: LuxeSpacing.md }} />
-          <View style={[styles.pointCard, { flex: 1 }]}>
-            <View style={[styles.pointIconWrap, { backgroundColor: '#f59e0b15' }]}>
-              <Feather name="zap" size={18} color="#f59e0b" />
-            </View>
-            <Text style={styles.pointLabel}>Điểm khuyến mãi</Text>
-            <Text style={[styles.pointValue, { color: '#f59e0b' }]}>{promoPoints.toLocaleString('vi-VN')}</Text>
-            <Text style={styles.pointSubtext}>Thưởng khi hoàn thành</Text>
+          <View style={styles.balanceDivider} />
+          <View style={styles.balanceBottomRow}>
+            <Text style={styles.balanceSubtitle}>1 điểm = {VND_PER_POINT.toLocaleString('vi-VN')}đ</Text>
+            <TouchableOpacity
+              style={styles.topUpBtn}
+              onPress={() => router.push('/wallet/top-up')}
+            >
+              <Feather name="plus" size={14} color={LuxeColors.primary} />
+              <Text style={styles.topUpBtnText}>Nạp điểm</Text>
+            </TouchableOpacity>
           </View>
         </View>
 
         {/* Quick Actions */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Tiện ích</Text>
-          </View>
-          <View style={styles.actionsRow}>
-            <TouchableOpacity
-              style={styles.actionBtn}
-              onPress={() => router.push('/wallet/top-up')}
-            >
-              <View style={[styles.actionIconWrap, { backgroundColor: '#10b98115' }]}>
-                <Feather name="plus-circle" size={22} color="#10b981" />
-              </View>
-              <Text style={styles.actionLabel}>Nạp điểm</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.actionBtn}
-              onPress={() => router.push('/wallet/transactions')}
-            >
-              <View style={[styles.actionIconWrap, { backgroundColor: LuxeColors.primaryContainer + '25' }]}>
-                <Feather name="list" size={22} color={LuxeColors.primaryContainer} />
-              </View>
-              <Text style={styles.actionLabel}>Lịch sử</Text>
-            </TouchableOpacity>
-          </View>
+        <View style={styles.actionsRow}>
+          <TouchableOpacity style={styles.actionBtn} onPress={() => router.push('/wallet/top-up')}>
+            <View style={[styles.actionIconWrap, { backgroundColor: '#10b98118' }]}>
+              <Feather name="plus-circle" size={22} color="#10b981" />
+            </View>
+            <Text style={styles.actionLabel}>Nạp điểm</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.actionBtn} onPress={() => router.push('/wallet/transactions')}>
+            <View style={[styles.actionIconWrap, { backgroundColor: LuxeColors.primaryContainer + '18' }]}>
+              <Feather name="list" size={22} color={LuxeColors.primaryContainer} />
+            </View>
+            <Text style={styles.actionLabel}>Lịch sử</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Recent Transactions */}
@@ -198,275 +154,161 @@ export default function WalletScreen() {
 
           {recentTxns.length === 0 ? (
             <View style={styles.emptyState}>
-              <Feather name="inbox" size={48} color={LuxeColors.outlineVariant} />
-              <Text style={styles.emptyText}>Chưa có giao dịch nào</Text>
+              <View style={styles.emptyIconWrap}>
+                <Feather name="inbox" size={40} color={LuxeColors.outlineVariant} />
+              </View>
+              <Text style={styles.emptyTitle}>Chưa có giao dịch nào</Text>
+              <Text style={styles.emptySubtitle}>Nạp điểm để bắt đầu sử dụng</Text>
             </View>
           ) : (
-            recentTxns.map((txn) => {
-              const isPositive = txn.transactionType === 'TopUp' || txn.transactionType === 'Refund' || txn.transactionType === 'PointReward';
-              const points = vndToPoints(Math.abs(txn.amount));
-              return (
-                <View key={txn.transactionId} style={styles.txnItem}>
-                  <View style={styles.txnLeft}>
-                    <View style={[styles.txnDot, { backgroundColor: transactionTypeColor[txn.transactionType] ?? '#6f787f' }]} />
-                    <View>
-                      <Text style={styles.txnLabel}>{transactionTypeLabel[txn.transactionType] ?? txn.transactionType}</Text>
-                      <Text style={styles.txnDate}>{formatDate(txn.createdAt)}</Text>
+            <View style={styles.txnList}>
+              {recentTxns.map((txn) => {
+                const isPositive = txn.transactionType === 'TopUp' || txn.transactionType === 'Refund' || txn.transactionType === 'PointReward';
+                const points = vndToPoints(Math.abs(txn.amount));
+                const color = transactionTypeColor[txn.transactionType] ?? '#6f787f';
+                return (
+                  <View key={txn.transactionId} style={styles.txnItem}>
+                    <View style={styles.txnLeft}>
+                      <View style={[styles.txnDot, { backgroundColor: color }]} />
+                      <View>
+                        <Text style={styles.txnLabel}>
+                          {transactionTypeLabel[txn.transactionType] ?? txn.transactionType}
+                        </Text>
+                        <Text style={styles.txnDate}>{formatDate(txn.createdAt)}</Text>
+                      </View>
+                    </View>
+                    <View style={styles.txnRight}>
+                      <Text style={[styles.txnPoints, { color }]}>
+                        {`${isPositive ? '+' : '-'}${points}`}
+                      </Text>
+                      <Text style={styles.txnUnit}>{POINTS_LABEL}</Text>
                     </View>
                   </View>
-                  <View style={styles.txnRight}>
-                    <Text style={[styles.txnPoints, { color: isPositive ? '#10b981' : '#ef4444' }]}>
-                      {`${isPositive ? '+' : '-'}${points} điểm`}
-                    </Text>
-                    <Text style={styles.txnVnd}>
-                      ({isPositive ? '+' : '-'}{formatVnd(Math.abs(txn.amount))})
-                    </Text>
-                  </View>
-                </View>
-              );
-            })
+                );
+              })}
+            </View>
           )}
         </View>
+
+        <View style={{ height: 80 }} />
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: LuxeColors.background,
-  },
-  loading: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: LuxeSpacing.lg,
-    gap: LuxeSpacing.lg,
-    paddingBottom: 100,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: LuxeSpacing.lg,
-    paddingVertical: LuxeSpacing.md,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderBottomWidth: 1,
-    borderBottomColor: LuxeColors.outlineVariant + '30',
-  },
-  backBtn: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: LuxeColors.onSurface,
-  },
-  placeholder: {
-    width: 40,
-  },
+  container: { flex: 1, backgroundColor: LuxeColors.background },
+  loading: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  scrollView: { flex: 1 },
+  scrollContent: { padding: 20, gap: 16 },
   balanceCard: {
     backgroundColor: LuxeColors.primary,
-    borderRadius: LuxeBorderRadius.xl,
-    padding: LuxeSpacing.xl,
-    alignItems: 'center',
+    borderRadius: 24,
+    padding: 24,
+    ...LuxeShadows.lg,
   },
-  balanceCardTop: {
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  gemIconWrap: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
-  },
-  balanceLabel: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.8)',
-    fontWeight: '500',
-  },
-  balancePoints: {
-    fontSize: 48,
-    fontWeight: '700',
-    color: '#fff',
-    marginTop: 4,
-    letterSpacing: -1,
-  },
-  balanceUnit: {
-    fontSize: 16,
-    color: 'rgba(255,255,255,0.8)',
-    fontWeight: '600',
-    marginTop: -4,
-  },
-  balanceSubtitle: {
-    fontSize: 13,
-    color: 'rgba(255,255,255,0.6)',
-    marginTop: 4,
+  balanceTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
     marginBottom: 16,
   },
-  topUpBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: '#ffffff',
-    borderRadius: LuxeBorderRadius.full,
-    paddingHorizontal: LuxeSpacing.xl,
-    paddingVertical: LuxeSpacing.sm,
+  balanceLabel: { fontSize: 14, color: 'rgba(255,255,255,0.75)', fontWeight: '500', marginBottom: 4 },
+  balancePoints: {
+    fontSize: 48, fontWeight: '800', color: '#fff',
+    letterSpacing: -1, lineHeight: 54,
   },
-  topUpBtnText: {
-    color: LuxeColors.primary,
-    fontWeight: '700',
-    fontSize: 15,
+  balanceUnit: { fontSize: 16, color: 'rgba(255,255,255,0.75)', fontWeight: '600', marginTop: -4 },
+  balanceIconWrap: {
+    width: 64, height: 64, borderRadius: 32,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center', justifyContent: 'center',
   },
-  pointsRow: {
-    flexDirection: 'row',
-  },
-  pointCard: {
-    backgroundColor: '#fff',
-    borderRadius: LuxeBorderRadius.lg,
-    padding: LuxeSpacing.md,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: LuxeColors.outlineVariant,
-  },
-  pointIconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
-  },
-  pointLabel: {
-    fontSize: 12,
-    color: LuxeColors.onSurfaceVariant,
-    marginBottom: 4,
-    textAlign: 'center',
-  },
-  pointValue: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: LuxeColors.primary,
-  },
-  pointSubtext: {
-    fontSize: 11,
-    color: LuxeColors.outline,
-    marginTop: 2,
-    textAlign: 'center',
-  },
-  section: {
-    gap: LuxeSpacing.md,
-  },
-  sectionHeader: {
+  balanceDivider: { height: 1, backgroundColor: 'rgba(255,255,255,0.2)', marginBottom: 16 },
+  balanceBottomRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: LuxeColors.onSurface,
+  balanceSubtitle: { fontSize: 13, color: 'rgba(255,255,255,0.65)' },
+  topUpBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: '#ffffff',
+    borderRadius: LuxeBorderRadius.full,
+    paddingHorizontal: 16, paddingVertical: 10,
   },
-  seeAll: {
-    fontSize: 13,
-    color: LuxeColors.primaryContainer,
-    fontWeight: '600',
+  topUpBtnText: { fontSize: 14, fontWeight: '700', color: LuxeColors.primary },
+  pointsRow: { flexDirection: 'row' },
+  pointCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 16,
+    alignItems: 'center',
+    ...LuxeShadows.sm,
   },
-  actionsRow: {
-    flexDirection: 'row',
-    gap: LuxeSpacing.md,
+  pointIconWrap: {
+    width: 44, height: 44, borderRadius: 22,
+    alignItems: 'center', justifyContent: 'center',
+    marginBottom: 10,
   },
+  pointLabel: {
+    fontSize: 12, color: LuxeColors.onSurfaceVariant,
+    marginBottom: 4, textAlign: 'center', fontWeight: '500',
+  },
+  pointValue: {
+    fontSize: 22, fontWeight: '800', color: LuxeColors.primary,
+    marginBottom: 2,
+  },
+  pointSubtext: { fontSize: 11, color: LuxeColors.outline, textAlign: 'center' },
+  actionsRow: { flexDirection: 'row', gap: 14 },
   actionBtn: {
     flex: 1,
-    backgroundColor: '#fff',
-    borderRadius: LuxeBorderRadius.lg,
-    padding: LuxeSpacing.md,
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 16,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: LuxeColors.outlineVariant,
+    ...LuxeShadows.sm,
   },
   actionIconWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
+    width: 48, height: 48, borderRadius: 24,
+    alignItems: 'center', justifyContent: 'center',
+    marginBottom: 10,
   },
-  actionLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: LuxeColors.onSurface,
-  },
+  actionLabel: { fontSize: 13, fontWeight: '700', color: LuxeColors.onSurface },
+  section: { gap: 14 },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  sectionTitle: { fontSize: 17, fontWeight: '700', color: LuxeColors.onSurface },
+  seeAll: { fontSize: 13, color: LuxeColors.primaryContainer, fontWeight: '600' },
   emptyState: {
     alignItems: 'center',
-    padding: LuxeSpacing.xl,
-    backgroundColor: '#fff',
-    borderRadius: LuxeBorderRadius.lg,
-    borderWidth: 1,
-    borderColor: LuxeColors.outlineVariant,
+    padding: 32,
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    ...LuxeShadows.sm,
   },
-  emptyText: {
-    fontSize: 14,
-    color: LuxeColors.onSurfaceVariant,
-    marginTop: 12,
+  emptyIconWrap: {
+    width: 72, height: 72, borderRadius: 36,
+    backgroundColor: LuxeColors.surfaceContainer,
+    alignItems: 'center', justifyContent: 'center',
+    marginBottom: 12,
   },
+  emptyTitle: { fontSize: 16, fontWeight: '700', color: LuxeColors.onSurface, marginBottom: 4 },
+  emptySubtitle: { fontSize: 13, color: LuxeColors.onSurfaceVariant },
+  txnList: { gap: 10 },
   txnItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: LuxeBorderRadius.md,
-    padding: LuxeSpacing.md,
-    borderWidth: 1,
-    borderColor: LuxeColors.outlineVariant,
-    marginBottom: 8,
+    backgroundColor: '#ffffff',
+    borderRadius: 14,
+    padding: 16,
+    ...LuxeShadows.sm,
   },
-  txnLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    flex: 1,
-  },
-  txnDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    flexShrink: 0,
-  },
-  txnLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: LuxeColors.onSurface,
-  },
-  txnDate: {
-    fontSize: 12,
-    color: LuxeColors.onSurfaceVariant,
-    marginTop: 2,
-  },
-  txnRight: {
-    alignItems: 'flex-end',
-  },
-  txnPoints: {
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  txnVnd: {
-    fontSize: 11,
-    color: LuxeColors.outline,
-    marginTop: 2,
-  },
+  txnLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
+  txnDot: { width: 10, height: 10, borderRadius: 5, flexShrink: 0 },
+  txnLabel: { fontSize: 14, fontWeight: '700', color: LuxeColors.onSurface },
+  txnDate: { fontSize: 12, color: LuxeColors.onSurfaceVariant, marginTop: 2 },
+  txnRight: { alignItems: 'flex-end' },
+  txnPoints: { fontSize: 16, fontWeight: '800' },
+  txnUnit: { fontSize: 11, color: LuxeColors.onSurfaceVariant, marginTop: 2 },
 });

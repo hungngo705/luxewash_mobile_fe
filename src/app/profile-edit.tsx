@@ -1,12 +1,13 @@
 /**
  * Profile Edit Screen
- * Allows user to update their name, phone, and email
+ * Bold professional redesign with solid white form card
  */
 
 import {
     LuxeBorderRadius,
     LuxeColors,
     LuxeSpacing,
+    LuxeShadows,
 } from "@/constants/luxeTheme";
 import { useAuth } from "@/contexts/AuthContext";
 import { ApiError, authService } from "@/services/api";
@@ -24,6 +25,8 @@ import {
     View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Feather } from "@expo/vector-icons";
+import { Header } from "@/components/ui/Header";
 
 const PHONE_REGEX = /^(0[3|5|7|8|9])+([0-9]{8})$/;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -99,7 +102,7 @@ export default function ProfileEditScreen() {
       }
     } catch (err) {
       if (err instanceof ApiError) {
-        setErrors({ api: err.message });
+        setErrors({ api: (err as ApiError).message });
       } else {
         setErrors({ api: "Đã xảy ra lỗi. Vui lòng thử lại." });
       }
@@ -115,30 +118,21 @@ export default function ProfileEditScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
+      <Header title="Chỉnh sửa hồ sơ" onBack={() => router.back()} />
+
       <KeyboardAvoidingView
         style={styles.keyboardView}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.backBtn}
-            onPress={() => router.back()}
-          >
-            <Text style={styles.backIcon}>←</Text>
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Chỉnh sửa hồ sơ</Text>
-          <View style={styles.placeholder} />
-        </View>
-
         <ScrollView
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
-          {/* API Error Banner */}
           {errors.api && (
             <View style={styles.errorBanner}>
+              <Feather name="alert-circle" size={16} color="#dc2626" />
               <Text style={styles.errorBannerText}>{errors.api}</Text>
             </View>
           )}
@@ -153,87 +147,78 @@ export default function ProfileEditScreen() {
             <Text style={styles.avatarHint}>Ảnh đại diện</Text>
           </View>
 
-          {/* Form */}
-          <View style={styles.form}>
-            {/* Full Name */}
-            <View style={styles.field}>
-              <Text style={styles.label}>Họ và tên</Text>
+          {/* Form Card */}
+          <View style={styles.formCard}>
+            <View style={styles.fieldGroup}>
+              <Text style={styles.fieldLabel}>Họ và tên</Text>
               <TextInput
                 style={[styles.input, errors.fullName && styles.inputError]}
                 value={fullName}
                 onChangeText={setFullName}
                 placeholder="Nhập họ và tên"
-                placeholderTextColor={LuxeColors.onSurfaceVariant}
+                placeholderTextColor={LuxeColors.outline}
                 autoCapitalize="words"
                 autoCorrect={false}
                 maxLength={100}
               />
-              {errors.fullName && (
-                <Text style={styles.fieldError}>{errors.fullName}</Text>
-              )}
+              {errors.fullName && <Text style={styles.errorText}>{errors.fullName}</Text>}
             </View>
 
-            {/* Phone Number */}
-            <View style={styles.field}>
-              <Text style={styles.label}>Số điện thoại</Text>
+            <View style={styles.fieldGroup}>
+              <Text style={styles.fieldLabel}>Số điện thoại</Text>
               <TextInput
                 style={[styles.input, errors.phoneNumber && styles.inputError]}
                 value={phoneNumber}
                 onChangeText={setPhoneNumber}
                 placeholder="VD: 0912345678"
-                placeholderTextColor={LuxeColors.onSurfaceVariant}
+                placeholderTextColor={LuxeColors.outline}
                 keyboardType="phone-pad"
                 autoCorrect={false}
                 maxLength={15}
               />
-              {errors.phoneNumber && (
-                <Text style={styles.fieldError}>{errors.phoneNumber}</Text>
-              )}
+              {errors.phoneNumber && <Text style={styles.errorText}>{errors.phoneNumber}</Text>}
             </View>
 
-            {/* Email */}
-            <View style={styles.field}>
-              <Text style={styles.label}>Email</Text>
+            <View style={styles.fieldGroup}>
+              <Text style={styles.fieldLabel}>Email</Text>
               <TextInput
                 style={[styles.input, errors.email && styles.inputError]}
                 value={email}
                 onChangeText={setEmail}
                 placeholder="VD: user@example.com"
-                placeholderTextColor={LuxeColors.onSurfaceVariant}
+                placeholderTextColor={LuxeColors.outline}
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
                 maxLength={100}
               />
-              {errors.email && (
-                <Text style={styles.fieldError}>{errors.email}</Text>
-              )}
+              {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
             </View>
           </View>
 
-          {/* Save Button */}
-          <TouchableOpacity
-            style={[
-              styles.saveBtn,
-              (!hasChanges || submitting) && styles.saveBtnDisabled,
-            ]}
-            onPress={handleSave}
-            disabled={!hasChanges || submitting}
-          >
-            {submitting ? (
-              <ActivityIndicator color="#ffffff" />
-            ) : (
-              <Text style={styles.saveBtnText}>Lưu thay đổi</Text>
-            )}
-          </TouchableOpacity>
+          {/* Buttons */}
+          <View style={styles.buttons}>
+            <TouchableOpacity
+              style={[styles.saveBtn, (!hasChanges || submitting) && styles.saveBtnDisabled]}
+              onPress={handleSave}
+              disabled={!hasChanges || submitting}
+            >
+              {submitting ? (
+                <ActivityIndicator color="#ffffff" />
+              ) : (
+                <>
+                  <Feather name="check" size={18} color="#ffffff" />
+                  <Text style={styles.saveBtnText}>Lưu thay đổi</Text>
+                </>
+              )}
+            </TouchableOpacity>
 
-          {/* Cancel Button */}
-          <TouchableOpacity
-            style={styles.cancelBtn}
-            onPress={() => router.back()}
-          >
-            <Text style={styles.cancelBtnText}>Hủy bỏ</Text>
-          </TouchableOpacity>
+            <TouchableOpacity style={styles.cancelBtn} onPress={() => router.back()}>
+              <Text style={styles.cancelBtnText}>Hủy bỏ</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={{ height: 40 }} />
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -241,147 +226,79 @@ export default function ProfileEditScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: LuxeColors.background,
-  },
-  keyboardView: {
-    flex: 1,
-  },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: LuxeSpacing.md,
-    paddingVertical: LuxeSpacing.md,
-    backgroundColor: "rgba(255, 255, 255, 0.95)",
-    borderBottomWidth: 1,
-    borderBottomColor: LuxeColors.outlineVariant + "20",
-  },
-  backBtn: {
-    width: 40,
-    height: 40,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  backIcon: {
-    fontSize: 24,
-    color: LuxeColors.onSurface,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: LuxeColors.onSurface,
-  },
-  placeholder: {
-    width: 40,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: LuxeSpacing.lg,
-    paddingBottom: 100,
-  },
+  container: { flex: 1, backgroundColor: LuxeColors.background },
+  keyboardView: { flex: 1 },
+  scrollView: { flex: 1 },
+  scrollContent: { padding: 20, paddingTop: 24 },
   errorBanner: {
-    backgroundColor: "#FEE2E2",
-    borderRadius: LuxeBorderRadius.lg,
-    padding: LuxeSpacing.md,
-    marginBottom: LuxeSpacing.lg,
+    backgroundColor: "#FEF2F2",
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
     borderWidth: 1,
     borderColor: "#FECACA",
   },
-  errorBannerText: {
-    fontSize: 13,
-    color: "#DC2626",
-    textAlign: "center",
-  },
-  avatarSection: {
-    alignItems: "center",
-    marginBottom: LuxeSpacing.xl,
-  },
+  errorBannerText: { fontSize: 13, color: "#DC2626", fontWeight: "500", flex: 1 },
+  avatarSection: { alignItems: "center", marginBottom: 24 },
   avatar: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+    width: 100, height: 100, borderRadius: 50,
     backgroundColor: LuxeColors.primaryContainer,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: LuxeSpacing.sm,
-    shadowColor: LuxeColors.primaryContainer,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 6,
+    marginBottom: 10,
+    ...LuxeShadows.lg,
   },
-  avatarText: {
-    fontSize: 40,
-    fontWeight: "700",
-    color: "#ffffff",
+  avatarText: { fontSize: 40, fontWeight: "700", color: "#ffffff" },
+  avatarHint: { fontSize: 13, color: LuxeColors.onSurfaceVariant },
+  formCard: {
+    backgroundColor: "#ffffff",
+    borderRadius: 20,
+    padding: 24,
+    marginBottom: 20,
+    ...LuxeShadows.lg,
   },
-  avatarHint: {
-    fontSize: 13,
+  fieldGroup: { marginBottom: 20 },
+  fieldLabel: {
+    fontSize: 13, fontWeight: "700",
     color: LuxeColors.onSurfaceVariant,
-  },
-  form: {
-    backgroundColor: "rgba(255, 255, 255, 0.85)",
-    borderRadius: LuxeBorderRadius.xl,
-    padding: LuxeSpacing.lg,
-    marginBottom: LuxeSpacing.lg,
-  },
-  field: {
-    marginBottom: LuxeSpacing.lg,
-  },
-  label: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: LuxeColors.onSurfaceVariant,
-    marginBottom: LuxeSpacing.sm,
+    marginBottom: 10,
     textTransform: "uppercase",
-    letterSpacing: 1,
+    letterSpacing: 0.5,
   },
   input: {
     backgroundColor: LuxeColors.background,
-    borderRadius: LuxeBorderRadius.lg,
-    padding: LuxeSpacing.md,
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
     fontSize: 16,
     color: LuxeColors.onSurface,
-    borderWidth: 1,
-    borderColor: LuxeColors.outlineVariant + "40",
+    borderWidth: 1.5,
+    borderColor: LuxeColors.outlineVariant,
   },
-  inputError: {
-    borderColor: "#DC2626",
-  },
-  fieldError: {
-    fontSize: 12,
-    color: "#DC2626",
-    marginTop: 4,
-  },
+  inputError: { borderColor: "#DC2626" },
+  errorText: { fontSize: 12, color: "#DC2626", marginTop: 6, fontWeight: "500" },
+  buttons: { gap: 12 },
   saveBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
     backgroundColor: LuxeColors.primaryContainer,
-    borderRadius: LuxeBorderRadius.lg,
-    padding: LuxeSpacing.md,
-    alignItems: "center",
-    marginBottom: LuxeSpacing.md,
+    borderRadius: 14,
+    paddingVertical: 16,
+    ...LuxeShadows.primary,
   },
-  saveBtnDisabled: {
-    opacity: 0.5,
-  },
-  saveBtnText: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#ffffff",
-  },
+  saveBtnDisabled: { opacity: 0.5 },
+  saveBtnText: { color: "#ffffff", fontSize: 16, fontWeight: "700" },
   cancelBtn: {
-    borderRadius: LuxeBorderRadius.lg,
-    padding: LuxeSpacing.md,
+    borderRadius: 14,
+    paddingVertical: 16,
     alignItems: "center",
-    borderWidth: 1,
-    borderColor: LuxeColors.outlineVariant + "40",
+    borderWidth: 1.5,
+    borderColor: LuxeColors.outlineVariant,
   },
-  cancelBtnText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: LuxeColors.onSurfaceVariant,
-  },
+  cancelBtnText: { fontSize: 16, fontWeight: "600", color: LuxeColors.onSurfaceVariant },
 });
