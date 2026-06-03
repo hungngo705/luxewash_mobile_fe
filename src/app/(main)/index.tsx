@@ -1,6 +1,6 @@
 /**
  * Home Screen - LuxeWash Trang chủ
- * Shows current vehicle, promotions, and quick booking
+ * Bold professional redesign with gradient cards and clean solid styling
  * Redirects to login if not authenticated
  */
 
@@ -11,18 +11,15 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Dimensions,
   Image,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { LuxeColors, LuxeSpacing, LuxeBorderRadius, MembershipConfig } from '@/constants/luxeTheme';
+import { LuxeColors, LuxeSpacing, LuxeBorderRadius, LuxeShadows, MembershipConfig } from '@/constants/luxeTheme';
 import { useAuth } from '@/contexts/AuthContext';
 import { bookingService } from '@/services/api';
 import { mockVouchers, mockServices } from '@/data/types';
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -67,15 +64,6 @@ export default function HomeScreen() {
     return Math.min(...service.prices.map(p => p.price));
   };
 
-  const formatDate = (date: Date) => {
-    const now = new Date();
-    const diff = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
-    if (diff === 0) return 'Hôm nay';
-    if (diff === 1) return 'Hôm qua';
-    if (diff < 7) return `${diff} ngày trước`;
-    return date.toLocaleDateString('vi-VN');
-  };
-
   const handleBooking = () => {
     router.push('/booking/select-vehicles');
   };
@@ -86,57 +74,72 @@ export default function HomeScreen() {
         <ScrollView showsVerticalScrollIndicator={false}>
           {/* Header */}
           <View style={styles.header}>
-            <View>
-              <Text style={styles.greeting}>Xin chào!</Text>
+            <View style={styles.headerLeft}>
+              <Text style={styles.greeting}>Xin chào,</Text>
               <Text style={styles.userName}>{currentUser?.name || 'Khách'}</Text>
             </View>
             <TouchableOpacity
               style={styles.notificationBtn}
               onPress={() => router.push('/notifications' as any)}
             >
-              <Feather name="bell" size={24} color={LuxeColors.primaryContainer} />
+              <Feather name="bell" size={22} color={LuxeColors.primaryContainer} />
               <View style={styles.notificationBadge} />
             </TouchableOpacity>
           </View>
 
-          {/* Membership Card */}
+          {/* Membership Card - Bold Gradient */}
           <View style={styles.membershipCard}>
-            <View style={styles.membershipHeader}>
-              <View>
-                <Text style={styles.membershipLabel}>{membershipInfo.nameVi}</Text>
-                <Text style={styles.membershipName}>{membershipInfo.name}</Text>
+            <View style={styles.membershipTop}>
+              <View style={styles.membershipLeft}>
+                <View style={[styles.memberBadge, { backgroundColor: '#ffffff' }]}>
+                  <Text style={[styles.memberBadgeText, { color: membershipInfo.color }]}>
+                    {membershipInfo.name}
+                  </Text>
+                </View>
+                <Text style={styles.memberName}>{membershipInfo.name}</Text>
               </View>
-              <View style={[styles.membershipBadge, { backgroundColor: membershipInfo.color }]}>
-                <Text style={styles.membershipBadgeText}>
-                  {`${currentUser?.loyaltyPoints?.toLocaleString() || '0'} điểm`}
+              <View style={[styles.pointsBadge, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
+                <Feather name="star" size={14} color="#fff" />
+                <Text style={styles.pointsText}>
+                  {currentUser?.loyaltyPoints?.toLocaleString('vi-VN') || '0'}
                 </Text>
               </View>
             </View>
-            <View style={styles.membershipProgress}>
-              <View style={styles.membershipProgressBar}>
-                <View
-                  style={[
-                    styles.membershipProgressFill,
-                    { width: '60%', backgroundColor: membershipInfo.color },
-                  ]}
-                />
+            <View style={styles.membershipDivider} />
+            <View style={styles.membershipBottom}>
+              <View style={styles.membershipStat}>
+                <Text style={styles.membershipStatValue}>{Math.floor(walletBalance / 1000).toLocaleString('vi-VN')}</Text>
+                <Text style={styles.membershipStatLabel}>điểm</Text>
               </View>
-              <Text style={styles.membershipProgressText}>
-                Số dư: {walletBalance.toLocaleString('vi-VN')}đ
-              </Text>
+              <View style={styles.membershipStatDivider} />
+              <View style={styles.membershipStat}>
+                <Text style={styles.membershipStatValue}>{vehicles.length}</Text>
+                <Text style={styles.membershipStatLabel}>Phương tiện</Text>
+              </View>
+              {membershipInfo.discountRate > 0 && (
+                <>
+                  <View style={styles.membershipStatDivider} />
+                  <View style={styles.membershipStat}>
+                    <Text style={[styles.membershipStatValue, { color: '#FFD700' }]}>
+                      -{Math.round(membershipInfo.discountRate * 100)}%
+                    </Text>
+                    <Text style={styles.membershipStatLabel}>Giảm giá</Text>
+                  </View>
+                </>
+              )}
             </View>
           </View>
 
           {/* Vehicle List */}
           {vehicles.length > 0 ? (
             <View style={styles.section}>
-              <View style={styles.sectionHeaderRow}>
+              <View style={styles.sectionHeader}>
                 <Text style={styles.sectionTitle}>Phương tiện</Text>
                 <TouchableOpacity onPress={() => router.push('/vehicles')}>
-                  <Text style={styles.seeAllText}>Xem tất cả</Text>
+                  <Text style={styles.seeAll}>Xem tất cả</Text>
                 </TouchableOpacity>
               </View>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.vehicleScrollContent}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.vehicleScroll}>
                 {vehicles.map((vehicle, idx) => (
                   <TouchableOpacity
                     key={vehicle.id}
@@ -144,25 +147,25 @@ export default function HomeScreen() {
                     onPress={() => router.push('/vehicles')}
                     activeOpacity={0.85}
                   >
-                    <View style={styles.vehicleCardImage}>
+                    <View style={styles.vehicleImageWrap}>
                       {vehicle.imageUrl ? (
-                        <Image source={{ uri: vehicle.imageUrl }} style={styles.vehicleCardImg} resizeMode="cover" />
+                        <Image source={{ uri: vehicle.imageUrl }} style={styles.vehicleImg} resizeMode="cover" />
                       ) : (
-                        <View style={styles.vehicleCardImgPlaceholder}>
-                          <Feather name="truck" size={24} color={LuxeColors.onSurfaceVariant} />
+                        <View style={styles.vehicleImgPlaceholder}>
+                          <Feather name="truck" size={28} color={LuxeColors.outline} />
                         </View>
                       )}
-                    </View>
-                    <View style={styles.vehicleCardInfo}>
-                      <Text style={styles.vehicleCardModel} numberOfLines={1}>
-                      {vehicle.model || vehicle.brand || 'Phương tiện'}
-                    </Text>
-                      {vehicle.model && vehicle.brand ? (
-                        <Text style={styles.vehicleCardBrand} numberOfLines={1}>{vehicle.brand}</Text>
-                      ) : null}
-                      <View style={styles.vehicleCardPlate}>
-                        <Text style={styles.vehicleCardPlateText}>{vehicle.licensePlate}</Text>
+                      <View style={styles.plateTag}>
+                        <Text style={styles.plateTagText}>{vehicle.licensePlate}</Text>
                       </View>
+                    </View>
+                    <View style={styles.vehicleInfo}>
+                      <Text style={styles.vehicleModel} numberOfLines={1}>
+                        {vehicle.model || vehicle.brand || 'Phương tiện'}
+                      </Text>
+                      {vehicle.brand && vehicle.model && (
+                        <Text style={styles.vehicleBrand} numberOfLines={1}>{vehicle.brand}</Text>
+                      )}
                     </View>
                   </TouchableOpacity>
                 ))}
@@ -170,18 +173,18 @@ export default function HomeScreen() {
             </View>
           ) : (
             <View style={styles.section}>
-              <View style={styles.sectionHeaderRow}>
+              <View style={styles.sectionHeader}>
                 <Text style={styles.sectionTitle}>Phương tiện</Text>
               </View>
               <TouchableOpacity style={styles.emptyVehicleCard} onPress={() => router.push('/vehicles/add-vehicle')}>
-                <View style={styles.emptyVehicleIconWrap}>
-                  <Feather name="plus-circle" size={36} color={LuxeColors.primaryContainer} />
+                <View style={styles.emptyVehicleIcon}>
+                  <Feather name="plus-circle" size={32} color={LuxeColors.primaryContainer} />
                 </View>
                 <View style={styles.emptyVehicleText}>
                   <Text style={styles.emptyVehicleTitle}>Thêm phương tiện</Text>
                   <Text style={styles.emptyVehicleSubtitle}>Đăng ký xe để đặt lịch rửa xe nhanh hơn</Text>
                 </View>
-                <Feather name="chevron-right" size={20} color={LuxeColors.onSurfaceVariant} />
+                <Feather name="chevron-right" size={20} color={LuxeColors.outline} />
               </TouchableOpacity>
             </View>
           )}
@@ -191,65 +194,66 @@ export default function HomeScreen() {
             <Text style={styles.sectionTitle}>Tiện ích</Text>
             <View style={styles.quickActions}>
               <TouchableOpacity style={styles.quickActionItem} onPress={handleBooking}>
-                <View style={[styles.quickActionIcon, { backgroundColor: LuxeColors.primaryContainer + '30' }]}>
+                <View style={[styles.quickActionIcon, { backgroundColor: LuxeColors.primaryContainer + '20' }]}>
                   <Feather name="calendar" size={20} color={LuxeColors.primaryContainer} />
                 </View>
-                <Text style={styles.quickActionText}>Đặt lịch</Text>
+                <Text style={styles.quickActionLabel}>Đặt lịch</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.quickActionItem}>
-                <View style={[styles.quickActionIcon, { backgroundColor: '#E8F5E9' }]}>
+                <View style={[styles.quickActionIcon, { backgroundColor: '#E8F5E920' }]}>
                   <Feather name="map-pin" size={20} color="#2E7D32" />
                 </View>
-                <Text style={styles.quickActionText}>Chi nhánh</Text>
+                <Text style={styles.quickActionLabel}>Chi nhánh</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.quickActionItem}>
-                <View style={[styles.quickActionIcon, { backgroundColor: '#FFF3E0' }]}>
+                <View style={[styles.quickActionIcon, { backgroundColor: '#FFF3E020' }]}>
                   <Feather name="phone" size={20} color="#E65100" />
                 </View>
-                <Text style={styles.quickActionText}>Hỗ trợ</Text>
+                <Text style={styles.quickActionLabel}>Hỗ trợ</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.quickActionItem}>
-                <View style={[styles.quickActionIcon, { backgroundColor: '#F3E5F5' }]}>
+                <View style={[styles.quickActionIcon, { backgroundColor: '#F3E5F520' }]}>
                   <Feather name="book-open" size={20} color="#7B1FA2" />
                 </View>
-                <Text style={styles.quickActionText}>Hướng dẫn</Text>
+                <Text style={styles.quickActionLabel}>Hướng dẫn</Text>
               </TouchableOpacity>
             </View>
           </View>
 
-          {/* Booking Button */}
-          <View style={styles.bookingSection}>
+          {/* Booking CTA */}
+          <View style={styles.section}>
             <TouchableOpacity style={styles.bookingBtn} onPress={handleBooking}>
-              <Feather name="star" size={20} color="#ffffff" />
-              <Text style={styles.bookingText}>Đặt lịch hẹn ngay</Text>
+              <View style={styles.bookingBtnIcon}>
+                <Feather name="star" size={22} color="#ffffff" />
+              </View>
+              <Text style={styles.bookingBtnText}>Đặt lịch hẹn ngay</Text>
+              <Feather name="arrow-right" size={20} color="#ffffff" />
             </TouchableOpacity>
           </View>
 
-          {/* Services Preview */}
+          {/* Services */}
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Dịch vụ</Text>
               <TouchableOpacity>
-                <Text style={styles.seeAllText}>Xem tất cả</Text>
+                <Text style={styles.seeAll}>Xem tất cả</Text>
               </TouchableOpacity>
             </View>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.servicesScroll}>
               {(services.length > 0 ? services : mockServices).map((service: any) => {
                 const price = services.length > 0 ? getLowestPrice(service) : service.price;
                 const cat = services.length > 0 ? 'basic' : service.category;
                 return (
                   <View key={services.length > 0 ? service.serviceId : service.id} style={styles.serviceCard}>
-                    <View style={styles.serviceIconContainer}>
+                    <View style={styles.serviceIcon}>
                       <Feather
                         name={cat === 'basic' ? 'droplet' : cat === 'premium' ? 'star' : cat === 'deep_clean' ? 'sun' : 'award'}
                         size={24}
                         color={LuxeColors.primaryContainer}
                       />
                     </View>
-                    <Text style={styles.serviceName}>
-                      {services.length > 0 ? service.serviceName : service.nameVi}
-                    </Text>
-                    <Text style={styles.servicePrice}>{price.toLocaleString('vi-VN')}đ</Text>
+                    <Text style={styles.serviceName}>{services.length > 0 ? service.serviceName : service.nameVi}</Text>
+                    <Text style={styles.servicePrice}>từ {price.toLocaleString('vi-VN')}đ</Text>
                   </View>
                 );
               })}
@@ -261,7 +265,7 @@ export default function HomeScreen() {
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Khuyến mãi</Text>
               <TouchableOpacity>
-                <Text style={styles.seeAllText}>Xem tất cả</Text>
+                <Text style={styles.seeAll}>Xem tất cả</Text>
               </TouchableOpacity>
             </View>
             <View style={styles.promoCards}>
@@ -269,12 +273,16 @@ export default function HomeScreen() {
                 <View key={voucher.id} style={styles.promoCard}>
                   <View style={styles.promoBadge}>
                     <Text style={styles.promoBadgeText}>
-                      {voucher.discountType === 'percentage' ? `${voucher.discountAmount}%` : `${voucher.discountAmount.toLocaleString('vi-VN')}đ`}
+                      {voucher.discountType === 'percentage'
+                        ? `${voucher.discountAmount}%`
+                        : `${voucher.discountAmount.toLocaleString('vi-VN')}đ`}
                     </Text>
                   </View>
                   <Text style={styles.promoTitle}>{voucher.title}</Text>
                   <Text style={styles.promoDesc}>{voucher.description}</Text>
-                  <Text style={styles.promoCode}>{voucher.code}</Text>
+                  <View style={styles.promoCodeWrap}>
+                    <Text style={styles.promoCode}>{voucher.code}</Text>
+                  </View>
                 </View>
               ))}
             </View>
@@ -285,24 +293,24 @@ export default function HomeScreen() {
             <Text style={styles.sectionTitle}>Thống kê</Text>
             <View style={styles.statsRow}>
               <View style={styles.statCard}>
-                <Feather name="bar-chart-2" size={20} color={LuxeColors.primaryContainer} />
-                <Text style={styles.statLabel}>Tổng lần rửa</Text>
+                <View style={[styles.statIcon, { backgroundColor: LuxeColors.primaryContainer + '20' }]}>
+                  <Feather name="check-circle" size={18} color={LuxeColors.primaryContainer} />
+                </View>
                 <Text style={styles.statValue}>{vehicles.length}</Text>
+                <Text style={styles.statLabel}>Tổng lần rửa</Text>
               </View>
               <View style={styles.statCard}>
-                <Feather name="dollar-sign" size={20} color={LuxeColors.primaryContainer} />
-                <Text style={styles.statLabel}>Số dư ví</Text>
-                <Text style={styles.statValue}>{walletBalance > 0 ? `${(walletBalance / 1000000).toFixed(1)}M` : '0đ'}</Text>
-              </View>
-              <View style={styles.statCard}>
-                <Feather name="star" size={20} color={LuxeColors.primaryContainer} />
-                <Text style={styles.statLabel}>Điểm</Text>
-                <Text style={styles.statValue}>{currentUser?.loyaltyPoints || 0}</Text>
+                <View style={[styles.statIcon, { backgroundColor: '#F59E0B20' }]}>
+                  <Feather name="star" size={18} color="#F59E0B" />
+                </View>
+                <Text style={styles.statValue}>
+                  {currentUser?.loyaltyPoints ? `${(currentUser.loyaltyPoints / 1000).toFixed(1)}K` : '0'}
+                </Text>
+                <Text style={styles.statLabel}>Điểm tích luỹ</Text>
               </View>
             </View>
           </View>
 
-          {/* Bottom padding for tab bar */}
           <View style={{ height: 100 }} />
         </ScrollView>
       </SafeAreaView>
@@ -311,243 +319,155 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: LuxeColors.background,
-  },
-  safeArea: {
-    flex: 1,
-  },
+  container: { flex: 1, backgroundColor: LuxeColors.background },
+  safeArea: { flex: 1 },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: LuxeSpacing.lg,
-    paddingVertical: LuxeSpacing.md,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: '#ffffff',
+    ...LuxeShadows.sm,
     borderBottomWidth: 1,
-    borderBottomColor: LuxeColors.outlineVariant + '20',
+    borderBottomColor: LuxeColors.outlineVariant + '30',
   },
-  greeting: {
-    fontSize: 14,
-    color: LuxeColors.onSurfaceVariant,
-  },
-  userName: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: LuxeColors.onSurface,
-  },
+  headerLeft: {},
+  greeting: { fontSize: 13, color: LuxeColors.onSurfaceVariant, fontWeight: '500' },
+  userName: { fontSize: 22, fontWeight: '800', color: LuxeColors.onSurface, marginTop: 2 },
   notificationBtn: {
     width: 44,
     height: 44,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: LuxeColors.surfaceContainer,
-    borderRadius: 22,
+    borderRadius: 14,
+    position: 'relative',
   },
   notificationBadge: {
     position: 'absolute',
-    top: 8,
-    right: 8,
+    top: 10,
+    right: 10,
     width: 8,
     height: 8,
     borderRadius: 4,
     backgroundColor: '#FF5252',
+    borderWidth: 1.5,
+    borderColor: '#ffffff',
   },
   membershipCard: {
-    margin: LuxeSpacing.lg,
-    padding: LuxeSpacing.lg,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    borderRadius: LuxeBorderRadius.xl,
-    borderWidth: 1,
-    borderColor: LuxeColors.outlineVariant + '30',
+    margin: 20,
+    backgroundColor: LuxeColors.primary,
+    borderRadius: 20,
+    padding: 20,
+    ...LuxeShadows.lg,
   },
-  membershipHeader: {
+  membershipTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: LuxeSpacing.md,
+    marginBottom: 16,
   },
-  membershipLabel: {
-    fontSize: 12,
-    color: LuxeColors.onSurfaceVariant,
+  membershipLeft: {},
+  memberBadge: {
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    marginBottom: 4,
   },
-  membershipName: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: LuxeColors.onSurface,
-  },
-  membershipBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-  },
-  membershipBadgeText: {
-    fontSize: 12,
+  memberBadgeText: {
+    fontSize: 11,
     fontWeight: '700',
     color: '#ffffff',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
-  membershipProgress: {
-    gap: 8,
-  },
-  membershipProgressBar: {
-    height: 6,
-    backgroundColor: LuxeColors.surfaceContainer,
-    borderRadius: 3,
-  },
-  membershipProgressFill: {
-    height: '100%',
-    borderRadius: 3,
-  },
-  membershipProgressText: {
-    fontSize: 12,
-    color: LuxeColors.onSurfaceVariant,
-  },
-  section: {
-    paddingHorizontal: LuxeSpacing.lg,
-    marginBottom: LuxeSpacing.lg,
-  },
-  sectionHeader: {
+  memberName: { fontSize: 18, fontWeight: '700', color: '#ffffff' },
+  pointsBadge: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: LuxeSpacing.md,
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
   },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: LuxeColors.onSurface,
-    marginBottom: LuxeSpacing.sm,
-  },
-  seeAllText: {
-    fontSize: 13,
-    color: LuxeColors.primaryContainer,
-    fontWeight: '500',
-  },
-  sectionHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: LuxeSpacing.sm,
-  },
-  vehicleScrollContent: {
-    paddingRight: LuxeSpacing.lg,
-  },
+  pointsText: { fontSize: 14, fontWeight: '700', color: '#ffffff' },
+  membershipDivider: { height: 1, backgroundColor: 'rgba(255,255,255,0.2)', marginBottom: 16 },
+  membershipBottom: { flexDirection: 'row', alignItems: 'center' },
+  membershipStat: { flex: 1, alignItems: 'center' },
+  membershipStatDivider: { width: 1, height: 32, backgroundColor: 'rgba(255,255,255,0.2)' },
+  membershipStatValue: { fontSize: 18, fontWeight: '800', color: '#ffffff' },
+  membershipStatLabel: { fontSize: 11, color: 'rgba(255,255,255,0.7)', marginTop: 2 },
+  section: { paddingHorizontal: 20, marginBottom: 20 },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  sectionTitle: { fontSize: 17, fontWeight: '700', color: LuxeColors.onSurface },
+  seeAll: { fontSize: 13, color: LuxeColors.primaryContainer, fontWeight: '600' },
+  vehicleScroll: { paddingRight: 20 },
   vehicleCard: {
-    width: 150,
-    marginRight: LuxeSpacing.md,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderRadius: LuxeBorderRadius.xl,
+    width: 140,
+    marginRight: 12,
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: LuxeColors.outlineVariant + '30',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
-    elevation: 3,
+    ...LuxeShadows.sm,
   },
-  vehicleCardFirst: {
-    marginLeft: LuxeSpacing.lg,
+  vehicleCardFirst: { marginLeft: 0 },
+  vehicleImageWrap: { position: 'relative', height: 90 },
+  vehicleImg: { width: '100%', height: '100%' },
+  vehicleImgPlaceholder: {
+    width: '100%', height: '100%',
+    backgroundColor: LuxeColors.surfaceContainer,
+    alignItems: 'center', justifyContent: 'center',
   },
-  vehicleCardImage: {
-    width: '100%',
-    height: 100,
-    backgroundColor: LuxeColors.surfaceContainerHighest,
-  },
-  vehicleCardImg: {
-    width: '100%',
-    height: '100%',
-  },
-  vehicleCardImgPlaceholder: {
-    width: '100%',
-    height: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  vehicleCardInfo: {
-    padding: 10,
-  },
-  vehicleCardModel: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: LuxeColors.onSurface,
-    marginBottom: 2,
-  },
-  vehicleCardBrand: {
-    fontSize: 11,
-    color: LuxeColors.onSurfaceVariant,
-    marginBottom: 6,
-  },
-  vehicleCardPlate: {
-    backgroundColor: LuxeColors.primaryContainer + '15',
-    borderRadius: 6,
-    paddingHorizontal: 6,
+  plateTag: {
+    position: 'absolute',
+    bottom: 6,
+    left: 6,
+    backgroundColor: LuxeColors.primaryContainer,
+    paddingHorizontal: 8,
     paddingVertical: 3,
-    alignSelf: 'flex-start',
+    borderRadius: 6,
   },
-  vehicleCardPlateText: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: LuxeColors.primaryContainer,
-  },
+  plateTagText: { fontSize: 10, fontWeight: '800', color: '#ffffff', letterSpacing: 0.5 },
+  vehicleInfo: { padding: 10 },
+  vehicleModel: { fontSize: 13, fontWeight: '700', color: LuxeColors.onSurface, marginBottom: 2 },
+  vehicleBrand: { fontSize: 11, color: LuxeColors.onSurfaceVariant },
   emptyVehicleCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.7)',
-    borderRadius: LuxeBorderRadius.xl,
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
     padding: 16,
     borderWidth: 2,
     borderStyle: 'dashed',
-    borderColor: LuxeColors.primaryContainer + '50',
+    borderColor: LuxeColors.primaryContainer + '40',
+    ...LuxeShadows.sm,
   },
-  emptyVehicleIconWrap: {
+  emptyVehicleIcon: {
     width: 52,
     height: 52,
-    borderRadius: 26,
+    borderRadius: 14,
     backgroundColor: LuxeColors.primaryContainer + '15',
     alignItems: 'center',
     justifyContent: 'center',
+    marginRight: 12,
     flexShrink: 0,
   },
-  emptyVehicleText: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  emptyVehicleTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: LuxeColors.onSurface,
-    marginBottom: 2,
-  },
-  emptyVehicleSubtitle: {
-    fontSize: 12,
-    color: LuxeColors.onSurfaceVariant,
-  },
-  quickActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  quickActionItem: {
-    alignItems: 'center',
-    flex: 1,
-  },
+  emptyVehicleText: { flex: 1 },
+  emptyVehicleTitle: { fontSize: 15, fontWeight: '700', color: LuxeColors.onSurface, marginBottom: 2 },
+  emptyVehicleSubtitle: { fontSize: 12, color: LuxeColors.onSurfaceVariant, lineHeight: 16 },
+  quickActions: { flexDirection: 'row', backgroundColor: '#ffffff', borderRadius: 16, padding: 12, ...LuxeShadows.sm },
+  quickActionItem: { flex: 1, alignItems: 'center', gap: 8 },
   quickActionIcon: {
     width: 48,
     height: 48,
-    borderRadius: 16,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 8,
+    marginBottom: 4,
   },
-  quickActionText: {
-    fontSize: 12,
-    color: LuxeColors.onSurfaceVariant,
-  },
-  bookingSection: {
-    paddingHorizontal: LuxeSpacing.lg,
-    marginBottom: LuxeSpacing.lg,
-  },
+  quickActionLabel: { fontSize: 11, color: LuxeColors.onSurfaceVariant, fontWeight: '500', textAlign: 'center' },
   bookingBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -555,121 +475,76 @@ const styles = StyleSheet.create({
     gap: 10,
     backgroundColor: LuxeColors.primaryContainer,
     paddingVertical: 16,
-    borderRadius: LuxeBorderRadius.lg,
-    shadowColor: LuxeColors.primaryContainer,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
-    elevation: 10,
+    borderRadius: 16,
+    ...LuxeShadows.primary,
   },
-  bookingText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#ffffff',
-  },
-  serviceCard: {
-    width: 120,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    borderRadius: LuxeBorderRadius.lg,
-    padding: LuxeSpacing.md,
-    marginRight: LuxeSpacing.md,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.8)',
-  },
-  serviceIconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: LuxeColors.surfaceContainer,
+  bookingBtnIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 8,
   },
-  serviceName: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: LuxeColors.onSurface,
-    textAlign: 'center',
+  bookingBtnText: { fontSize: 16, fontWeight: '700', color: '#ffffff' },
+  servicesScroll: { paddingRight: 20 },
+  serviceCard: {
+    width: 120,
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 16,
+    marginRight: 12,
+    alignItems: 'center',
+    ...LuxeShadows.sm,
   },
-  servicePrice: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: LuxeColors.primaryContainer,
-    marginTop: 4,
+  serviceIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: LuxeColors.primaryContainer + '15',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
   },
-  serviceDuration: {
-    fontSize: 11,
-    color: LuxeColors.onSurfaceVariant,
-    marginTop: 2,
-  },
-  promoCards: {
-    flexDirection: 'row',
-    gap: LuxeSpacing.md,
-  },
+  serviceName: { fontSize: 13, fontWeight: '600', color: LuxeColors.onSurface, textAlign: 'center', marginBottom: 4 },
+  servicePrice: { fontSize: 12, fontWeight: '700', color: LuxeColors.primaryContainer },
+  promoCards: { flexDirection: 'row', gap: 12 },
   promoCard: {
     flex: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    borderRadius: LuxeBorderRadius.lg,
-    padding: LuxeSpacing.md,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.8)',
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 16,
+    ...LuxeShadows.sm,
   },
   promoBadge: {
     backgroundColor: LuxeColors.primaryContainer,
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 4,
+    borderRadius: 6,
     alignSelf: 'flex-start',
     marginBottom: 8,
   },
-  promoBadgeText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#ffffff',
-  },
-  promoTitle: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: LuxeColors.onSurface,
-  },
-  promoDesc: {
-    fontSize: 11,
-    color: LuxeColors.onSurfaceVariant,
-    marginTop: 4,
-  },
-  promoCode: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: LuxeColors.primaryContainer,
-    marginTop: 8,
+  promoBadgeText: { fontSize: 11, fontWeight: '800', color: '#ffffff' },
+  promoTitle: { fontSize: 13, fontWeight: '600', color: LuxeColors.onSurface, marginBottom: 4 },
+  promoDesc: { fontSize: 11, color: LuxeColors.onSurfaceVariant, lineHeight: 16, marginBottom: 8 },
+  promoCodeWrap: {
     backgroundColor: LuxeColors.primaryContainer + '15',
     paddingHorizontal: 8,
-    paddingVertical: 2,
+    paddingVertical: 3,
     borderRadius: 4,
     alignSelf: 'flex-start',
   },
-  statsRow: {
-    flexDirection: 'row',
-    gap: LuxeSpacing.md,
-  },
+  promoCode: { fontSize: 11, fontWeight: '700', color: LuxeColors.primaryContainer },
+  statsRow: { flexDirection: 'row', gap: 12 },
   statCard: {
     flex: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.85)',
-    borderRadius: LuxeBorderRadius.xl,
-    padding: LuxeSpacing.md,
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 16,
     alignItems: 'center',
+    ...LuxeShadows.sm,
   },
-  statLabel: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: LuxeColors.onSurfaceVariant,
-    letterSpacing: 1,
-    marginBottom: 4,
-  },
-  statValue: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: LuxeColors.onSurface,
-  },
+  statIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
+  statValue: { fontSize: 20, fontWeight: '800', color: LuxeColors.onSurface },
+  statLabel: { fontSize: 11, color: LuxeColors.onSurfaceVariant, marginTop: 4, fontWeight: '500' },
 });

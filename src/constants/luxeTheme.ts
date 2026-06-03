@@ -1,6 +1,6 @@
 /**
- * LuxeWash Theme - HydroAuto Light Design System
- * Based on the LuxeWash design specifications
+ * LuxeWash Theme - LuxeWash Bold Design System
+ * Professional, clean design with gradient accents and modern shadows
  */
 
 import { Platform } from 'react-native';
@@ -89,7 +89,7 @@ export const MembershipConfig: Record<MembershipTier, {
 }> = {
   standard: {
     name: 'Standard',
-    nameVi: 'Thành viên',
+    nameVi: 'Standard',
     maxAdvanceDays: 7,
     color: MembershipColors.standard,
     benefits: ['Đặt lịch trước 7 ngày', 'Thanh toán ví'],
@@ -184,3 +184,70 @@ export const Spacing = {
 
 export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
 export const MaxContentWidth = 480;
+
+// Bold Design System - Gradients
+export const LuxeGradients = {
+  primary: ['#006689', '#4aa9d7'] as const,
+  primaryLight: ['#4aa9d7', '#7ad1ff'] as const,
+  dark: ['#003b51', '#006689'] as const,
+  membershipCard: ['#006689', '#4aa9d7'] as const,
+} as const;
+
+// Bold Design System - Shadows (using brand colors)
+export const LuxeShadows = {
+  sm: {
+    shadowColor: '#4aa9d7',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  md: {
+    shadowColor: '#4aa9d7',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 4,
+  },
+  lg: {
+    shadowColor: '#4aa9d7',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.16,
+    shadowRadius: 24,
+    elevation: 8,
+  },
+  xl: {
+    shadowColor: '#4aa9d7',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.2,
+    shadowRadius: 32,
+    elevation: 12,
+  },
+  primary: {
+    shadowColor: '#4aa9d7',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+} as const;
+
+// Bold Design System - Typography scale
+export const LuxeTypography = {
+  // Headlines
+  h1: { fontSize: 32, fontWeight: '700' as const, lineHeight: 40 },
+  h2: { fontSize: 26, fontWeight: '700' as const, lineHeight: 34 },
+  h3: { fontSize: 22, fontWeight: '700' as const, lineHeight: 30 },
+  h4: { fontSize: 18, fontWeight: '600' as const, lineHeight: 26 },
+  // Body
+  body: { fontSize: 16, fontWeight: '400' as const, lineHeight: 24 },
+  bodyBold: { fontSize: 16, fontWeight: '600' as const, lineHeight: 24 },
+  // Labels
+  label: { fontSize: 14, fontWeight: '500' as const, lineHeight: 20 },
+  labelBold: { fontSize: 14, fontWeight: '700' as const, lineHeight: 20 },
+  // Caption
+  caption: { fontSize: 12, fontWeight: '400' as const, lineHeight: 16 },
+  captionBold: { fontSize: 12, fontWeight: '600' as const, lineHeight: 16 },
+  // Small
+  sm: { fontSize: 11, fontWeight: '400' as const, lineHeight: 14 },
+} as const;

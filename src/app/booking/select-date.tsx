@@ -1,25 +1,21 @@
 /**
  * Advance Booking Flow - Step 3: Select Date & Time
- * After selecting vehicles + service, user picks date and time slot
- * Uses POST /api/v1/bookings/available-slots to get available slots
- * Next: confirmation.tsx
+ * Bold professional redesign with solid white cards
  */
 
 import React, { useState, useMemo } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  ActivityIndicator,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { LuxeColors, LuxeSpacing, LuxeBorderRadius, MembershipConfig } from '@/constants/luxeTheme';
+import { LuxeColors, LuxeSpacing, LuxeBorderRadius, LuxeShadows, MembershipConfig } from '@/constants/luxeTheme';
 import { useAuth } from '@/contexts/AuthContext';
 import { bookingService, type TimeSlot } from '@/services/api';
+import { Header } from '@/components/ui/Header';
+import { ProgressSteps } from '@/components/ui/ProgressSteps';
+import { BottomActionBar } from '@/components/ui/BottomActionBar';
 
 const DAYS_OF_WEEK = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
 
@@ -104,8 +100,7 @@ export default function SelectDateScreen() {
         setSlots([]);
       }
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Không thể tải lịch trống';
-      alert(msg);
+      alert('Không thể tải lịch trống');
       setSlots([]);
     } finally {
       setLoadingSlots(false);
@@ -156,7 +151,6 @@ export default function SelectDateScreen() {
         isLocked: date >= today && date > maxDate,
       });
     }
-
     return days;
   }, [currentMonth, maxAdvanceDays]);
 
@@ -197,564 +191,236 @@ export default function SelectDateScreen() {
     return groups;
   }, [slots]);
 
-  const monthYearDisplay = currentMonth.toLocaleDateString('vi-VN', {
-    month: 'long',
-    year: 'numeric',
-  });
-
+  const monthYearDisplay = currentMonth.toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' });
   const selectedDateDisplay = selectedDate
     ? selectedDate.toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'numeric', year: 'numeric' })
     : '';
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-          <Text style={styles.backIcon}>←</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Đặt lịch rửa xe</Text>
-        <View style={styles.placeholder} />
-      </View>
+    <View style={styles.container}>
+      <SafeAreaView style={styles.safeArea} edges={['top']}>
+        <Header title="Đặt lịch rửa xe" onBack={() => router.back()} />
 
-      {/* Progress Steps */}
-      <View style={styles.progressContainer}>
-        <View style={styles.progressStep}>
-          <View style={[styles.progressDot, styles.progressDotCompleted]} />
-          <View style={styles.progressLineCompleted} />
-          <View style={[styles.progressDot, styles.progressDotCompleted]} />
-          <View style={styles.progressLineCompleted} />
-          <View style={[styles.progressDot, styles.progressDotActive]} />
-          <View style={styles.progressLine} />
-          <View style={[styles.progressDot, styles.progressDotPending]} />
-        </View>
-      </View>
+        <ProgressSteps
+          steps={[
+            { label: 'Xe' },
+            { label: 'Dịch vụ' },
+            { label: 'Ngày' },
+            { label: 'Xác nhận' },
+          ]}
+          currentStep={2}
+        />
 
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-        {/* Booking Summary */}
-        <View style={styles.summaryCard}>
-          <View style={styles.summaryRow}>
-            <Feather name="truck" size={16} color={LuxeColors.primaryContainer} />
-            <Text style={styles.summaryText}>
-              {vehiclePlateList.length} xe: {vehicleBrandList.join(', ')}
-            </Text>
-          </View>
-          <View style={styles.summaryRow}>
-            <Feather name="droplet" size={16} color={LuxeColors.primaryContainer} />
-            <Text style={styles.summaryText}>{serviceNameParam}</Text>
-          </View>
-        </View>
-
-        {/* Calendar */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Chọn ngày</Text>
-          <View style={styles.monthNav}>
-            <TouchableOpacity style={styles.navBtn} onPress={handlePrevMonth}>
-              <Text style={styles.navBtnText}>‹</Text>
-            </TouchableOpacity>
-            <Text style={styles.monthTitle}>{monthYearDisplay}</Text>
-            <TouchableOpacity style={styles.navBtn} onPress={handleNextMonth}>
-              <Text style={styles.navBtnText}>›</Text>
-            </TouchableOpacity>
+        <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+          {/* Summary */}
+          <View style={styles.summaryCard}>
+            <View style={styles.summaryRow}>
+              <Feather name="truck" size={16} color={LuxeColors.primaryContainer} />
+              <Text style={styles.summaryText}>{vehiclePlateList.length} xe: {vehicleBrandList.join(', ')}</Text>
+            </View>
+            <View style={styles.summaryRow}>
+              <Feather name="droplet" size={16} color={LuxeColors.primaryContainer} />
+              <Text style={styles.summaryText}>{serviceNameParam}</Text>
+            </View>
           </View>
 
-          <View style={styles.daysOfWeek}>
-            {DAYS_OF_WEEK.map((day, index) => (
-              <View key={index} style={styles.dayOfWeekCell}>
-                <Text style={styles.dayOfWeekText}>{day}</Text>
-              </View>
-            ))}
-          </View>
-
-          <View style={styles.calendarGrid}>
-            {calendarDays.map((day, index) => {
-              if (!day.date) {
-                return <View key={index} style={styles.dayCell} />;
-              }
-
-              const isToday = day.date.toDateString() === new Date().toDateString();
-              const isSelected = selectedDate?.toDateString() === day.date.toDateString();
-
-              return (
-                <TouchableOpacity
-                  key={index}
-                  style={[
-                    styles.dayCell,
-                    day.isPast && styles.dayCellPast,
-                    day.isLocked && styles.dayCellLocked,
-                    isSelected && styles.dayCellSelected,
-                    isToday && !isSelected && styles.dayCellToday,
-                  ]}
-                  onPress={() => handleDateSelect(day)}
-                  disabled={day.isPast || day.isLocked}
-                >
-                  <Text
-                    style={[
-                      styles.dayNumber,
-                      day.isPast && styles.dayTextPast,
-                      day.isLocked && styles.dayTextLocked,
-                      isSelected && styles.dayTextSelected,
-                      isToday && !isSelected && styles.dayTextToday,
-                    ]}
-                  >
-                    {day.date.getDate()}
-                  </Text>
-                  {day.isLocked && <Text style={styles.lockIcon}>🔒</Text>}
-                  {isToday && !isSelected && <View style={styles.todayDot} />}
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </View>
-
-        {/* Time Slots */}
-        {selectedDate && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Chọn giờ</Text>
-              <Text style={styles.selectedDateLabel}>{selectedDateDisplay}</Text>
+          {/* Calendar */}
+          <View style={styles.calendarCard}>
+            <Text style={styles.sectionTitle}>Chọn ngày</Text>
+            <View style={styles.monthNav}>
+              <TouchableOpacity style={styles.navBtn} onPress={handlePrevMonth}>
+                <Feather name="chevron-left" size={20} color={LuxeColors.onSurface} />
+              </TouchableOpacity>
+              <Text style={styles.monthTitle}>{monthYearDisplay}</Text>
+              <TouchableOpacity style={styles.navBtn} onPress={handleNextMonth}>
+                <Feather name="chevron-right" size={20} color={LuxeColors.onSurface} />
+              </TouchableOpacity>
             </View>
 
-            {loadingSlots ? (
-              <View style={styles.loadingSlots}>
-                <ActivityIndicator size="small" color={LuxeColors.primaryContainer} />
-                <Text style={styles.loadingText}>Đang tải lịch trống...</Text>
-              </View>
-            ) : slots.length === 0 ? (
-              <View style={styles.noSlotsCard}>
-                <Feather name="calendar" size={40} color={LuxeColors.outlineVariant} />
-                <Text style={styles.noSlotsText}>Không có lịch trống cho ngày này</Text>
-                <Text style={styles.noSlotsSubtext}>Vui lòng chọn ngày khác</Text>
-              </View>
-            ) : (
-              <>
-                <View style={styles.slotsSummary}>
-                  <Feather name="zap" size={16} color="#F59E0B" />
-                  <Text style={styles.slotsSummaryText}>
-                    {slots.filter(s => s.isAvailable).length} khung giờ trống
-                  </Text>
+            <View style={styles.daysOfWeek}>
+              {DAYS_OF_WEEK.map((day, index) => (
+                <View key={index} style={styles.dayOfWeekCell}>
+                  <Text style={styles.dayOfWeekText}>{day}</Text>
                 </View>
+              ))}
+            </View>
 
-                {Object.entries(groupedSlots).map(([period, periodSlots]) =>
-                  periodSlots.length > 0 ? (
-                    <View key={period} style={styles.timePeriod}>
-                      <Text style={styles.periodLabel}>{PERIOD_LABEL[period] || period}</Text>
-                      <View style={styles.timeSlotsGrid}>
-                        {periodSlots.map((slot) => {
-                          const isSelected = selectedSlot?.slotId === slot.slotId;
-                          return (
-                            <TouchableOpacity
-                              key={slot.slotId}
-                              style={[
-                                styles.timeSlot,
-                                !slot.isAvailable && styles.timeSlotUnavailable,
-                                isSelected && styles.timeSlotSelected,
-                              ]}
-                              onPress={() => slot.isAvailable && setSelectedSlot(slot)}
-                              disabled={!slot.isAvailable}
-                            >
-                              <Text
+            <View style={styles.calendarGrid}>
+              {calendarDays.map((day, index) => {
+                if (!day.date) {
+                  return <View key={index} style={styles.dayCell} />;
+                }
+                const isToday = day.date.toDateString() === new Date().toDateString();
+                const isSelected = selectedDate?.toDateString() === day.date.toDateString();
+                return (
+                  <TouchableOpacity
+                    key={index}
+                    style={[
+                      styles.dayCell,
+                      day.isPast && styles.dayCellPast,
+                      day.isLocked && styles.dayCellLocked,
+                      isSelected && styles.dayCellSelected,
+                      isToday && !isSelected && styles.dayCellToday,
+                    ]}
+                    onPress={() => handleDateSelect(day)}
+                    disabled={day.isPast || day.isLocked}
+                  >
+                    <Text
+                      style={[
+                        styles.dayNumber,
+                        day.isPast && styles.dayTextPast,
+                        day.isLocked && styles.dayTextLocked,
+                        isSelected && styles.dayTextSelected,
+                        isToday && !isSelected && styles.dayTextToday,
+                      ]}
+                    >
+                      {day.date.getDate()}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+
+          {/* Time Slots */}
+          {selectedDate && (
+            <View style={styles.slotsSection}>
+              <View style={styles.slotsSectionHeader}>
+                <Text style={styles.sectionTitle}>Chọn giờ</Text>
+                <Text style={styles.selectedDateLabel}>{selectedDateDisplay}</Text>
+              </View>
+
+              {loadingSlots ? (
+                <View style={styles.loadingSlots}>
+                  <ActivityIndicator size="small" color={LuxeColors.primaryContainer} />
+                  <Text style={styles.loadingText}>Đang tải lịch trống...</Text>
+                </View>
+              ) : slots.length === 0 ? (
+                <View style={styles.noSlotsCard}>
+                  <Feather name="calendar" size={36} color={LuxeColors.outlineVariant} />
+                  <Text style={styles.noSlotsText}>Không có lịch trống cho ngày này</Text>
+                  <Text style={styles.noSlotsSubtext}>Vui lòng chọn ngày khác</Text>
+                </View>
+              ) : (
+                <>
+                  <View style={styles.slotsSummary}>
+                    <Feather name="zap" size={16} color="#F59E0B" />
+                    <Text style={styles.slotsSummaryText}>{slots.filter(s => s.isAvailable).length} khung giờ trống</Text>
+                  </View>
+
+                  {Object.entries(groupedSlots).map(([period, periodSlots]) =>
+                    periodSlots.length > 0 ? (
+                      <View key={period} style={styles.timePeriod}>
+                        <Text style={styles.periodLabel}>{PERIOD_LABEL[period] || period}</Text>
+                        <View style={styles.timeSlotsGrid}>
+                          {periodSlots.map((slot) => {
+                            const isSelected = selectedSlot?.slotId === slot.slotId;
+                            return (
+                              <TouchableOpacity
+                                key={slot.slotId}
                                 style={[
-                                  styles.timeSlotText,
-                                  !slot.isAvailable && styles.timeSlotTextUnavailable,
-                                  isSelected && styles.timeSlotTextSelected,
+                                  styles.timeSlot,
+                                  !slot.isAvailable && styles.timeSlotUnavailable,
+                                  isSelected && styles.timeSlotSelected,
                                 ]}
+                                onPress={() => slot.isAvailable && setSelectedSlot(slot)}
+                                disabled={!slot.isAvailable}
                               >
-                                {slot.timeRange}
-                              </Text>
-                              {!slot.isAvailable && (
-                                <Text style={styles.slotUnavailableText}>{slot.reason || 'Đã đầy'}</Text>
-                              )}
-                            </TouchableOpacity>
-                          );
-                        })}
+                                <Text
+                                  style={[
+                                    styles.timeSlotText,
+                                    !slot.isAvailable && styles.timeSlotTextUnavailable,
+                                    isSelected && styles.timeSlotTextSelected,
+                                  ]}
+                                >
+                                  {slot.timeRange}
+                                </Text>
+                              </TouchableOpacity>
+                            );
+                          })}
+                        </View>
                       </View>
-                    </View>
-                  ) : null,
-                )}
-              </>
-            )}
-          </View>
-        )}
+                    ) : null,
+                  )}
+                </>
+              )}
+            </View>
+          )}
 
-        {/* Membership info */}
-        <View style={styles.membershipCard}>
-          <Feather name="star" size={24} color={LuxeColors.primaryContainer} />
-          <View style={styles.membershipContent}>
-            <Text style={styles.membershipTitle}>Đặc quyền {membershipInfo.nameVi}</Text>
-            <Text style={styles.membershipDesc}>
-              Đặt trước tối đa {maxAdvanceDays} ngày
-            </Text>
+          {/* Membership info */}
+          <View style={styles.membershipCard}>
+            <View style={styles.membershipIconWrap}>
+              <Feather name="star" size={20} color={LuxeColors.primaryContainer} />
+            </View>
+            <View style={styles.membershipContent}>
+              <Text style={styles.membershipTitle}>Đặc quyền {membershipInfo.nameVi}</Text>
+              <Text style={styles.membershipDesc}>Đặt trước tối đa {maxAdvanceDays} ngày</Text>
+            </View>
           </View>
-        </View>
-      </ScrollView>
 
-      {/* Bottom Action */}
-      <View style={styles.bottomAction}>
-        <TouchableOpacity
-          style={[styles.continueBtn, (!selectedDate || !selectedSlot) && styles.continueBtnDisabled]}
+          <View style={{ height: 120 }} />
+        </ScrollView>
+
+        <BottomActionBar
+          title="TIẾP THEO"
           onPress={handleContinue}
           disabled={!selectedDate || !selectedSlot}
-          activeOpacity={0.9}
-        >
-          <Text style={styles.continueBtnText}>TIẾP THEO</Text>
-          <Text style={styles.continueBtnIcon}>→</Text>
-        </TouchableOpacity>
-      </View>
-    </SafeAreaView>
+          icon="arrow-right"
+        />
+      </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: LuxeColors.background,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: LuxeSpacing.md,
-    paddingVertical: LuxeSpacing.md,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderBottomWidth: 1,
-    borderBottomColor: LuxeColors.outlineVariant + '20',
-  },
-  backBtn: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  backIcon: {
-    fontSize: 24,
-    color: LuxeColors.onSurface,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: LuxeColors.onSurface,
-  },
-  placeholder: {
-    width: 40,
-  },
-  progressContainer: {
-    paddingHorizontal: LuxeSpacing.md,
-    paddingVertical: LuxeSpacing.sm,
-    alignItems: 'center',
-  },
-  progressStep: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  progressDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  progressDotActive: {
-    backgroundColor: LuxeColors.primaryContainer,
-    borderWidth: 2,
-    borderColor: LuxeColors.primary,
-  },
-  progressDotCompleted: {
-    backgroundColor: LuxeColors.primaryContainer,
-  },
-  progressDotPending: {
-    backgroundColor: LuxeColors.surfaceVariant,
-  },
-  progressLine: {
-    width: 32,
-    height: 2,
-    backgroundColor: LuxeColors.surfaceVariant,
-  },
-  progressLineCompleted: {
-    width: 32,
-    height: 2,
-    backgroundColor: LuxeColors.primaryContainer,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingHorizontal: LuxeSpacing.md,
-    paddingBottom: 120,
-  },
-  summaryCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.6)',
-    borderRadius: LuxeBorderRadius.lg,
-    padding: LuxeSpacing.md,
-    marginTop: LuxeSpacing.sm,
-    marginBottom: LuxeSpacing.md,
-    gap: 6,
-  },
-  summaryRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  summaryText: {
-    fontSize: 13,
-    color: LuxeColors.onSurface,
-    fontWeight: '500',
-  },
-  section: {
-    marginBottom: LuxeSpacing.lg,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: LuxeSpacing.md,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: LuxeColors.onSurface,
-    marginBottom: LuxeSpacing.md,
-  },
-  selectedDateLabel: {
-    fontSize: 12,
-    color: LuxeColors.primaryContainer,
-    fontWeight: '600',
-    marginBottom: LuxeSpacing.md,
-  },
-  monthNav: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: LuxeSpacing.md,
-  },
-  navBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.8)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  navBtnText: {
-    fontSize: 24,
-    color: LuxeColors.onSurface,
-  },
-  monthTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: LuxeColors.onSurface,
-  },
-  daysOfWeek: {
-    flexDirection: 'row',
-    marginBottom: LuxeSpacing.xs,
-  },
-  dayOfWeekCell: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: 8,
-  },
-  dayOfWeekText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: LuxeColors.onSurfaceVariant,
-  },
-  calendarGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  dayCell: {
-    width: `${100 / 7}%`,
-    aspectRatio: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: LuxeBorderRadius.md,
-    marginBottom: 4,
-  },
-  dayCellPast: {
-    opacity: 0.3,
-  },
-  dayCellLocked: {
-    opacity: 0.5,
-  },
-  dayCellToday: {
-    backgroundColor: 'rgba(255, 255, 255, 0.8)',
-    borderWidth: 1,
-    borderColor: LuxeColors.outline,
-  },
-  dayCellSelected: {
-    backgroundColor: LuxeColors.primaryContainer,
-  },
-  dayNumber: {
-    fontSize: 15,
-    color: LuxeColors.onSurface,
-  },
-  dayTextPast: {
-    color: LuxeColors.onSurfaceVariant,
-  },
-  dayTextLocked: {
-    color: LuxeColors.onSurfaceVariant,
-  },
-  dayTextSelected: {
-    color: LuxeColors.onPrimaryContainer,
-    fontWeight: '700',
-  },
-  dayTextToday: {
-    color: LuxeColors.primaryContainer,
-    fontWeight: '600',
-  },
-  lockIcon: {
-    fontSize: 9,
-    position: 'absolute',
-    bottom: 4,
-  },
-  todayDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: LuxeColors.primary,
-    position: 'absolute',
-    bottom: 6,
-  },
-  loadingSlots: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: LuxeSpacing.lg,
-    gap: LuxeSpacing.sm,
-  },
-  loadingText: {
-    fontSize: 14,
-    color: LuxeColors.onSurfaceVariant,
-  },
-  noSlotsCard: {
-    alignItems: 'center',
-    padding: LuxeSpacing.xl,
-    backgroundColor: 'rgba(255, 255, 255, 0.5)',
-    borderRadius: LuxeBorderRadius.lg,
-    gap: 8,
-  },
-  noSlotsText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: LuxeColors.onSurface,
-  },
-  noSlotsSubtext: {
-    fontSize: 13,
-    color: LuxeColors.onSurfaceVariant,
-  },
-  slotsSummary: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: LuxeColors.primaryContainer + '10',
-    paddingHorizontal: LuxeSpacing.md,
-    paddingVertical: LuxeSpacing.sm,
-    borderRadius: LuxeBorderRadius.md,
-    gap: 8,
-    marginBottom: LuxeSpacing.md,
-  },
-  slotsSummaryText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: LuxeColors.primaryContainer,
-  },
-  timePeriod: {
-    marginBottom: LuxeSpacing.md,
-  },
-  periodLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: LuxeColors.onSurfaceVariant,
-    marginBottom: 8,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-  },
-  timeSlotsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  timeSlot: {
-    width: '48%',
-    backgroundColor: 'rgba(255, 255, 255, 0.7)',
-    borderRadius: LuxeBorderRadius.lg,
-    padding: LuxeSpacing.md,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.5)',
-  },
-  timeSlotUnavailable: {
-    backgroundColor: LuxeColors.surfaceVariant,
-    opacity: 0.5,
-  },
-  timeSlotSelected: {
-    backgroundColor: LuxeColors.primaryContainer,
-    borderColor: LuxeColors.primaryContainer,
-  },
-  timeSlotText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: LuxeColors.onSurface,
-  },
-  timeSlotTextUnavailable: {
-    color: LuxeColors.onSurfaceVariant,
-    textDecorationLine: 'line-through',
-  },
-  timeSlotTextSelected: {
-    color: LuxeColors.onPrimaryContainer,
-  },
-  slotUnavailableText: {
-    fontSize: 10,
-    color: LuxeColors.onSurfaceVariant,
-    marginTop: 2,
-  },
-  membershipCard: {
-    flexDirection: 'row',
-    backgroundColor: 'rgba(255, 255, 255, 0.5)',
-    borderRadius: LuxeBorderRadius.xl,
-    padding: LuxeSpacing.md,
-    gap: LuxeSpacing.md,
-  },
-  membershipContent: {
-    flex: 1,
-  },
-  membershipTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: LuxeColors.onSurface,
-    marginBottom: 2,
-  },
-  membershipDesc: {
-    fontSize: 13,
-    color: LuxeColors.onSurfaceVariant,
-  },
-  bottomAction: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    padding: LuxeSpacing.md,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderTopWidth: 1,
-    borderTopColor: LuxeColors.outlineVariant + '20',
-  },
-  continueBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: LuxeColors.primaryContainer,
-    paddingVertical: 16,
-    borderRadius: LuxeBorderRadius.lg,
-  },
-  continueBtnDisabled: {
-    backgroundColor: LuxeColors.surfaceVariant,
-  },
-  continueBtnText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#ffffff',
-    letterSpacing: 1,
-  },
-  continueBtnIcon: {
-    fontSize: 18,
-    color: '#ffffff',
-  },
+  container: { flex: 1, backgroundColor: LuxeColors.background },
+  safeArea: { flex: 1 },
+  scrollView: { flex: 1 },
+  scrollContent: { paddingHorizontal: 20, paddingTop: 8 },
+  summaryCard: { backgroundColor: '#ffffff', borderRadius: 14, padding: 14, marginBottom: 16, gap: 8, ...LuxeShadows.sm },
+  summaryRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  summaryText: { fontSize: 13, color: LuxeColors.onSurface, fontWeight: '500', flex: 1 },
+  calendarCard: { backgroundColor: '#ffffff', borderRadius: 20, padding: 20, marginBottom: 16, ...LuxeShadows.sm },
+  sectionTitle: { fontSize: 17, fontWeight: '700', color: LuxeColors.onSurface, marginBottom: 12 },
+  slotsSection: {},
+  slotsSectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  selectedDateLabel: { fontSize: 12, color: LuxeColors.primaryContainer, fontWeight: '600' },
+  monthNav: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+  navBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: LuxeColors.surfaceContainer, alignItems: 'center', justifyContent: 'center' },
+  monthTitle: { fontSize: 17, fontWeight: '700', color: LuxeColors.onSurface },
+  daysOfWeek: { flexDirection: 'row', marginBottom: 8 },
+  dayOfWeekCell: { flex: 1, alignItems: 'center', paddingVertical: 6 },
+  dayOfWeekText: { fontSize: 12, fontWeight: '600', color: LuxeColors.onSurfaceVariant },
+  calendarGrid: { flexDirection: 'row', flexWrap: 'wrap' },
+  dayCell: { width: `${100 / 7}%`, aspectRatio: 1, alignItems: 'center', justifyContent: 'center', borderRadius: 10 },
+  dayCellPast: { opacity: 0.3 },
+  dayCellLocked: { opacity: 0.4 },
+  dayCellToday: { backgroundColor: LuxeColors.surfaceContainer, borderWidth: 1, borderColor: LuxeColors.outlineVariant },
+  dayCellSelected: { backgroundColor: LuxeColors.primaryContainer },
+  dayNumber: { fontSize: 15, color: LuxeColors.onSurface },
+  dayTextPast: { color: LuxeColors.onSurfaceVariant },
+  dayTextLocked: { color: LuxeColors.onSurfaceVariant },
+  dayTextSelected: { color: '#ffffff', fontWeight: '700' },
+  dayTextToday: { color: LuxeColors.primaryContainer, fontWeight: '700' },
+  loadingSlots: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 20, gap: 8 },
+  loadingText: { fontSize: 14, color: LuxeColors.onSurfaceVariant },
+  noSlotsCard: { alignItems: 'center', padding: 24, backgroundColor: '#ffffff', borderRadius: 16, gap: 8, ...LuxeShadows.sm },
+  noSlotsText: { fontSize: 14, fontWeight: '600', color: LuxeColors.onSurface },
+  noSlotsSubtext: { fontSize: 13, color: LuxeColors.onSurfaceVariant },
+  slotsSummary: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F59E0B15', paddingHorizontal: 14, paddingVertical: 10, borderRadius: 12, gap: 8, marginBottom: 16, ...LuxeShadows.sm },
+  slotsSummaryText: { fontSize: 13, fontWeight: '700', color: '#F59E0B' },
+  timePeriod: { marginBottom: 16 },
+  periodLabel: { fontSize: 11, fontWeight: '700', color: LuxeColors.onSurfaceVariant, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 },
+  timeSlotsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  timeSlot: { width: '48%', backgroundColor: '#ffffff', borderRadius: 14, padding: 14, alignItems: 'center', borderWidth: 2, borderColor: 'transparent', ...LuxeShadows.sm },
+  timeSlotUnavailable: { backgroundColor: LuxeColors.surfaceContainer, opacity: 0.6 },
+  timeSlotSelected: { backgroundColor: LuxeColors.primaryContainer, borderColor: LuxeColors.primaryContainer },
+  timeSlotText: { fontSize: 14, fontWeight: '700', color: LuxeColors.onSurface },
+  timeSlotTextUnavailable: { color: LuxeColors.onSurfaceVariant, textDecorationLine: 'line-through' },
+  timeSlotTextSelected: { color: '#ffffff' },
+  membershipCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#ffffff', borderRadius: 16, padding: 16, gap: 14, ...LuxeShadows.sm },
+  membershipIconWrap: { width: 44, height: 44, borderRadius: 14, backgroundColor: LuxeColors.primaryContainer + '15', alignItems: 'center', justifyContent: 'center' },
+  membershipContent: { flex: 1 },
+  membershipTitle: { fontSize: 14, fontWeight: '700', color: LuxeColors.onSurface, marginBottom: 2 },
+  membershipDesc: { fontSize: 13, color: LuxeColors.onSurfaceVariant },
 });

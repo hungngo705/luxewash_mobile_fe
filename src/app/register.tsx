@@ -1,12 +1,13 @@
 /**
  * Register Screen - LuxeWash
- * Account registration with phone, email, name and password
+ * Professional bold redesign with solid white cards and brand accents
  */
 
 import {
   LuxeBorderRadius,
   LuxeColors,
   LuxeSpacing,
+  LuxeShadows,
 } from "@/constants/luxeTheme";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "expo-router";
@@ -142,13 +143,13 @@ export default function RegisterScreen() {
     togglePasswordVisible?: () => void,
     isPasswordVisible?: boolean,
   ) => (
-    <View style={styles.inputContainer}>
-      <Text style={styles.inputLabel}>{label}</Text>
-      <View style={styles.passwordWrapper}>
+    <View style={styles.fieldGroup}>
+      <Text style={styles.fieldLabel}>{label}</Text>
+      <View style={[styles.inputWrap, error && styles.inputWrapError]}>
         <TextInput
-          style={[styles.passwordInput, error && styles.inputError]}
+          style={styles.input}
           placeholder={placeholder}
-          placeholderTextColor={LuxeColors.onSurfaceVariant}
+          placeholderTextColor={LuxeColors.outline}
           value={value}
           onChangeText={text => {
             onChangeText(text);
@@ -167,7 +168,7 @@ export default function RegisterScreen() {
           >
             <Feather
               name={isPasswordVisible ? "eye-off" : "eye"}
-              size={20}
+              size={18}
               color={LuxeColors.onSurfaceVariant}
             />
           </TouchableOpacity>
@@ -179,6 +180,9 @@ export default function RegisterScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* Top Brand Accent Bar */}
+      <View style={styles.brandStrip} />
+
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.keyboardView}
@@ -186,23 +190,30 @@ export default function RegisterScreen() {
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
-          {/* Logo & Title */}
+          {/* Header */}
           <View style={styles.header}>
-            <View style={styles.logoContainer}>
-              <Feather name="sun" size={40} color={LuxeColors.primaryContainer} />
+            <View style={styles.logoWrap}>
+              <View style={styles.logoCircle}>
+                <Feather name="sun" size={30} color={LuxeColors.primaryContainer} />
+              </View>
             </View>
-            <Text style={styles.title}>LuxeWash</Text>
-            <Text style={styles.subtitle}>Rửa xe cao cấp</Text>
+            <Text style={styles.brandName}>LuxeWash</Text>
+            <Text style={styles.brandTagline}>Premium Car Care</Text>
           </View>
 
-          {/* Register Form */}
-          <View style={styles.form}>
-            <Text style={styles.formTitle}>Đăng ký tài khoản</Text>
+          {/* Form Card */}
+          <View style={styles.formCard}>
+            <Text style={styles.formTitle}>Tạo tài khoản</Text>
+            <Text style={styles.formSubtitle}>
+              Đăng ký để trải nghiệm dịch vụ rửa xe cao cấp
+            </Text>
 
             {/* API Error Banner */}
             {fieldErrors.apiError && (
               <View style={styles.apiErrorBanner}>
+                <Feather name="alert-circle" size={16} color="#dc2626" />
                 <Text style={styles.apiErrorText}>{fieldErrors.apiError}</Text>
               </View>
             )}
@@ -245,7 +256,7 @@ export default function RegisterScreen() {
               "Mật khẩu",
               password,
               setPassword,
-              `Ít nhất ${PASSWORD_MIN_LENGTH} ký tự, gồm 1 chữ hoa và 1 chữ số`,
+              `Ít nhất ${PASSWORD_MIN_LENGTH} ký tự, 1 chữ hoa và 1 số`,
               fieldErrors.password,
               "visible-password",
               true,
@@ -275,12 +286,15 @@ export default function RegisterScreen() {
               style={[styles.registerBtn, isSubmitting && styles.registerBtnDisabled]}
               onPress={validateAndSubmit}
               disabled={isSubmitting}
-              activeOpacity={0.9}
+              activeOpacity={0.85}
             >
               {isSubmitting ? (
                 <ActivityIndicator color="#ffffff" />
               ) : (
-                <Text style={styles.registerBtnText}>Đăng ký</Text>
+                <>
+                  <Text style={styles.registerBtnText}>Đăng ký</Text>
+                  <Feather name="arrow-right" size={18} color="#ffffff" />
+                </>
               )}
             </TouchableOpacity>
           </View>
@@ -292,6 +306,9 @@ export default function RegisterScreen() {
               <Text style={styles.loginLink}>Đăng nhập ngay</Text>
             </TouchableOpacity>
           </View>
+
+          {/* Footer */}
+          <Text style={styles.footer}>LuxeWash v1.0.0</Text>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -303,121 +320,138 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: LuxeColors.background,
   },
+  brandStrip: {
+    height: 5,
+    backgroundColor: LuxeColors.primaryContainer,
+  },
   keyboardView: {
     flex: 1,
   },
   scrollContent: {
     flexGrow: 1,
-    padding: LuxeSpacing.lg,
+    paddingHorizontal: 24,
+    paddingTop: 8,
+    paddingBottom: 32,
   },
   header: {
     alignItems: "center",
-    marginTop: LuxeSpacing.xl,
-    marginBottom: LuxeSpacing.lg,
+    marginTop: 8,
+    marginBottom: 24,
   },
-  logoContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: LuxeColors.primaryContainer + "20",
+  logoWrap: {
+    marginBottom: 10,
+  },
+  logoCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: LuxeColors.primaryContainer + '20',
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: LuxeSpacing.sm,
+    borderWidth: 2,
+    borderColor: LuxeColors.primaryContainer + '40',
   },
-  title: {
-    fontSize: 28,
-    fontWeight: "700",
+  brandName: {
+    fontSize: 26,
+    fontWeight: "800",
     color: LuxeColors.primaryContainer,
     letterSpacing: 2,
   },
-  subtitle: {
-    fontSize: 13,
+  brandTagline: {
+    fontSize: 12,
     color: LuxeColors.onSurfaceVariant,
     marginTop: 4,
+    fontWeight: '500',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
   },
-  form: {
-    backgroundColor: "rgba(255, 255, 255, 0.9)",
+  formCard: {
+    backgroundColor: "#ffffff",
     borderRadius: LuxeBorderRadius.xl,
-    padding: LuxeSpacing.lg,
-    marginBottom: LuxeSpacing.lg,
+    padding: 24,
+    ...LuxeShadows.lg,
+    marginBottom: 20,
   },
   formTitle: {
-    fontSize: 20,
-    fontWeight: "600",
+    fontSize: 22,
+    fontWeight: "800",
     color: LuxeColors.onSurface,
-    marginBottom: LuxeSpacing.lg,
-    textAlign: "center",
+    textAlign: 'center',
+    marginBottom: 4,
   },
-  inputContainer: {
-    marginBottom: LuxeSpacing.md,
-  },
-  inputLabel: {
+  formSubtitle: {
     fontSize: 13,
-    fontWeight: "500",
     color: LuxeColors.onSurfaceVariant,
-    marginBottom: 6,
+    textAlign: 'center',
+    marginBottom: 20,
+    lineHeight: 20,
   },
-  input: {
-    backgroundColor: LuxeColors.surfaceContainer,
-    borderRadius: LuxeBorderRadius.md,
-    padding: LuxeSpacing.md,
-    fontSize: 16,
-    color: LuxeColors.onSurface,
-    borderWidth: 1,
-    borderColor: LuxeColors.outlineVariant + "30",
-  },
-  passwordWrapper: {
+  apiErrorBanner: {
+    backgroundColor: "#FEF2F2",
+    borderRadius: LuxeBorderRadius.lg,
+    padding: 12,
+    marginBottom: 16,
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: LuxeColors.surfaceContainer,
-    borderRadius: LuxeBorderRadius.md,
+    gap: 8,
     borderWidth: 1,
-    borderColor: LuxeColors.outlineVariant + "30",
+    borderColor: "#FECACA",
   },
-  passwordInput: {
+  apiErrorText: {
+    fontSize: 13,
+    color: "#DC2626",
+    fontWeight: "500",
     flex: 1,
-    padding: LuxeSpacing.md,
-    fontSize: 16,
+  },
+  fieldGroup: {
+    marginBottom: 14,
+  },
+  fieldLabel: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: LuxeColors.onSurfaceVariant,
+    marginBottom: 8,
+    letterSpacing: 0.3,
+  },
+  inputWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: LuxeColors.background,
+    borderRadius: LuxeBorderRadius.lg,
+    borderWidth: 1.5,
+    borderColor: LuxeColors.outlineVariant,
+    overflow: "hidden",
+  },
+  inputWrapError: {
+    borderColor: "#ef4444",
+  },
+  input: {
+    flex: 1,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    fontSize: 15,
     color: LuxeColors.onSurface,
   },
   eyeBtn: {
-    padding: LuxeSpacing.md,
-  },
-  inputError: {
-    borderColor: "#ef4444",
-    borderWidth: 1.5,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
   },
   errorText: {
     fontSize: 12,
     color: "#ef4444",
-    marginTop: 4,
-    fontWeight: "500",
-  },
-  apiErrorBanner: {
-    backgroundColor: "#fef2f2",
-    borderRadius: LuxeBorderRadius.md,
-    padding: LuxeSpacing.md,
-    marginBottom: LuxeSpacing.md,
-    borderWidth: 1,
-    borderColor: "#fca5a5",
-  },
-  apiErrorText: {
-    fontSize: 13,
-    color: "#dc2626",
-    textAlign: "center",
+    marginTop: 6,
     fontWeight: "500",
   },
   registerBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
     backgroundColor: LuxeColors.primaryContainer,
     borderRadius: LuxeBorderRadius.lg,
-    padding: LuxeSpacing.md,
-    alignItems: "center",
-    marginTop: LuxeSpacing.sm,
-    shadowColor: LuxeColors.primaryContainer,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
+    paddingVertical: 16,
+    marginTop: 6,
+    ...LuxeShadows.primary,
   },
   registerBtnDisabled: {
     opacity: 0.7,
@@ -426,12 +460,12 @@ const styles = StyleSheet.create({
     color: "#ffffff",
     fontSize: 16,
     fontWeight: "700",
-    letterSpacing: 1,
   },
   loginSection: {
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
+    marginBottom: 16,
   },
   loginText: {
     fontSize: 14,
@@ -439,7 +473,13 @@ const styles = StyleSheet.create({
   },
   loginLink: {
     fontSize: 14,
-    fontWeight: "600",
+    fontWeight: "700",
     color: LuxeColors.primaryContainer,
+  },
+  footer: {
+    textAlign: "center",
+    fontSize: 12,
+    color: LuxeColors.outline,
+    marginTop: 4,
   },
 });

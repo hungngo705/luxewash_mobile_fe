@@ -62,8 +62,8 @@ function mapVehicleApiToVehicle(
     id: v.licensePlate,
     licensePlate: v.licensePlate,
     brand: v.vehicleType,
-    model: v.carModel || '',
-    color: '',
+    model: v.carModel || "",
+    color: "",
     vehicleTypeId: v.vehicleTypeId,
     imageUrl: v.registrationPhotoUrl,
     userId,
@@ -99,24 +99,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const profile = profileRes.data;
           const userId = String(profile.userId);
 
-        const vehicleTypesRes = await vehicleService.getVehicleTypes();
-        const vehiclesRes = await vehicleService.getMyVehicles();
-        const vehicleTypeMap: Record<string, number> = {};
-        if (vehicleTypesRes.statusCode === 200 && vehicleTypesRes.data) {
-          for (const vt of vehicleTypesRes.data) {
-            vehicleTypeMap[vt.name.toLowerCase()] = vt.id;
+          const vehicleTypesRes = await vehicleService.getVehicleTypes();
+          const vehiclesRes = await vehicleService.getMyVehicles();
+          const vehicleTypeMap: Record<string, number> = {};
+          if (vehicleTypesRes.statusCode === 200 && vehicleTypesRes.data) {
+            for (const vt of vehicleTypesRes.data) {
+              vehicleTypeMap[vt.name.toLowerCase()] = vt.id;
+            }
           }
-        }
 
-        const vehicles = (vehiclesRes.statusCode === 200 && vehiclesRes.data
-          ? vehiclesRes.data
-          : (profile?.vehicles ?? [])
-        ).map((v) => {
-          const vehicle = mapVehicleApiToVehicle(v, userId);
-          vehicle.vehicleTypeId =
-            vehicleTypeMap[v.vehicleType?.toLowerCase() ?? ""] ?? v.vehicleTypeId;
-          return vehicle;
-        });
+          const vehicles = (
+            vehiclesRes.statusCode === 200 && vehiclesRes.data
+              ? vehiclesRes.data
+              : (profile?.vehicles ?? [])
+          ).map((v) => {
+            const vehicle = mapVehicleApiToVehicle(v, userId);
+            vehicle.vehicleTypeId =
+              vehicleTypeMap[v.vehicleType?.toLowerCase() ?? ""] ??
+              v.vehicleTypeId;
+            return vehicle;
+          });
 
           const authUser: AuthUser = {
             id: userId,
@@ -200,7 +202,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         id: String(loginData.userId),
         phoneNumber: loginData.phoneNumber,
         name: loginData.fullName,
-        role: (loginData.role?.toLowerCase() || "customer") as 'customer' | 'staff' | 'admin',
+        role: (loginData.role?.toLowerCase() || "customer") as
+          | "customer"
+          | "staff"
+          | "admin",
         membershipId: profile?.tierName?.toLowerCase() || "standard",
         membershipTier: (profile?.tierName?.toLowerCase() || "standard") as any,
         loyaltyPoints: profile?.totalPoint ?? 0,
@@ -323,6 +328,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const response = await vehicleService.addVehicle({
         licensePlate,
         vehicleTypeId,
+        carModel: "",
         photoFile,
         userNote,
       });
