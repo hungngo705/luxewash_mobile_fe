@@ -46,6 +46,7 @@ export default function AddVehicleScreen() {
   const OTHER_TYPE_ID = -1;
 
   const [licensePlate, setLicensePlate] = useState('');
+  const [carModel, setCarModel] = useState('');
   const [selectedTypeId, setSelectedTypeId] = useState<number | null>(null);
   const [otherVehicleType, setOtherVehicleType] = useState('');
   const [registrationPhoto, setRegistrationPhoto] = useState<string | null>(null);
@@ -166,6 +167,10 @@ export default function AddVehicleScreen() {
       alert('Vui lòng nhập biển số xe');
       return;
     }
+    if (!carModel.trim()) {
+      alert('Vui lòng nhập dòng xe');
+      return;
+    }
     if (!selectedTypeId) {
       alert('Vui lòng chọn loại xe');
       return;
@@ -186,6 +191,7 @@ export default function AddVehicleScreen() {
 
       const formData = new FormData();
       formData.append('licensePlate', licensePlate);
+      formData.append('carModel', carModel.trim());
       formData.append('vehicleTypeId', String(selectedTypeId));
       if (note) {
         formData.append('userNote', note);
@@ -252,6 +258,20 @@ export default function AddVehicleScreen() {
               autoCapitalize="characters"
             />
             <Text style={styles.hint}>Định dạng: 51H-123.45</Text>
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Dòng xe *</Text>
+            <TextInput
+              style={styles.inputModel}
+              value={carModel}
+              onChangeText={setCarModel}
+              placeholder="VD: Toyota Camry, Honda Civic, Mercedes C200"
+              placeholderTextColor={LuxeColors.onSurfaceVariant}
+              maxLength={100}
+              autoCapitalize="words"
+            />
+            <Text style={styles.hint}>Nhập tên dòng xe (VD: Toyota Camry, Mercedes C200)</Text>
           </View>
 
           <View style={styles.inputGroup}>
@@ -360,10 +380,10 @@ export default function AddVehicleScreen() {
         <TouchableOpacity
           style={[
             styles.submitBtn,
-            (isSubmitting || loadingTypes || !licensePlate.trim() || !selectedTypeId || !registrationPhoto || (isOtherType && !otherVehicleType.trim())) && styles.submitBtnDisabled,
+            (isSubmitting || loadingTypes || !licensePlate.trim() || !carModel.trim() || !selectedTypeId || !registrationPhoto || (isOtherType && !otherVehicleType.trim())) && styles.submitBtnDisabled,
           ]}
           onPress={handleSubmit}
-          disabled={isSubmitting || loadingTypes || !licensePlate.trim() || !selectedTypeId || !registrationPhoto || (isOtherType && !otherVehicleType.trim())}
+          disabled={isSubmitting || loadingTypes || !licensePlate.trim() || !carModel.trim() || !selectedTypeId || !registrationPhoto || (isOtherType && !otherVehicleType.trim())}
         >
           <Text style={styles.submitBtnText}>
             {isSubmitting ? (registrationPhoto ? 'Đang tải ảnh...' : 'Đang xử lý...') : 'Thêm xe'}
@@ -433,6 +453,16 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: LuxeColors.outlineVariant,
     textAlign: 'center',
+  },
+  inputModel: {
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: LuxeBorderRadius.md,
+    paddingHorizontal: LuxeSpacing.md,
+    paddingVertical: LuxeSpacing.md,
+    fontSize: 16,
+    color: LuxeColors.onSurface,
+    borderWidth: 1,
+    borderColor: LuxeColors.outlineVariant,
   },
   hint: {
     fontSize: 12,

@@ -35,6 +35,7 @@ export const vehicleService = {
   addVehicle: async (data: {
     licensePlate: string;
     vehicleTypeId: number;
+    carModel: string;
     registrationPhotoUrl?: string;
     photoFile?: Blob;
     userNote?: string;
@@ -42,6 +43,7 @@ export const vehicleService = {
     const formData = new FormData();
     formData.append('licensePlate', data.licensePlate);
     formData.append('vehicleTypeId', String(data.vehicleTypeId));
+    formData.append('carModel', data.carModel);
     if (data.photoFile) {
       // Backend expects field name 'PhotoFile'
       formData.append('PhotoFile', data.photoFile);

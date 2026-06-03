@@ -17,7 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { LuxeColors, LuxeSpacing, LuxeBorderRadius } from '@/constants/luxeTheme';
 import { useAuth } from '@/contexts/AuthContext';
-import { bookingService, type BookingDetail } from '@/services/api';
+import { bookingService, type MyBookingItem } from '@/services/api';
 
 type TabType = 'all' | 'pending' | 'completed';
 
@@ -34,7 +34,7 @@ const statusMap: Record<string, string> = {
 export default function AppointmentsScreen() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>('all');
-  const [bookings, setBookings] = useState<BookingDetail[]>([]);
+  const [bookings, setBookings] = useState<MyBookingItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -136,32 +136,15 @@ export default function AppointmentsScreen() {
             filteredBookings.map((booking) => {
               if (!booking) return null;
               const statusStyle = getStatusStyle(booking.status || 'unknown');
-              const date = booking.scheduledDate ? formatDate(booking.scheduledDate) : '';
-              const time = booking.scheduledDate ? formatTime(booking.scheduledDate) : '';
 
-              // Support both flat API (licensePlate/serviceName) and nested API (vehicles[0])
-              const mainVehicle = (booking as any).vehicles?.[0];
-              const hasNestedVehicles = !!mainVehicle;
+              const date = booking.scheduledTime ? formatDate(booking.scheduledTime) : '';
+              const time = booking.scheduledTime ? formatTime(booking.scheduledTime) : '';
 
-              // Prefer nested vehicle data, else use top-level licensePlate + map from user vehicle list
-              const apiPlate = (booking as any).licensePlate || '';
-              const userVehicle = !hasNestedVehicles && apiPlate
-                ? (user?.vehicles || []).find((v) => v.licensePlate === apiPlate)
-                : null;
+              const vehiclePlate = booking.licensePlate || '';
+              const serviceName = booking.serviceName || '';
+              const userVehicle = user?.vehicles?.find((v) => v.licensePlate === vehiclePlate);
+              const vehicleImage = userVehicle?.imageUrl;
 
-              const vehicleDisplay = hasNestedVehicles
-                ? (mainVehicle?.carModel || mainVehicle?.vehicleType || 'Xe')
-                : (userVehicle?.model || userVehicle?.brand || 'Xe');
-              const vehiclePlate = hasNestedVehicles
-                ? (mainVehicle?.licensePlate || '')
-                : apiPlate;
-              const vehicleImage = hasNestedVehicles
-                ? mainVehicle?.registrationPhotoUrl
-                : (userVehicle?.imageUrl || undefined);
-              const vehicleType = hasNestedVehicles
-                ? (mainVehicle?.vehicleType || '')
-                : (userVehicle?.brand || '');
-              const vehicleCount = hasNestedVehicles ? ((booking as any).vehicles?.length || 0) : (vehiclePlate ? 1 : 0);
               return (
                 <View key={String(booking.bookingId || 'unknown')} style={styles.appointmentCard}>
                   <View style={styles.cardHeader}>
@@ -183,10 +166,7 @@ export default function AppointmentsScreen() {
                       </View>
                     )}
                     <View style={styles.vehicleInfo}>
-                      <Text style={styles.vehicleName}>{vehicleDisplay}</Text>
-                      {vehicleType && vehicleDisplay !== vehicleType && (
-                        <Text style={styles.vehicleTypeLabel}>{vehicleType}</Text>
-                      )}
+                      <Text style={styles.vehicleName}>{serviceName}</Text>
                       <View style={styles.vehiclePlateBadge}>
                         <Text style={styles.vehiclePlate}>{vehiclePlate}</Text>
                       </View>
@@ -197,10 +177,24 @@ export default function AppointmentsScreen() {
 
                   <View style={styles.serviceRow}>
                     <View style={styles.serviceInfo}>
-                      <Text style={styles.serviceLabel}>Tổng cộng</Text>
+                      <Text style={styles.serviceLabel}>Giá gốc</Text>
                       <Text style={styles.serviceName}>
-                        {vehicleCount} xe • {(booking.finalAmount || 0).toLocaleString('vi-VN')}đ
+                        {(booking.originalPrice || 0).toLocaleString('vi-VN')}đ
                       </Text>
+                      {(booking.pointDiscountAmount > 0 || booking.voucherDiscountAmount > 0) && (
+                        <>
+                          {booking.pointDiscountAmount > 0 && (
+                            <Text style={styles.discountLine}>
+                              Giảm điểm: -{booking.pointDiscountAmount.toLocaleString('vi-VN')}đ
+                            </Text>
+                          )}
+                          {booking.voucherDiscountAmount > 0 && (
+                            <Text style={styles.discountLine}>
+                              Giảm voucher: -{booking.voucherDiscountAmount.toLocaleString('vi-VN')}đ
+                            </Text>
+                          )}
+                        </>
+                      )}
                     </View>
                     <Text style={[
                       styles.serviceAmount,
@@ -374,6 +368,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     color: LuxeColors.onSurface,
+  },
+  discountLine: {
+    fontSize: 12,
+    color: LuxeColors.primaryContainer,
+    marginTop: 2,
   },
   serviceAmount: {
     fontSize: 14,

@@ -67,6 +67,18 @@ export interface CreateBookingResponse {
   bookingId: number;
 }
 
+export interface MyBookingItem {
+  bookingId: number;
+  licensePlate: string;
+  serviceName: string;
+  scheduledTime: string;
+  status: string;
+  originalPrice: number;
+  pointDiscountAmount: number;
+  voucherDiscountAmount: number;
+  finalAmount: number;
+}
+
 export const bookingService = {
   getServices: async (): Promise<ApiResponse<Service[]>> => {
     return apiClient.get<Service[]>('/services');
@@ -83,11 +95,15 @@ export const bookingService = {
     return apiClient.post<CreateBookingResponse>('/bookings', data);
   },
 
-  getMyBookings: async (): Promise<ApiResponse<BookingDetail[]>> => {
+  getMyBookings: async (): Promise<ApiResponse<MyBookingItem[]>> => {
     return apiClient.get<BookingDetail[]>('/bookings/me');
   },
 
   cancelBooking: async (bookingId: number): Promise<ApiResponse<void>> => {
     return apiClient.put<void>(`/bookings/${bookingId}/cancel`, {});
+  },
+
+  updateBookingStatus: async (bookingId: number, newStatus: string): Promise<ApiResponse<void>> => {
+    return apiClient.put<void>(`/admin/bookings/${bookingId}/status`, { newStatus });
   },
 };
