@@ -27,6 +27,7 @@ export type {
   BookingDetail,
   BookingDetailVehicle,
   CreateBookingResponse,
+  MyBookingItem,
 } from './bookingService';
 export { walletService } from './walletService';
 export type { WalletBalance, TopUpRequest, Transaction, TransactionType, TransactionStatus } from './walletService';

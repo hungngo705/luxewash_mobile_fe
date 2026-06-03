@@ -73,7 +73,7 @@ export default function BookingConfirmationScreen() {
       }));
 
       const [year, month, day] = dateParam.split('-').map(Number);
-      const scheduledDate = new Date(year, month - 1, day).toISOString();
+      const scheduledDate = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0)).toISOString();
 
       const res = await bookingService.createBooking({
         scheduledDate,
