@@ -128,7 +128,7 @@ export default function AppointmentsScreen() {
 
   const clearDateFilter = () => { setStartDate(null); setEndDate(null); };
 
-  const handleBookNow = () => router.push('/booking/select-vehicles');
+  const handleBookNow = () => router.push('/booking/select-branch');
 
   const greeting = getGreeting();
   const now = new Date();

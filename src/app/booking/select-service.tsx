@@ -31,12 +31,11 @@ export default function SelectServiceScreen() {
   const { user } = useAuth();
   const params = useLocalSearchParams();
 
-  const vehicleIdsParam = (params.vehicleIds as string) || '';
-  const vehicleTypeIdsParam = (params.vehicleTypeIds as string) || '';
-  const vehicleBrandsParam = (params.vehicleBrands as string) || '';
-
-  const vehiclePlateList = vehicleIdsParam ? vehicleIdsParam.split(',') : [];
-  const vehicleBrandList = vehicleBrandsParam ? vehicleBrandsParam.split('|') : [];
+  const vehicleIdParam = (params.vehicleId as string) || '';
+  const vehicleTypeIdParam = parseInt(params.vehicleTypeId as string) || 1;
+  const vehicleBrandParam = (params.vehicleBrand as string) || '';
+  const branchIdParam = parseInt(params.branchId as string) || 1;
+  const branchNameParam = (params.branchName as string) || 'LuxeWash';
 
   const membershipInfo = user ? MembershipConfig[user.membershipTier] : MembershipConfig.standard;
   const membershipDiscount = membershipInfo.discountRate;
@@ -62,24 +61,28 @@ export default function SelectServiceScreen() {
     loadServices();
   }, []);
 
-  const getMinPrice = (service: Service): number => {
+  const getPriceForVehicleType = (service: Service): number => {
     if (!service.prices || service.prices.length === 0) return 0;
+    const priceForType = service.prices.find(p => p.vehicleTypeId === vehicleTypeIdParam);
+    if (priceForType) return priceForType.price;
     return Math.min(...service.prices.map(p => p.price));
   };
 
   const handleContinue = () => {
     if (!selectedService) return;
-    const minPrice = getMinPrice(selectedService);
+    const price = getPriceForVehicleType(selectedService);
     router.push({
       pathname: '/booking/select-date',
       params: {
         serviceId: String(selectedService.serviceId),
         serviceName: selectedService.serviceName,
-        servicePrice: String(minPrice),
+        servicePrice: String(price),
         membershipDiscount: String(membershipDiscount),
-        vehicleIds: vehicleIdsParam,
-        vehicleTypeIds: vehicleTypeIdsParam,
-        vehicleBrands: vehicleBrandsParam,
+        vehicleId: vehicleIdParam,
+        vehicleTypeId: String(vehicleTypeIdParam),
+        vehicleBrand: vehicleBrandParam,
+        branchId: String(branchIdParam),
+        branchName: branchNameParam,
       },
     });
   };
@@ -91,12 +94,13 @@ export default function SelectServiceScreen() {
 
         <ProgressSteps
           steps={[
+            { label: 'Chi nhánh' },
             { label: 'Xe' },
             { label: 'Dịch vụ' },
             { label: 'Ngày' },
             { label: 'Xác nhận' },
           ]}
-          currentStep={1}
+          currentStep={2}
         />
 
         <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
@@ -106,8 +110,18 @@ export default function SelectServiceScreen() {
               <Feather name="truck" size={18} color={LuxeColors.primaryContainer} />
             </View>
             <View style={styles.vehicleSummaryContent}>
-              <Text style={styles.vehicleSummaryTitle}>{vehiclePlateList.length} xe đã chọn</Text>
-              <Text style={styles.vehicleSummarySubtitle} numberOfLines={1}>{vehicleBrandList.join(' • ')}</Text>
+              <Text style={styles.vehicleSummaryTitle}>{vehicleBrandParam}</Text>
+              <Text style={styles.vehicleSummarySubtitle} numberOfLines={1}>{vehicleIdParam}</Text>
+            </View>
+          </View>
+
+          {/* Branch Summary */}
+          <View style={styles.branchSummary}>
+            <View style={styles.branchSummaryIcon}>
+              <Feather name="map-pin" size={18} color={LuxeColors.primaryContainer} />
+            </View>
+            <View style={styles.branchSummaryContent}>
+              <Text style={styles.branchSummaryTitle}>{branchNameParam}</Text>
             </View>
           </View>
 
@@ -136,7 +150,7 @@ export default function SelectServiceScreen() {
             ) : (
               services.map((service) => {
                 const isSelected = selectedService?.serviceId === service.serviceId;
-                const basePrice = getMinPrice(service);
+                const basePrice = getPriceForVehicleType(service);
                 const discountedPrice = Math.round(basePrice * (1 - membershipDiscount));
                 const iconName = getServiceIconName(service.serviceName);
 
@@ -244,6 +258,26 @@ const styles = StyleSheet.create({
   vehicleSummaryContent: { flex: 1 },
   vehicleSummaryTitle: { fontSize: 14, fontWeight: '700', color: LuxeColors.onSurface },
   vehicleSummarySubtitle: { fontSize: 12, color: LuxeColors.onSurfaceVariant, marginTop: 2 },
+  branchSummary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 16,
+    gap: 12,
+    ...LuxeShadows.sm,
+  },
+  branchSummaryIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: LuxeColors.primaryContainer + '18',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  branchSummaryContent: { flex: 1 },
+  branchSummaryTitle: { fontSize: 14, fontWeight: '700', color: LuxeColors.onSurface },
   welcomeSection: { marginBottom: 16 },
   welcomeTitle: { fontSize: 26, fontWeight: '800', color: LuxeColors.onSurface, marginBottom: 6 },
   welcomeSubtitle: { fontSize: 14, color: LuxeColors.onSurfaceVariant, lineHeight: 20 },

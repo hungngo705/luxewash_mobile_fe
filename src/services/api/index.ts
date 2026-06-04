@@ -24,12 +24,15 @@ export type {
   Service,
   ServicePrice,
   BookingRequest,
+  CompatibilityDTO,
   BookingDetail,
   BookingDetailVehicle,
   CreateBookingResponse,
   MyBookingItem,
   GetMyBookingsParams,
 } from './bookingService';
+export { branchService } from './branchService';
+export type { BranchDTO } from './branchService';
 export { walletService } from './walletService';
 export type { WalletBalance, TopUpRequest, Transaction, TransactionType, TransactionStatus } from './walletService';
 export { loyaltyService } from './loyaltyService';

@@ -65,7 +65,7 @@ export default function HomeScreen() {
   };
 
   const handleBooking = () => {
-    router.push('/booking/select-vehicles');
+    router.push('/booking/select-branch');
   };
 
   return (

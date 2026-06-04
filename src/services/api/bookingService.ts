@@ -26,15 +26,23 @@ export interface Service {
   prices: ServicePrice[];
 }
 
+export interface CompatibilityDTO {
+  isCompatible: boolean;
+  message: string | null;
+  remainingCapacity: number;
+  totalCapacityWeight: number;
+  maxCapacityOfSlot: number;
+}
+
 export interface BookingRequest {
+  branchId: number;
+  vehicleId?: number;
+  licensePlate: string;
+  serviceIds: number[];
   scheduledDate: string;
   slotId: number;
   pointsToUse: number;
   voucherId: number | null;
-  vehicles: Array<{
-    licensePlate: string;
-    serviceId: number;
-  }>;
 }
 
 export interface BookingDetailVehicle {
@@ -90,10 +98,28 @@ export const bookingService = {
     return apiClient.get<Service[]>('/services');
   },
 
-  getAvailableSlots: async (targetDate: string, bookingVehicles: { vehicleTypeId: number; serviceId: number }[]): Promise<ApiResponse<TimeSlot[]>> => {
+  checkCompatibility: async (data: {
+    branchId: number;
+    slotId: number;
+    targetDate: string;
+    licensePlate: string;
+    vehicleId?: number;
+    serviceIds: number[];
+  }): Promise<ApiResponse<CompatibilityDTO>> => {
+    return apiClient.post<CompatibilityDTO>('/bookings/check-compatibility', data);
+  },
+
+  getAvailableSlots: async (
+    branchId: number,
+    targetDate: string,
+    vehicleTypeId: number,
+    serviceIds: number[],
+  ): Promise<ApiResponse<TimeSlot[]>> => {
     return apiClient.post<TimeSlot[]>('/bookings/available-slots', {
+      branchId,
       targetDate,
-      bookingVehicles,
+      vehicleTypeId,
+      serviceIds,
     });
   },
 

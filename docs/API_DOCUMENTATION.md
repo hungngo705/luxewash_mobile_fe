@@ -1,494 +1,763 @@
-# SmartWash API Integration Guide
+# Tài Liệu API AutoWashPro (Backend-Driven Architecture)
 
-This document is designed for frontend developers to understand how to integrate with the SmartWash API. It is structured by **User Flows**, providing a step-by-step guide on which APIs to call, in what order, and how they work together to achieve specific business features.
-
-> **Base URL:** `https://smartwash-be.onrender.com/swagger`
-> **Global Response Format:**
-> Almost all APIs return a standard JSON structure:
-> ```json
-> {
->   "statusCode": 200,
->   "message": "Success",
->   "data": { ... },
->   "details": null
-> }
-> ```
-> *Note: If `statusCode` is 400 or higher, check `message` and `details` for error explanations.*
-
-> **Authentication Header:**
-> For any endpoint marked as requiring authentication, include the JWT token in the request headers:
-> `Authorization: Bearer <your_access_token>`
+Tài liệu này hướng dẫn cách Frontend tích hợp với Backend API cho hệ thống đặt lịch chăm sóc xe.
+Hệ thống hoạt động theo mô hình 1 Booking = 1 Xe, hỗ trợ đa chi nhánh và trả trước qua ví.
 
 ---
 
-## 1. Authentication & User Management Flow
+## I. TÀI LIỆU API LUỒNG VẬN HÀNH (1 BOOKING = 1 XE)
 
-This flow handles user registration, login, and profile retrieval.
+### Bước 1: Setup Nền tảng (Role: Admin)
+*(Những API này thường nằm ở màn hình Admin Dashboard)*
 
-### Step 1: Register a new Customer Account
-**Endpoint:** `POST /api/v1/auth/register`
-**Auth Required:** No
+#### 1. Tạo Chi nhánh
+1. **Business Purpose**: Cho phép Admin tạo mới một chi nhánh vật lý trên hệ thống.
+2. **Prerequisites**: Cần có quyền Admin.
+3. **Request Payload**:
+   - `POST /api/v1/admin/branches`
+   - Header: `Authorization: Bearer <admin_token>`
+   - Body: `CreateBranchDTO` (Tên chi nhánh, địa chỉ, số điện thoại, v.v.)
+4. **Expected Response & Error Handling**: Trả về `201 Created` cùng thông tin chi nhánh vừa tạo (ID). `400` nếu dữ liệu không hợp lệ.
+5. **Next Steps**: Lấy `BranchId` để tạo Lane, Services, và TimeSlot.
+6. **Critical Warnings for FE**: Chi nhánh là cấu hình gốc, các dữ liệu khác sẽ reference tới ID này.
 
-Users must provide their details to create an account. The system validates passwords (minimum 8 characters, 1 uppercase, 1 number) and phone numbers.
-*   **Request Payload Example:**
-    ```json
-    {
-      "phoneNumber": "0912345678",
-      "email": "user@example.com",
-      "password": "Password123",
-      "fullName": "Nguyen Van A"
-    }
-    ```
-*   **Expected Response:** `201 Created` with a success message.
+#### 2. Tạo Dịch vụ
+1. **Business Purpose**: Thêm mới dịch vụ rửa/chăm sóc xe với cấu hình giá và chi nhánh áp dụng.
+2. **Prerequisites**: Quyền Admin. Cần có `BranchId`.
+3. **Request Payload**:
+   - `POST /api/v1/admin/services`
+   - Header: `Authorization: Bearer <admin_token>`
+   - Body: `CreateOrUpdateServiceDTO`
+4. **Expected Response**: `201 Created` và thông tin dịch vụ.
+5. **Next Steps**: Khách hàng có thể chọn dịch vụ này trong giỏ hàng.
+6. **Critical Warnings for FE**: Giá của dịch vụ có thể khác nhau tùy theo loại xe (VehicleTypeId).
 
-### Step 2: Login to obtain Tokens
-**Endpoint:** `POST /api/v1/auth/login`
-**Auth Required:** No
+#### 3. Tạo Khung giờ (TimeSlot)
+1. **Business Purpose**: Tạo các khung giờ hoạt động cho chi nhánh.
+2. **Prerequisites**: Quyền Admin (hoặc Staff có quyền). Cần có `BranchId`.
+3. **Request Payload**:
+   - `POST /api/v1/admin/time-slots`
+   - Header: `Authorization: Bearer <admin_token>`
+   - Body: `CreateTimeSlotDTO` (Bắt đầu, kết thúc, sức chứa/số slot).
+4. **Expected Response**: `201 Created`.
+5. **Next Steps**: Hiển thị các khung giờ này khi khách hàng check Available Slots.
+6. **Critical Warnings for FE**: Mỗi khung giờ có giới hạn CapacityWeight.
 
-Users can log in using either their `Phone` or `Email`.
-*   **Request Payload Example:**
-    ```json
-    {
-      "phoneOrEmail": "0912345678",
-      "password": "Password123"
-    }
-    ```
-*   **Expected Response:** Returns an `AuthResponseDTO` which includes the `Token` (JWT Access Token) and `RefreshToken`. The Access Token should be stored (e.g., localStorage) and used in the `Authorization: Bearer <token>` header for all subsequent protected requests.
-
-### Step 3: Fetch the User's Profile
-**Endpoint:** `GET /api/v1/users/me`
-**Auth Required:** Yes
-
-Once logged in, fetch the user's details, including their current Loyalty Tier, Points, Wallet Balance (if any), and registered Vehicles.
-*   **Response Data Example:**
-    ```json
-    {
-      "userId": 1,
-      "fullName": "Nguyen Van A",
-      "phoneNumber": "0912345678",
-      "tierName": "Standard",
-      "totalPoint": 150,
-      "promotionPoint": 50,
-      "vehicles": [
-         { "licensePlate": "51H12345", "vehicleType": "Sedan" }
-      ]
-    }
-    ```
-
-### Step 4: Refresh Token (When Access Token Expires)
-**Endpoint:** `POST /api/v1/auth/refresh-token`
-**Auth Required:** No
-
-Access tokens expire quickly. When a request returns `401 Unauthorized`, use this endpoint with your saved `RefreshToken` to get a new pair of tokens.
+#### 4. Tạo Quản lý (Manager)
+1. **Business Purpose**: Tạo tài khoản cho người quản lý chi nhánh.
+2. **Prerequisites**: Quyền Admin.
+3. **Request Payload**:
+   - `POST /api/v1/admin/employees`
+   - Header: `Authorization: Bearer <admin_token>`
+   - Body: `CreateEmployeeDTO` (Role = "Manager", BranchId, SDT, Password, ...)
+4. **Expected Response**: `200 OK` (hoặc `201`) trả về Employee.
+5. **Next Steps**: Cung cấp tài khoản cho Manager đăng nhập app.
+6. **Critical Warnings for FE**: Account internal này kích hoạt ngay không cần OTP. Role phải map với enum hệ thống.
 
 ---
 
-## 2. Vehicle Management Flow
+### Bước 2: Chuẩn bị Vận hành tại Trạm (Role: Manager)
+*(Manager dùng app hoặc web quản lý tại trạm)*
 
-Customers need to register their vehicles before they can create a booking. A customer can add unlimited vehicles to their profile.
+#### 1. Tạo Làn (Lane)
+1. **Business Purpose**: Tạo các làn phục vụ xe vật lý (VD: Làn bọt tuyết, Làn khô) cho chi nhánh.
+2. **Prerequisites**: Quyền Admin/Manager.
+3. **Request Payload**:
+   - `POST /api/v1/admin/lanes`
+   - Header: `Authorization: Bearer <token>`
+   - Body: `CreateLaneDTO`
+4. **Expected Response**: `201 Created` kèm `LaneId`.
+5. **Next Steps**: Assign staff vào lane.
+6. **Critical Warnings for FE**: Làn phải gắn với đúng `BranchId`.
 
-### Step 1: Add a Vehicle
-**Endpoint:** `POST /api/v1/vehicles`
-**Auth Required:** Yes
+#### 2. Lấy danh sách Nhân viên trong Chi nhánh
+1. **Business Purpose**: Manager lấy danh sách Staff thuộc chi nhánh mình đang quản lý.
+2. **Prerequisites**: Quyền Manager.
+3. **Request Payload**:
+   - `GET /api/v1/manager/staff`
+   - Header: `Authorization: Bearer <manager_token>`
+4. **Expected Response**: `200 OK` trả về danh sách Staff.
+5. **Next Steps**: Hiển thị trên UI để chọn Staff xếp ca.
+6. **Critical Warnings for FE**: API tự động lấy BranchId của Manager từ Token.
 
-The customer registers a new vehicle. The `LicensePlate` is standardized automatically on the backend (spaces/dashes removed, uppercase).
-*   **Request Payload Example:**
-    ```json
-    {
-      "licensePlate": "51H-123.45",
-      "vehicleTypeId": 1
-    }
-    ```
-*(Note: `vehicleTypeId` can be retrieved via `GET /api/v1/admin/vehicle-types` if public, or pre-fetched by the frontend).*
-
-### Step 2: View My Vehicles
-**Endpoint:** `GET /api/v1/vehicles`
-**Auth Required:** Yes
-
-Retrieves a list of all vehicles registered to the currently authenticated user.
-*   **Response Data Example:**
-    ```json
-    [
-      {
-        "licensePlate": "51H12345",
-        "vehicleType": "Sedan"
-      }
-    ]
-    ```
-
-### Step 3: Update or Delete Vehicle (Optional)
-**Update:** `PUT /api/v1/vehicles/{licensePlate}`
-**Delete:** `DELETE /api/v1/vehicles/{licensePlate}`
-**Auth Required:** Yes
-
-Used if the user wants to change the `vehicleTypeId` or remove a car from their account.
+#### 3. Phân công Nhân viên đứng Làn
+1. **Business Purpose**: Đầu ngày, Manager assign 1 Staff vào 1 Lane cụ thể.
+2. **Prerequisites**: Quyền Manager. Cần `StaffId` và `LaneId`.
+3. **Request Payload**:
+   - `POST /api/v1/manager/lanes/assign-staff`
+   - Header: `Authorization: Bearer <manager_token>`
+   - Body: `AssignStaffToLaneDTO` (`StaffId`, `LaneId`, `AssignedDate`).
+4. **Expected Response**: `200 OK` thông báo thành công.
+5. **Next Steps**: Staff khi login sẽ thấy các Booking đẩy vào Lane của mình.
+6. **Critical Warnings for FE**: Staff phải chưa được assign vào lane khác trong cùng ca/ngày đó.
 
 ---
 
-## 3. Customer Booking Process Flow
+### Bước 3: Khách hàng Đặt lịch (Role: Customer / FE App)
 
-This flow covers how a frontend app builds a booking (selecting services, checking dates, applying points/vouchers, and confirming). The system uses a "shopping cart" style architecture where a single booking can include multiple vehicles.
+#### 1. Khách xem Khung giờ rảnh
+1. **Business Purpose**: Trả về danh sách khung giờ trống trong ngày dựa trên giỏ hàng (sức chứa).
+2. **Prerequisites**: Giỏ hàng (danh sách xe, dịch vụ) phải được chọn trước. Khách phải đăng nhập.
+3. **Request Payload**:
+   - `POST /api/v1/bookings/available-slots`
+   - Header: `Authorization: Bearer <customer_token>`
+   - Body: `CheckAvailableSlotsRequestDTO` (`targetDate`, `bookingVehicles`).
+4. **Expected Response**: `200 OK` danh sách Slot kèm cờ `isAvailable` (true/false) và `reason`.
+5. **Next Steps**: UI disable các khung giờ false, cho phép chọn true.
+6. **Critical Warnings for FE**: Luôn phụ thuộc cờ `isAvailable` của BE. Phải gọi lại API khi thay đổi giỏ hàng.
 
-### Step 1: Fetch Available Services
-**Endpoint:** `GET /api/v1/services`
-**Auth Required:** No
+#### 2. Khách kiểm tra sức chứa (trước thanh toán)
+1. **Business Purpose**: Xác nhận lần cuối cùng xem Slot đã chọn còn trống hay không trước khi gọi API tạo booking (để chặn tranh chấp chỗ).
+2. **Prerequisites**: Đã chọn Slot.
+3. **Request Payload**:
+   - `POST /api/v1/bookings/check-compatibility`
+   - Header: `Authorization: Bearer <customer_token>`
+   - Body: `CheckCompatibilityRequestDTO` (giống lúc check slot).
+4. **Expected Response**: `200 OK`. `400` nếu đã đầy.
+5. **Next Steps**: Gọi tạo Booking.
+6. **Critical Warnings for FE**: Dùng để validate phòng hờ concurrency.
 
-Retrieve a list of active services that the user can choose from.
-*   **Response Data Example:**
-    ```json
-    [
-      {
-        "serviceId": 1,
-        "serviceName": "Standard Wash",
-        "description": "Exterior wash and dry",
-        "prices": [
-          { "vehicleTypeId": 1, "vehicleTypeName": "Sedan", "price": 100000, "capacityWeight": 1.0 }
-        ]
-      }
-    ]
-    ```
+#### 3. Khách chốt Đặt lịch (Tạo Booking)
+1. **Business Purpose**: Chốt lịch hẹn, trừ tiền ví tự động.
+2. **Prerequisites**: Có đủ số dư trong Ví, đã qua các bước check Slot.
+3. **Request Payload**:
+   - `POST /api/v1/bookings`
+   - Header: `Authorization: Bearer <customer_token>`
+   - Body: `CreateBookingDTO` (`BranchId`, `SlotId`, `bookingVehicles` (có `LicensePlate`, `ServiceId`, v.v.), `VoucherCodes`, `usePointDiscount`).
+4. **Expected Response**: `201 Created` kèm số tiền cuối cùng và số dư còn lại. `400` nếu thiếu tiền.
+5. **Next Steps**: Chuyển hướng sang màn hình thành công, hiển thị BookingID.
+6. **Critical Warnings for FE**: Transaction tạo booking và trừ ví là đồng bộ (Atomic). API tự tính lại giá cuối cùng, không tin tưởng `Price` từ UI.
 
-### Step 2: Check Available Time Slots for a Date
-**Endpoint:** `GET /api/v1/bookings/slots?targetDate=2023-12-01`
-**Auth Required:** Yes
-
-Fetches all time slots for a specific date and indicates if they are `IsAvailable` based on capacity limits and the customer's current Loyalty Tier (some slots might be VIP only).
-*   **Response Data Example:**
-    ```json
-    [
-      {
-        "slotId": 1,
-        "timeRange": "08:00 - 09:00",
-        "isAvailable": true,
-        "reason": null
-      },
-      {
-        "slotId": 2,
-        "timeRange": "09:00 - 10:00",
-        "isAvailable": false,
-        "reason": "Kín chỗ"
-      }
-    ]
-    ```
-
-### Step 3: Create the Booking
-**Endpoint:** `POST /api/v1/bookings`
-**Auth Required:** Yes
-
-Submit the booking. Ensure the `targetDate` is converted to UTC (`.ToUniversalTime()`) if applicable, though the backend compares strictly by Date in some contexts. The backend checks for sufficient Wallet balance to hold the deposit. If the user doesn't have enough money in their Wallet, this will fail (see Wallet Flow).
-*   **Request Payload Example:**
-    ```json
-    {
-      "scheduledDate": "2023-12-01T00:00:00Z",
-      "slotId": 1,
-      "pointsToUse": 0,
-      "voucherId": null,
-      "vehicles": [
-        { "licensePlate": "51H12345", "serviceId": 1 }
-      ]
-    }
-    ```
-*   **Expected Response:** `200 OK` indicating the booking is created and the cost has been deducted from the user's wallet.
-
-### Step 4: View My Bookings / History
-**Endpoint:** `GET /api/v1/bookings/me`
-**Auth Required:** Yes
-
-Retrieves all bookings made by the customer. Includes statuses like `Pending`, `CheckedIn`, `Completed`, `Cancelled`, `NoShow`.
-
-### Step 5: Cancel Booking (Optional)
-**Endpoint:** `PUT /api/v1/bookings/{id}/cancel`
-**Auth Required:** Yes
-
-Customers can cancel pending bookings. If canceled early enough, their wallet deposit is refunded.
+#### 4. Khách vãng lai (Quản lý/Staff tạo giùm)
+1. **Business Purpose**: Tiếp nhận xe đến thẳng trạm mà không hẹn trước, ưu tiên xử lý check-in ngay.
+2. **Prerequisites**: Quyền Staff/Manager/Admin.
+3. **Request Payload**:
+   - `POST /api/v1/bookings/walk-in`
+   - Header: `Authorization: Bearer <staff_token>`
+   - Body: `CreateWalkInBookingDTO` (như trên nhưng bỏ qua bước chọn slot tương lai).
+4. **Expected Response**: `201 Created`.
+5. **Next Steps**: Chuyển trạng thái xe vào Check-in/Lane luôn.
+6. **Critical Warnings for FE**: FE truyền thẳng các dịch vụ cần làm.
 
 ---
 
-## 4. Wallet & Payment Flow
+### Bước 4: Điều phối xe khi khách tới trạm (Role: Manager)
 
-The system uses an internal Wallet model. Customers must top up their wallet via PayOS before making bookings.
+#### 1. Lấy danh sách xe chuẩn bị vào / đang ở trạm
+1. **Business Purpose**: Manager xem list Booking đang Pending/CheckedIn/Processing tại chi nhánh.
+2. **Prerequisites**: Quyền Manager.
+3. **Request Payload**:
+   - `GET /api/v1/manager/bookings` (Theo Controller route, API là `GET /api/v1/manager/bookings`)
+   - Header: `Authorization: Bearer <manager_token>`
+4. **Expected Response**: `200 OK` List xe chờ.
+5. **Next Steps**: Manager scan biển số hoặc click vào list để điều xe.
+6. **Critical Warnings for FE**: API tự lọc theo Branch của Manager.
 
-### Step 1: Check Wallet Balance
-**Endpoint:** `GET /api/v1/wallets/me`
-**Auth Required:** Yes
-
-Fetches the user's current fiat `Balance` and point balances.
-*   **Response Data Example:**
-    ```json
-    {
-      "balance": 150000.0,
-      "totalPoints": 100,
-      "promotionPoints": 50
-    }
-    ```
-
-### Step 2: Request a Top Up
-**Endpoint:** `POST /api/v1/wallets/top-up`
-**Auth Required:** Yes
-
-Initiates a payment session with PayOS. The frontend provides redirect URLs.
-*   **Request Payload Example:**
-    ```json
-    {
-      "amount": 200000.0,
-      "cancelUrl": "https://yourfrontend.com/payment/cancel",
-      "returnUrl": "https://yourfrontend.com/payment/success"
-    }
-    ```
-*   **Expected Response:** Returns a `checkoutUrl`. The frontend should redirect the user's browser to this URL to complete the payment via PayOS.
-
-### Step 3: Handle Payment Callback (Webhook)
-**Endpoint:** `POST /api/v1/wallets/top-up/callback`
-**Auth Required:** No (Handled by PayOS server)
-
-*Frontend Developers do not call this endpoint.* PayOS calls it automatically upon successful payment to update the user's wallet `Balance`. When the user returns to `returnUrl`, the frontend should poll or refetch `GET /api/v1/wallets/me` to see the updated balance.
-
-### Step 4: View Transaction History
-**Endpoint:** `GET /api/v1/transactions`
-**Auth Required:** Yes
-
-Shows a history of top-ups, booking deductions, refunds, and upsell charges.
+#### 2. Check-in và Điều xe vào Làn
+1. **Business Purpose**: Xác nhận xe đã đến trạm và đưa vào Lane.
+2. **Prerequisites**: Quyền Manager.
+3. **Request Payload**:
+   - `POST /api/v1/manager/bookings/{bookingId}/checkin-assign`
+   - Header: `Authorization: Bearer <manager_token>`
+   - Body: `AssignBookingToLaneDTO` (`LaneId`).
+4. **Expected Response**: `200 OK` đổi Status thành `CheckedIn`.
+5. **Next Steps**: Xe xuất hiện trên màn hình của Staff đang phụ trách Lane đó.
+6. **Critical Warnings for FE**: Bắt buộc phải có xe đến vật lý.
 
 ---
 
-## 5. Loyalty & Promotions Flow
+### Bước 5: Nhân viên Rửa xe (Role: Staff)
 
-Handles VIP Tiers, Points accumulation, and Vouchers.
+#### 1. Staff xem danh sách xe cần rửa
+1. **Business Purpose**: Staff xem các xe đang ở Lane của mình (CheckedIn) hoặc đang làm dở (Processing).
+2. **Prerequisites**: Quyền Staff, đã được Manager phân công Lane.
+3. **Request Payload**:
+   - `GET /api/v1/operation-staff/tasks`
+   - Header: `Authorization: Bearer <staff_token>`
+4. **Expected Response**: `200 OK` List Booking.
+5. **Next Steps**: Staff chọn xe để bắt đầu.
+6. **Critical Warnings for FE**: Lấy dữ liệu theo `StaffId` ngầm.
 
-### Step 1: View Loyalty Tiers
-**Endpoint:** `GET /api/v1/tiers`
-**Auth Required:** No
+#### 2. Staff bắt đầu rửa xe
+1. **Business Purpose**: Chuyển status Booking sang "Đang xử lý".
+2. **Prerequisites**: Xe đang CheckedIn.
+3. **Request Payload**:
+   - `PUT /api/v1/operation-staff/bookings/{bookingId}/status`
+   - Header: `Authorization: Bearer <staff_token>`
+   - Body: `UpdateBookingStatusDTO` (`Status`: "Processing")
+4. **Expected Response**: `200 OK`.
+5. **Next Steps**: Khách hàng có thể theo dõi tiến độ qua App.
+6. **Critical Warnings for FE**: Lưu lại vết Staff nào thao tác.
 
-Returns the list of available VIP Tiers and the `MinAccumulatedPoints` required to reach them. This can be used on a "Benefits" page.
-*   **Response Data Example:**
-    ```json
-    [
-      { "tierId": 1, "tierName": "Standard", "pointMultiplier": 1.0, "minAccumulatedPoints": 0 },
-      { "tierId": 2, "tierName": "Gold", "pointMultiplier": 1.5, "minAccumulatedPoints": 1000 }
-    ]
-    ```
-
-### Step 2: View Point History
-**Endpoint:** `GET /api/v1/points/history`
-**Auth Required:** Yes
-
-Shows the ledger of points awarded (from completed bookings) and points deducted (from using points to discount bookings or from expirations).
-
-### Step 3: View Available Vouchers
-**Endpoint:** `GET /api/v1/vouchers/me`
-**Auth Required:** Yes
-
-Shows a list of vouchers the customer can apply to a booking.
-
-### Step 4: Redeem / Exchange a Voucher
-**Endpoint:** `POST /api/v1/vouchers/redeem`
-**Auth Required:** Yes
-
-Allows a user to exchange their `PromotionPoints` for a Voucher.
-*   **Request Payload Example:**
-    ```json
-    {
-      "voucherCode": "SUMMER10"
-    }
-    ```
+#### 3. Staff rửa xong
+1. **Business Purpose**: Chuyển status Booking sang "Hoàn thành". Tính loyalty point và gửi mail.
+2. **Prerequisites**: Xe đang Processing.
+3. **Request Payload**:
+   - `PUT /api/v1/operation-staff/bookings/{bookingId}/status`
+   - Header: `Authorization: Bearer <staff_token>`
+   - Body: `UpdateBookingStatusDTO` (`Status`: "Completed")
+4. **Expected Response**: `200 OK`.
+5. **Next Steps**: Xe rời trạm.
+6. **Critical Warnings for FE**: Quá trình này sẽ gọi ngầm IWalletService.AwardCompletionPointsAsync để thưởng điểm.
 
 ---
 
-## 6. Staff Operations Flow
+### Các API bổ trợ khác trong luồng
 
-This flow is for internal staff managing vehicles at the physical car wash location. It covers the lifecycle of a car from arrival to completion.
+#### 1. Ghi nhận tình trạng xe (Phụ phí)
+1. **Business Purpose**: Đánh giá độ dơ của xe để báo thêm phụ phí nếu cần.
+2. **Prerequisites**: Quyền Staff/Manager.
+3. **Request Payload**:
+   - `PUT /api/v1/bookings/{bookingId}/condition`
+   - Header: `Authorization: Bearer <token>`
+   - Body: `UpdateVehicleConditionDTO` (Tình trạng bẩn).
+4. **Expected Response**: `200 OK`.
+5. **Next Steps**: Cập nhật giá booking nếu có phụ phí.
+6. **Critical Warnings for FE**: Phải thỏa thuận trước với khách.
 
-### Step 1: View Daily Schedule
-**Endpoint:** `GET /api/v1/admin/bookings?targetDate=2023-12-01`
-**Auth Required:** Yes (Role: Staff or Admin)
+#### 2. Hủy lịch (Khách tự hủy)
+1. **Business Purpose**: Khách tự hủy lịch trước giờ hẹn.
+2. **Prerequisites**: Booking Status là Pending.
+3. **Request Payload**:
+   - `PUT /api/v1/bookings/{bookingId}/cancel`
+   - Header: `Authorization: Bearer <customer_token>`
+4. **Expected Response**: `200 OK`. Hoàn tiền/Hoàn điểm theo logic.
+5. **Next Steps**: Cập nhật list booking.
+6. **Critical Warnings for FE**: Việc hoàn cọc (nếu có) tùy thuộc rule thời gian hệ thống.
 
-Fetches all bookings scheduled for a specific date so staff can see who is coming.
-
-### Step 2: Check-In Customer
-**Endpoint:** `PUT /api/v1/admin/bookings/{id}/status?newStatus=CheckedIn`
-**Auth Required:** Yes (Role: Staff or Admin)
-
-When the customer arrives, the staff updates the booking status from `Pending` to `CheckedIn`.
-
-### Step 3: Handle Walk-in Bookings (Optional)
-**Endpoint:** `POST /api/v1/bookings/walk-in`
-**Auth Required:** Yes (Role: Staff or Admin)
-
-If a customer arrives without a booking, staff can use this endpoint to bypass time-slot capacity rules and force a booking into the system.
-
-### Step 4: Update Vehicle Condition / Upsell (Optional)
-**Endpoint:** `PUT /api/v1/bookings/{bookingId}/condition`  *(Called from BookingsController)*
-**Auth Required:** Yes (Role: Staff, Manager, Admin)
-
-If the vehicle is exceptionally dirty (e.g., Muddy), the staff can update the condition. The system will automatically calculate an upsell surcharge and attempt to deduct it from the customer's wallet.
-*   **Request Payload Example:**
-    ```json
-    {
-      "detailId": 12,
-      "condition": "Muddy"
-    }
-    ```
-
-### Step 5: Complete Booking
-**Endpoint:** `PUT /api/v1/admin/bookings/{id}/status?newStatus=Completed`
-**Auth Required:** Yes (Role: Staff or Admin)
-
-Once the wash is done, the staff marks it as `Completed`. This triggers the backend to officially close the transaction and award Loyalty points to the customer.
-
-### Step 6: Mark as No-Show
-**Endpoint:** `PUT /api/v1/admin/bookings/{id}/no-show`
-**Auth Required:** Yes (Role: Staff or Admin)
-
-If a customer never arrives, the staff marks the booking as a No-Show. The system retains the deposit and may apply a penalty to the customer's Churn Score.
+#### 3. Báo vắng mặt (No-show)
+1. **Business Purpose**: Khách không tới (Manager/Staff đánh dấu).
+2. **Prerequisites**: Quyền Admin/Staff/Manager.
+3. **Request Payload**:
+   - `PUT /api/v1/admin/bookings/{id}/no-show`
+   - Header: `Authorization: Bearer <staff_token>`
+4. **Expected Response**: `200 OK`. Tiền cọc không được hoàn lại.
+5. **Next Steps**: Cập nhật Slot khả dụng cho khách khác nếu còn thời gian.
+6. **Critical Warnings for FE**: Chỉ thực hiện khi đã quá giờ hẹn lâu.
 
 ---
 
-## 7. Admin Operations Flow
+## II. GIẢI THÍCH CÁC CƠ CHẾ HOẠT ĐỘNG (MECHANISMS)
 
-These endpoints are strictly for administrators configuring the system parameters.
+### 1. Cơ chế Thanh toán (Payment & Wallet)
+Hệ thống sử dụng mô hình **Trả trước qua Ví (Prepay/Deposit Model)**.
+- Khi khách hàng đăng ký tài khoản, hệ thống tự động tạo 1 Ví (Wallet) đi kèm.
+- **Top-up (Nạp tiền)**: Khách nạp tiền qua cổng thanh toán trung gian (PayOS). API `POST /api/v1/wallets/top-up` tạo link thanh toán. Sau khi khách quét mã QR và chuyển khoản thành công, PayOS sẽ gọi Webhook (`POST /api/v1/wallets/top-up/callback`) về hệ thống. Backend cập nhật số dư ví.
+- **Polling phía FE**: Vì Webhook là bất đồng bộ, Frontend sau khi mở link thanh toán cần thực hiện Polling (gọi `GET /api/v1/wallets/me` liên tục mỗi 3-5 giây) để kiểm tra xem số dư đã thay đổi chưa để thông báo nạp thành công.
+- **Trừ tiền tự động**: Khi gọi API tạo Booking, hệ thống thực hiện Atomic Transaction: Tính tổng tiền dịch vụ -> Áp dụng Voucher/Điểm -> Trừ thẳng số tiền cuối cùng vào Ví (Nếu số dư >= FinalAmount) -> Tạo Booking. Không có khái niệm nợ hay thanh toán tiền mặt tại trạm.
 
-**Global Auth Requirement:** Yes (Role: Admin)
+### 2. Cơ chế Email (Background Task)
+Email notification (Gửi mail xác nhận đặt lịch, đổi quà, v.v.) hoạt động theo cơ chế **Fire-and-Forget**.
+- Ví dụ API `POST /api/v1/bookings/{bookingId}/trigger-email` hoặc tự động gọi lúc tạo Booking.
+- Logic gửi email được bọc trong `Task.Run()` kết hợp với Dependency Injection Scope mới (using scope).
+- Nhờ vậy, API Controller không bị block bởi tốc độ mạng của SMTP Server. Nó trả về `201 Created` hoặc `202 Accepted` cho Frontend ngay lập tức. Email sẽ được gửi ngầm.
 
-### Managing Vehicle Types
-Allows the admin to define what types of vehicles the system supports (e.g., Sedan, SUV, Motorcycle).
-*   **Create:** `POST /api/v1/admin/vehicle-types`
-*   **Update:** `PUT /api/v1/admin/vehicle-types/{id}`
-*   **List:** `GET /api/v1/admin/vehicle-types`
+### 3. Cơ chế Khung giờ (Time Slots)
+- Admin sẽ khai báo cấu hình khung giờ cho từng Chi nhánh (`POST /api/v1/admin/time-slots`).
+- Mỗi TimeSlot không quy định cụ thể là mấy chiếc xe, mà quy định **Sức chứa (Capacity/Max Slot Weight)**.
+- Mỗi Vehicle Type và Service sẽ có `BaseWeight` riêng.
+- Khi khách lấy danh sách khung giờ (`POST /api/v1/bookings/available-slots`), Backend sẽ lấy Sức chứa tối đa của Slot trừ đi Tổng Weight của các xe đã chốt trong Slot đó. Nếu phần dư còn đủ cho tổng Weight của Giỏ hàng hiện tại của khách -> Khung giờ đó mới `IsAvailable = true`.
 
-### Managing Services
-Defines the wash services, their descriptions, and sets specific prices based on `VehicleType`.
-*   **Create:** `POST /api/v1/admin/services`
-*   **Update:** `PUT /api/v1/admin/services/{id}`
-*   **Toggle Active/Inactive:** `DELETE /api/v1/admin/services/{id}`
-
-### Managing Vouchers
-Allows the admin to issue new discount vouchers that users can redeem with points.
-*   **Create:** `POST /api/v1/admin/vouchers`
-*   **Update:** `PUT /api/v1/admin/vouchers/{id}`
-*   **List All:** `GET /api/v1/admin/vouchers`
-
-### User Management
-Used by admins to view customer details, ban accounts, or review history.
-*   **List Customers (Paginated):** `GET /api/v1/admin/users?page=1&pageSize=10`
-*   **View Specific Customer Detail:** `GET /api/v1/admin/users/{id}`
-*   **Update User Status (e.g., Ban):** `PUT /api/v1/admin/users/{id}/status`
+### 4. Cơ chế Phân bổ Nhân viên (Staff Allocation)
+- Nhân viên khi được tạo (`AdminEmployeesController`) sẽ gắn cứng với 1 `BranchId`.
+- Manager của Branch đó lấy list Staff.
+- Đầu ca làm việc, Manager gắn (Assign) `StaffId` vào `LaneId` (Ví dụ: Nhân viên Nguyễn Văn A phụ trách Làn Bọt Tuyết số 1).
+- Khi có xe Check-in, Manager điều phối xe đẩy thẳng vào Làn số 1.
+- Màn hình Tablet của nhân viên Nguyễn Văn A (API `GET /api/v1/operation-staff/tasks`) sẽ ngầm hiểu Token của A đang đứng ở Làn 1, tự động fetch các xe đang nằm trong Làn 1 để A bấm "Processing".
 
 ---
 
-## Frontend Integration Guide: The Business Flows
+## III. DANH SÁCH TOÀN BỘ CÁC API KHÁC TRONG HỆ THỐNG
 
-As the Backend Tech Lead, I have structured this guide to explain the **Business Flows** rather than just listing endpoints. Read this carefully to understand how data flows through the SmartWash system.
+### 1. AIChatbotController
+#### `POST /api/v1/ai/chat`
+1. **Business Purpose**: Cho phép khách hàng chat với AI để được tư vấn (VD: Chọn loại rửa xe nào).
+2. **Prerequisites**: Quyền Customer, rate limited.
+3. **Request Payload**: `AIChatRequestDTO` chứa `Message`.
+4. **Expected Response**: AI reply dạng text.
+5. **Next Steps**: Hiển thị trên UI Chat.
+6. **Critical Warnings for FE**: API có áp dụng Rate Limiting.
 
-### 1. User Registration Flow
-**Endpoint:** `POST /api/v1/auth/register`
-**1. Business Purpose:** Creates a new Customer account along with an empty Wallet and Profile.
-**2. Prerequisites (Crucial):** None. This is the entry point.
-**3. Request Payload:**
-```json
-{
-  "phoneNumber": "0912345678",
-  "email": "user@example.com",
-  "password": "Password123",
-  "fullName": "Nguyen Van A"
-}
-```
-**4. Expected Response & Error Handling:**
-*   **Success (201):** User is created.
-*   **Error (400):** Watch out for "Email/Phone already exists" or "Password does not meet complexity requirements" (requires 8 chars, 1 uppercase, 1 number).
-**5. Next Steps:** Automatically redirect the user to the Login screen.
-**6. ⚠️ Critical Warnings for FE:** Do not log the user in automatically after registration. Force them through the explicit login flow to establish JWT tokens.
+#### `GET /api/v1/ai/recommendation`
+1. **Business Purpose**: Gợi ý dịch vụ chăm sóc xe thông minh dựa trên lịch sử xe.
+2. **Prerequisites**: Quyền Customer.
+3. **Request Payload**: Không.
+4. **Expected Response**: Dữ liệu gợi ý.
+5. **Next Steps**: Hiển thị banner/popup gợi ý.
+6. **Critical Warnings for FE**: Phải handle trường hợp data trả về rỗng nếu user chưa có lịch sử.
 
-### 2. Authentication & Token Management
-**Endpoint:** `POST /api/v1/auth/login`
-**1. Business Purpose:** Authenticates the user and provisions JWT Access & Refresh tokens.
-**2. Prerequisites (Crucial):** User must exist.
-**3. Request Payload:**
-```json
-{
-  "phoneOrEmail": "0912345678",
-  "password": "Password123"
-}
-```
-**4. Expected Response & Error Handling:**
-*   **Success (200):** Returns `Token` (15m expiry) and `RefreshToken` (7d expiry).
-*   **Error (401):** "Invalid credentials".
-*   **Error (429):** "Too many requests" (Brute-force protection is active, tell user to wait).
-**5. Next Steps:** Store tokens securely (e.g., localStorage/secure cookies). Call `GET /api/v1/users/me` and `GET /api/v1/wallets/me` to hydrate the app state.
-**6. ⚠️ Critical Warnings for FE:** Access tokens expire quickly. You MUST implement an axios interceptor (or similar) to catch `401 Unauthorized` errors, call `POST /api/v1/auth/refresh-token`, and automatically retry the failed request without logging the user out.
+### 2. AdminBranchesController
+#### `GET /api/v1/admin/branches`
+1. **Business Purpose**: Lấy danh sách tất cả các chi nhánh.
+2. **Prerequisites**: Quyền Admin.
+3. **Request Payload**: Không.
+4. **Expected Response**: Mảng `BranchDTO`.
+5. **Next Steps**: Load vào Dropdown.
+6. **Critical Warnings for FE**: Chỉ Admin dùng API này, FE khách hàng có thể gọi API ở nhánh khác nếu public.
 
-### 3. Vehicle Registration Flow
-**Endpoint:** `POST /api/v1/vehicles`
-**1. Business Purpose:** Registers a customer's car to their profile so it can be selected during booking.
-**2. Prerequisites (Crucial):** You must call `GET /api/v1/admin/vehicle-types` first to populate a dropdown so the user can select their `vehicleTypeId` (e.g., Sedan, SUV).
-**3. Request Payload:**
-```json
-{
-  "licensePlate": "51H-123.45",
-  "vehicleTypeId": 1
-}
-```
-**4. Expected Response & Error Handling:**
-*   **Success (200):** Vehicle added. Backend automatically normalizes the plate (e.g., "51H12345").
-*   **Error (400):** "License plate already registered."
-**5. Next Steps:** Call `GET /api/v1/vehicles` to refresh the user's garage UI.
-**6. ⚠️ Critical Warnings for FE:** The backend relies on soft-deletes. If a user deleted a car previously and tries to re-add it, the backend handles the recovery, but FE just treats it as a standard success.
+#### `GET /api/v1/admin/branches/{id}`
+1. **Business Purpose**: Chi tiết 1 chi nhánh.
+2. **Prerequisites**: Quyền Admin.
+3. **Request Payload**: `id` trên URL.
+4. **Expected Response**: `BranchDTO`.
+5. **Next Steps**: Hiển thị form edit.
+6. **Critical Warnings for FE**: Kiểm tra kỹ 404 Not Found.
 
-### 4. Wallet Top-Up Flow (PayOS Integration)
-**Endpoint:** `POST /api/v1/wallets/top-up`
-**1. Business Purpose:** Generates a payment session to add fiat currency to the user's SmartWash wallet.
-**2. Prerequisites (Crucial):** FE must know the environment's callback URLs.
-**3. Request Payload:**
-```json
-{
-  "amount": 200000.0,
-  "cancelUrl": "https://yourapp.com/payment/cancel",
-  "returnUrl": "https://yourapp.com/payment/success"
-}
-```
-**4. Expected Response & Error Handling:**
-*   **Success (200):** Returns a `checkoutUrl`.
-*   **Error (400):** Invalid amount (must be positive).
-**5. Next Steps:** Redirect the browser/webview entirely to the `checkoutUrl`.
-**6. ⚠️ Critical Warnings for FE:** **ASYNCHRONOUS COMPLETION!** When the user lands back on your `returnUrl`, the money might NOT be in their wallet yet. The backend relies on PayOS firing a webhook. FE MUST implement a polling mechanism (calling `GET /api/v1/wallets/me` every 3 seconds) until the `balance` increases, before showing "Success" to the user.
+#### `PUT /api/v1/admin/branches/{id}`
+1. **Business Purpose**: Cập nhật thông tin chi nhánh.
+2. **Prerequisites**: Quyền Admin.
+3. **Request Payload**: `UpdateBranchDTO`.
+4. **Expected Response**: `200 OK`.
+5. **Next Steps**: Reload list.
+6. **Critical Warnings for FE**: Không làm thay đổi ID nhánh.
 
-### 5. Master Booking Flow (The Cart Architecture)
-**Endpoint:** `POST /api/v1/bookings`
-**1. Business Purpose:** Deducts funds from the wallet and locks in a time slot for washing one or multiple vehicles.
-**2. Prerequisites (Crucial):** This is the most complex API. FE must gather:
-    *   `GET /api/v1/vehicles` -> to get `LicensePlate`.
-    *   `GET /api/v1/services` -> to let user pick `serviceId`.
-    *   `GET /api/v1/bookings/slots?targetDate=...` -> to pick an available `slotId`.
-    *   `GET /api/v1/wallets/me` -> to ensure Balance >= Total Price.
-**3. Request Payload:**
-```json
-{
-  "scheduledDate": "2023-12-01T00:00:00Z",
-  "slotId": 1,
-  "pointsToUse": 0,
-  "voucherId": null,
-  "vehicles": [
-    { "licensePlate": "51H12345", "serviceId": 1 }
-  ]
-}
-```
-**4. Expected Response & Error Handling:**
-*   **Success (200):** Booking confirmed, wallet deducted.
-*   **Error (400):** "Insufficient balance" (redirect user to Top-up).
-*   **Error (400):** "Vehicle already has pending booking" (Anti-hoarding rule).
-*   **Error (400):** "Slot capacity exceeded" (someone booked it fractions of a second before them).
-**5. Next Steps:** Redirect user to the "Booking History" screen and call `GET /api/v1/bookings/me`.
-**6. ⚠️ Critical Warnings for FE:** Ensure `scheduledDate` is sent in UTC formatting but represents the correct local day. Validate the user's wallet balance locally *before* enabling the "Submit Booking" button to prevent unnecessary API failures.
+### 3. AdminEmployeesController
+#### `PUT /api/v1/admin/employees/{id}/transfer`
+1. **Business Purpose**: Chuyển nhân sự từ chi nhánh này sang chi nhánh khác.
+2. **Prerequisites**: Quyền Admin.
+3. **Request Payload**: `TransferEmployeeDTO` (`NewBranchId`).
+4. **Expected Response**: `200 OK`.
+5. **Next Steps**: Cập nhật UI.
+6. **Critical Warnings for FE**: Cần check cẩn thận để không gán sai BranchId.
 
-### 6. Tier & Loyalty Points Processing
-**Endpoint:** Background / Implicit via `GET /api/v1/users/me`
-**1. Business Purpose:** Rewards users for loyalty and evaluates VIP upgrades.
-**2. Prerequisites (Crucial):** Points are only awarded AFTER a booking status is updated to `Completed` by the Staff.
-**3. Request Payload:** N/A (Read-only for Customer FE).
-**4. Expected Response & Error Handling:** `TotalPoint` (lifetime) and `PromotionPoint` (spendable) will increase.
-**5. Next Steps:** Update UI badges (e.g., "Gold Member"). Users can spend points in two ways:
-    *   **Direct Discount:** Pass `pointsToUse` > 0 in the `POST /api/v1/bookings` payload.
-    *   **Redeem Voucher:** Call `POST /api/v1/vouchers/redeem` to convert points into a discount code.
-**6. ⚠️ Critical Warnings for FE:** Tiers (`CurrentYearTierPoints`) reset automatically every January 1st via a backend worker. FE should read the tier requirements and warn users in December: *"Your points expire soon, book now!"* Furthermore, points expire via FIFO logic. Do not display points as "pending" during a wash; they do not exist until the wash is finalized.
+### 4. AdminLanesController
+#### `GET /api/v1/admin/lanes`
+1. **Business Purpose**: Lấy danh sách các Làn (Có thể filter theo Branch).
+2. **Prerequisites**: Quyền Admin.
+3. **Request Payload**: `?branchId=` (Optional).
+4. **Expected Response**: Array of Lane.
+5. **Next Steps**: Render UI.
+6. **Critical Warnings for FE**: Các làn có tính trạng thái (đang hoạt động/bảo trì).
 
----
-*End of Document*
+#### `GET /api/v1/admin/lanes/{id}`
+1. **Business Purpose**: Xem chi tiết 1 làn.
+2. **Prerequisites**: Quyền Admin.
+3. **Request Payload**: Path param `id`.
+4. **Expected Response**: Detail.
+5. **Next Steps**: Bật form update.
+6. **Critical Warnings for FE**: Data trả về có reference tới Branch.
+
+#### `PUT /api/v1/admin/lanes/{id}`
+1. **Business Purpose**: Sửa đổi thông tin/trạng thái làn.
+2. **Prerequisites**: Quyền Admin.
+3. **Request Payload**: `UpdateLaneDTO`.
+4. **Expected Response**: `200 OK`.
+5. **Next Steps**: Refetch danh sách.
+6. **Critical Warnings for FE**: Thận trọng không đổi nhánh nếu đang có người dùng.
+
+### 5. AdminServicesController
+#### `GET /api/v1/admin/services`
+1. **Business Purpose**: Lấy toàn bộ dịch vụ để quản lý.
+2. **Prerequisites**: Quyền Admin.
+3. **Request Payload**: Optional `?branchId=`.
+4. **Expected Response**: Danh sách dịch vụ.
+5. **Next Steps**: Show bảng quản trị.
+6. **Critical Warnings for FE**: Có thể trả về cả các service đang inactive.
+
+#### `PUT /api/v1/admin/services/{id}`
+1. **Business Purpose**: Cập nhật nội dung dịch vụ.
+2. **Prerequisites**: Quyền Admin.
+3. **Request Payload**: `CreateOrUpdateServiceDTO`.
+4. **Expected Response**: `200 OK`.
+5. **Next Steps**: Refresh UI.
+6. **Critical Warnings for FE**: Dữ liệu cập nhật sẽ ảnh hưởng tới các booking tương lai, không đổi booking quá khứ.
+
+#### `DELETE /api/v1/admin/services/{id}`
+1. **Business Purpose**: Xóa mềm dịch vụ (Toggle Status).
+2. **Prerequisites**: Quyền Admin.
+3. **Request Payload**: URL id.
+4. **Expected Response**: `200 OK`.
+5. **Next Steps**: Hiển thị trạng thái "Ngừng HĐ".
+6. **Critical Warnings for FE**: Không xóa hard-delete để tránh lỗi DB (Soft Delete pattern).
+
+### 6. AdminUserController
+#### `GET /api/v1/admin/users`
+1. **Business Purpose**: Lấy danh sách Khách hàng phân trang.
+2. **Prerequisites**: Quyền Admin.
+3. **Request Payload**: Params `page`, `pageSize`, `keyword`, `status`.
+4. **Expected Response**: Paged data.
+5. **Next Steps**: Render DataGrid.
+6. **Critical Warnings for FE**: Chú ý filter param.
+
+#### `GET /api/v1/admin/users/{id}`
+1. **Business Purpose**: Lấy chi tiết user (lịch sử rửa, xe, ví).
+2. **Prerequisites**: Quyền Admin.
+3. **Request Payload**: Param `id`.
+4. **Expected Response**: User Detail Profile.
+5. **Next Steps**: Show profile.
+6. **Critical Warnings for FE**: Thông tin nhạy cảm.
+
+#### `PUT /api/v1/admin/users/{id}/status`
+1. **Business Purpose**: Khóa / Mở khóa tài khoản khách hàng.
+2. **Prerequisites**: Quyền Admin.
+3. **Request Payload**: `UpdateUserStatusDTO`.
+4. **Expected Response**: `200 OK`.
+5. **Next Steps**: Reload User List.
+6. **Critical Warnings for FE**: User bị khóa sẽ không login/đặt xe được nữa.
+
+### 7. AdminVehicleController
+#### `GET /api/v1/admin/vehicles/other-types`
+1. **Business Purpose**: Lấy danh sách các xe đăng ký loại "Khác" chờ admin duyệt.
+2. **Prerequisites**: Quyền Admin.
+3. **Request Payload**: Không.
+4. **Expected Response**: List Pending Vehicles.
+5. **Next Steps**: Hiển thị bảng chờ duyệt.
+6. **Critical Warnings for FE**: Dữ liệu nằm trong UserNote.
+
+#### `PUT /api/v1/admin/vehicles/{licensePlate}/type`
+1. **Business Purpose**: Update cứng type ID cho 1 biển số xe.
+2. **Prerequisites**: Quyền Admin.
+3. **Request Payload**: `UpdateVehicleTypeAdminDTO`.
+4. **Expected Response**: `200 OK`.
+5. **Next Steps**: Refresh UI.
+6. **Critical Warnings for FE**: Encode URL param nếu biển số có ký tự lạ.
+
+#### `POST /api/v1/admin/vehicles/{licensePlate}/approve-new-type`
+1. **Business Purpose**: Duyệt yêu cầu "Loại xe khác" -> Tạo Type mới trong DB -> Gắn Type vào xe.
+2. **Prerequisites**: Quyền Admin.
+3. **Request Payload**: `ApproveVehicleTypeRequestDTO`.
+4. **Expected Response**: `200 OK`.
+5. **Next Steps**: Xóa xe khỏi list chờ duyệt.
+6. **Critical Warnings for FE**: Hành động tạo danh mục mới, yêu cầu nhập chính xác.
+
+#### `POST /api/v1/admin/vehicles/{licensePlate}/reject-new-type`
+1. **Business Purpose**: Từ chối xe tự do, xóa xe đó khỏi hệ thống.
+2. **Prerequisites**: Quyền Admin.
+3. **Request Payload**: Path param `licensePlate`.
+4. **Expected Response**: `200 OK`.
+5. **Next Steps**: Remove row trên UI.
+6. **Critical Warnings for FE**: Xe sẽ bị xoá mềm (IsDeleted = true) bắt khách tạo lại.
+
+### 8. AdminVehicleTypeController
+#### `POST /api/v1/admin/vehicle-types`
+1. **Business Purpose**: Tạo phân loại xe mới (4 chỗ, 7 chỗ, SUV, ...).
+2. **Prerequisites**: Quyền Admin.
+3. **Request Payload**: `CreateVehicleTypeDTO`.
+4. **Expected Response**: `201 Created`.
+5. **Next Steps**: Service và Price mapping mới.
+6. **Critical Warnings for FE**: Khi tạo type mới cần setup giá cho các dịch vụ theo type đó.
+
+#### `PUT /api/v1/admin/vehicle-types/{id}`
+1. **Business Purpose**: Cập nhật type xe.
+2. **Prerequisites**: Quyền Admin.
+3. **Request Payload**: `CreateVehicleTypeDTO`.
+4. **Expected Response**: `200 OK`.
+5. **Next Steps**: Cập nhật dropdown.
+6. **Critical Warnings for FE**: Có thể ảnh hưởng base weight đặt chỗ.
+
+#### `DELETE /api/v1/admin/vehicle-types/{id}`
+1. **Business Purpose**: Xóa Type (Soft delete).
+2. **Prerequisites**: Quyền Admin.
+3. **Request Payload**: Param `id`.
+4. **Expected Response**: `200 OK`.
+5. **Next Steps**: Xóa khỏi list UI.
+6. **Critical Warnings for FE**: Sẽ không cho xoá cứng nếu đang có xe thuộc type này.
+
+#### `GET /api/v1/admin/vehicle-types`
+1. **Business Purpose**: Danh sách category xe.
+2. **Prerequisites**: Cho phép Anonymous (để public app dùng).
+3. **Request Payload**: None.
+4. **Expected Response**: Array of Type.
+5. **Next Steps**: Map vào Dropdown Add Xe.
+6. **Critical Warnings for FE**: FE filter cẩn thận nếu cần.
+
+### 9. AdminVouchersController
+#### `GET /api/v1/admin/vouchers`
+1. **Business Purpose**: Get danh sách voucher toàn hệ thống.
+2. **Prerequisites**: Admin.
+3. **Request Payload**: Không.
+4. **Expected Response**: `200 OK`.
+5. **Next Steps**: Hiển thị bảng điều khiển.
+6. **Critical Warnings for FE**: Có voucher vật lý và voucher discount.
+
+#### `POST /api/v1/admin/vouchers`
+1. **Business Purpose**: Tạo mới mã Voucher hoặc Happy Hour.
+2. **Prerequisites**: Admin.
+3. **Request Payload**: `CreateOrUpdateVoucherDTO`.
+4. **Expected Response**: `201 Created`.
+5. **Next Steps**: Thông báo Campaign.
+6. **Critical Warnings for FE**: Happy Hour là một loại DiscountVoucher kèm theo TimeRange.
+
+#### `PUT /api/v1/admin/vouchers/{id}`
+1. **Business Purpose**: Sửa Voucher.
+2. **Prerequisites**: Admin.
+3. **Request Payload**: `CreateOrUpdateVoucherDTO`.
+4. **Expected Response**: `200 OK`.
+5. **Next Steps**: List UI cập nhật.
+6. **Critical Warnings for FE**: Chú ý ValidTime.
+
+#### `DELETE /api/v1/admin/vouchers/{id}`
+1. **Business Purpose**: Xóa / Ngưng Voucher.
+2. **Prerequisites**: Admin.
+3. **Request Payload**: Param `id`.
+4. **Expected Response**: `200 OK`.
+5. **Next Steps**: Vouchers không còn khả dụng cho user.
+6. **Critical Warnings for FE**: API này thực tế có thể là đổi cờ trạng thái inactive.
+
+### 10. AuthController
+#### `POST /api/v1/auth/register`
+1. **Business Purpose**: Đăng ký khách hàng mới.
+2. **Prerequisites**: None.
+3. **Request Payload**: `RegisterDTO` (Phone, Pass, Name, v.v.).
+4. **Expected Response**: `201 Created` và Token, Wallet được tự động tạo.
+5. **Next Steps**: Login tự động.
+6. **Critical Warnings for FE**: Bắt validate format Phone/Email chặt.
+
+#### `POST /api/v1/auth/login`
+1. **Business Purpose**: Xác thực đăng nhập.
+2. **Prerequisites**: Account hợp lệ.
+3. **Request Payload**: `LoginDTO` (Phone/Email, Password).
+4. **Expected Response**: JWT Token.
+5. **Next Steps**: Lưu token ở Storage, đính kèm vào Header các Request sau.
+6. **Critical Warnings for FE**: Cả internal staff và khách hàng đều xài chung route này, phân quyền bằng Claim trong JWT.
+
+#### `POST /api/v1/auth/refresh-token`
+1. **Business Purpose**: Làm mới JWT hết hạn.
+2. **Prerequisites**: Refresh Token cũ.
+3. **Request Payload**: `RefreshTokenDTO`.
+4. **Expected Response**: Cặp Token mới.
+5. **Next Steps**: Replace Token storage.
+6. **Critical Warnings for FE**: Implement HTTP Interceptor bắt mã lỗi 401 để tự gọi API này.
+
+#### `POST /api/v1/auth/change-password`
+1. **Business Purpose**: User tự đổi password.
+2. **Prerequisites**: Bắt buộc đăng nhập.
+3. **Request Payload**: `ChangePasswordDTO`.
+4. **Expected Response**: `200 OK`.
+5. **Next Steps**: Sign out bắt login lại (Tuỳ FE policy).
+6. **Critical Warnings for FE**: Phải gửi token.
+
+### 11. BookingsController (Các API khác)
+#### `GET /api/v1/bookings/me`
+1. **Business Purpose**: Lấy lịch sử Booking của User.
+2. **Prerequisites**: Quyền Customer.
+3. **Request Payload**: Không.
+4. **Expected Response**: List Booking history.
+5. **Next Steps**: Render UI History.
+6. **Critical Warnings for FE**: Dùng UserID từ claim ngầm.
+
+#### `GET /api/v1/bookings/{id}`
+1. **Business Purpose**: Chi tiết một Booking của khách.
+2. **Prerequisites**: Booking phải thuộc về Khách (Check ownership).
+3. **Request Payload**: `id`.
+4. **Expected Response**: Booking detail kèm xe, giá.
+5. **Next Steps**: Render Tracking/Bill.
+6. **Critical Warnings for FE**: Không xem được của người khác.
+
+### 12. CarModelsController
+#### `GET /api/v1/carmodels` (Route Base)
+1. **Business Purpose**: Lấy danh sách Dòng xe (Vios, Camry, C200...).
+2. **Prerequisites**: Anonymous.
+3. **Request Payload**: Không.
+4. **Expected Response**: Array CarModels.
+5. **Next Steps**: Dropdown cho User khi Add Xe.
+6. **Critical Warnings for FE**: Có tuỳ chọn Text "Khác" nhập tay.
+
+#### `POST /api/v1/carmodels`
+1. **Business Purpose**: Thêm dòng xe mới.
+2. **Prerequisites**: Admin.
+3. **Request Payload**: `CreateCarModelDTO`.
+4. **Expected Response**: `201`.
+5. **Next Steps**: Load UI.
+6. **Critical Warnings for FE**: Tạo Data Map cho Vehicle.
+
+#### `PUT /api/v1/carmodels/{id}` & `DELETE`
+1. **Business Purpose**: Sửa/Xóa mềm dòng xe.
+2. **Prerequisites**: Admin.
+3. **Request Payload**: Params & Body.
+4. **Expected Response**: `200`.
+5. **Next Steps**: Update UI.
+6. **Critical Warnings for FE**: Soft delete để không hỏng dữ liệu xe cũ.
+
+### 13. ServicesController
+#### `GET /api/v1/services`
+1. **Business Purpose**: Lấy dịch vụ (Public cho khách hàng).
+2. **Prerequisites**: Anonymous.
+3. **Request Payload**: `?branchId=`.
+4. **Expected Response**: List Dịch vụ Active.
+5. **Next Steps**: Render Menu Booking.
+6. **Critical Warnings for FE**: Khác với AdminServices, cái này chỉ lọc Active.
+
+#### `GET /api/v1/services/{id}`
+1. **Business Purpose**: Detail dịch vụ.
+2. **Prerequisites**: Anonymous.
+3. **Request Payload**: `id`.
+4. **Expected Response**: Detail.
+5. **Next Steps**: Show Popup Info.
+6. **Critical Warnings for FE**: Kèm bảng giá theo từng loại xe.
+
+### 14. StaffBookingsController (Admin/Staff view tổng)
+#### `GET /api/v1/admin/bookings`
+1. **Business Purpose**: Lấy Booking ngày đó (Quản lý/Admin).
+2. **Prerequisites**: Admin/Staff.
+3. **Request Payload**: `?targetDate=`.
+4. **Expected Response**: List.
+5. **Next Steps**: Render Dashboard biểu đồ.
+6. **Critical Warnings for FE**: Format ISO.
+
+#### `PUT /api/v1/admin/bookings/status-by-license-plate`
+1. **Business Purpose**: Quét biển số Checkin. (Đã document ở Luồng chính mục 2).
+
+#### `GET /api/v1/admin/bookings/by-license-plate/{licensePlate}`
+1. **Business Purpose**: Tìm xe hiện tại ở trạm bằng biển số.
+2. **Prerequisites**: Staff/Admin.
+3. **Request Payload**: `licensePlate`.
+4. **Expected Response**: Booking object.
+5. **Next Steps**: Show Detail Checkin.
+6. **Critical Warnings for FE**: Normalize license plate on BE.
+
+#### `PUT /api/v1/admin/bookings/{detailId}/report-mismatch`
+1. **Business Purpose**: Báo cáo xe thực tế lớn hơn xe khách đăng ký.
+2. **Prerequisites**: Staff/Admin.
+3. **Request Payload**: `detailId`, Query `condition`, Query `actualTypeId`.
+4. **Expected Response**: `200`.
+5. **Next Steps**: Charge thêm tiền.
+6. **Critical Warnings for FE**: Thu phí ngay lúc đó hoặc update bill.
+
+#### `POST /api/v1/admin/bookings/force-cancel`
+1. **Business Purpose**: Hủy diện rộng các booking do sự cố bão lũ/mất điện.
+2. **Prerequisites**: Admin/Manager.
+3. **Request Payload**: `ForceCancelRequestDTO`.
+4. **Expected Response**: `200 OK`.
+5. **Next Steps**: Hoàn tiền và báo mail hàng loạt.
+6. **Critical Warnings for FE**: Hành động nhạy cảm, cần Dialog Confirm gắt gao.
+
+### 15. StaffVouchersController
+#### `POST /api/v1/staff/vouchers/consume`
+1. **Business Purpose**: Đổi quà tặng hiện vật cho khách bằng VoucherCode.
+2. **Prerequisites**: Staff/Manager/Admin.
+3. **Request Payload**: `ConsumeVoucherRequestDTO` (Mã voucher, UserId khách).
+4. **Expected Response**: `200`.
+5. **Next Steps**: Đánh dấu IsUsed = true. Giao quà cho khách.
+6. **Critical Warnings for FE**: Staff quét mã QR của user để fetch payload.
+
+### 16. TierController
+#### `GET /api/v1/tiers`
+1. **Business Purpose**: Xem cấu trúc Hạng (Bạc, Vàng, Kim Cương).
+2. **Prerequisites**: Public.
+3. **Request Payload**: Không.
+4. **Expected Response**: Array Tier config.
+5. **Next Steps**: Render UI chính sách thành viên.
+6. **Critical Warnings for FE**: Dùng MinAccumulatedPoints để tính rank.
+
+#### `POST /api/v1/tiers` & `PUT /api/v1/tiers/{id}`
+1. **Business Purpose**: Thêm sửa chính sách Hạng.
+2. **Prerequisites**: Admin.
+3. **Request Payload**: `CreateTierDTO` / `UpdateTierDTO`.
+4. **Expected Response**: `201` / `200`.
+5. **Next Steps**: Cập nhật logic điểm.
+6. **Critical Warnings for FE**: Hạng thay đổi sẽ ảnh hưởng quyền lợi người dùng (cẩn thận khi chỉnh sửa).
+
+### 17. TimeSlotsController (Phần còn lại)
+#### `GET /api/v1/admin/time-slots`
+1. **Business Purpose**: Lấy khung giờ gốc của chi nhánh.
+2. **Prerequisites**: Admin/Staff.
+3. **Request Payload**: `?branchId=`.
+4. **Expected Response**: List TimeSlots tĩnh.
+5. **Next Steps**: Show grid quản lý.
+6. **Critical Warnings for FE**: Đây là khung giờ MASTER, không phải Available Slots có tính động (sức chứa realtime).
+
+#### `PUT` & `DELETE /api/v1/admin/time-slots/{id}`
+1. **Business Purpose**: Sửa khung giờ, ngưng khung giờ.
+2. **Prerequisites**: Admin.
+3. **Request Payload**: `UpdateTimeSlotDTO` hoặc Path params.
+4. **Expected Response**: `200`.
+5. **Next Steps**: Cập nhật Config.
+6. **Critical Warnings for FE**: Tránh xóa khung giờ đang có người hẹn.
+
+### 18. TransactionController
+#### `GET /api/v1/transactions`
+1. **Business Purpose**: Lịch sử nạp/trừ tiền Ví.
+2. **Prerequisites**: Customer logged in.
+3. **Request Payload**: Không.
+4. **Expected Response**: Array of Transactions.
+5. **Next Steps**: Render màn hình Lịch sử Ví.
+6. **Critical Warnings for FE**: Fetch qua User ID token.
+
+#### `GET /api/v1/points/history`
+1. **Business Purpose**: Lịch sử tích/tiêu điểm CRM.
+2. **Prerequisites**: Customer logged in.
+3. **Request Payload**: Không.
+4. **Expected Response**: Array of Point Histories.
+5. **Next Steps**: UI Lịch sử Loyalty.
+6. **Critical Warnings for FE**: Điểm hoạt động theo logic FIFO hết hạn.
+
+### 19. UserController
+#### `GET /api/v1/users/me`
+1. **Business Purpose**: Lấy Profile Customer.
+2. **Prerequisites**: Customer auth.
+3. **Request Payload**: Không.
+4. **Expected Response**: DTO Profile, Tier, Point, Wallet Balance.
+5. **Next Steps**: Load trang My Profile.
+6. **Critical Warnings for FE**: DateOfBirth trả về Date thuần không UTC offset.
+
+#### `PUT /api/v1/users/me`
+1. **Business Purpose**: Cập nhật cá nhân.
+2. **Prerequisites**: Customer auth.
+3. **Request Payload**: `UpdateUserProfileDTO`.
+4. **Expected Response**: `200`.
+5. **Next Steps**: Reload Profile.
+6. **Critical Warnings for FE**: DateOfBirth chỉ được update 1 lần để chống Spam sinh nhật.
+
+### 20. VehicleController
+#### `GET /api/v1/vehicles`
+1. **Business Purpose**: Lấy danh sách Garage Xe của tôi.
+2. **Prerequisites**: Customer Auth.
+3. **Request Payload**: Không.
+4. **Expected Response**: List Vehicles (không gồm xoá mềm).
+5. **Next Steps**: Show List My Cars.
+6. **Critical Warnings for FE**: Backend tự chặn soft-delete.
+
+#### `POST /api/v1/vehicles` & `PUT` & `DELETE`
+1. **Business Purpose**: CRUD xe cá nhân.
+2. **Prerequisites**: Customer Auth.
+3. **Request Payload**: `CreateVehicleDTO` `UpdateVehicleDTO` dạng FromForm.
+4. **Expected Response**: `201` / `200`.
+5. **Next Steps**: Manage garage.
+6. **Critical Warnings for FE**: Form data cần map CarModelId, CarModel (Nullable hybrid input).
+
+#### `GET /api/v1/vehicles/recognize/{licensePlate}`
+1. **Business Purpose**: Nhận diện xe có trong hệ thống qua Biển số (Staff gõ vào).
+2. **Prerequisites**: Admin/Staff.
+3. **Request Payload**: URL `licensePlate`.
+4. **Expected Response**: Data Xe.
+5. **Next Steps**: Hiển thị checkin popup.
+6. **Critical Warnings for FE**: Normalize biển số trước search.
+
+### 21. VehicleDetectionController
+#### `POST /api/v1/detect-plate` & `detect-dual-plate`
+1. **Business Purpose**: Tích hợp AI OCR đọc biển số từ Ảnh Upload/Camera (Hardware box / Mobile App).
+2. **Prerequisites**: Token có quyền, RequestSize limit (10MB-20MB).
+3. **Request Payload**: Multipart `IFormFile` image.
+4. **Expected Response**: Plate Text (vd "29A12345"), Confidence score.
+5. **Next Steps**: Fill tự động vào input box Biển số xe.
+6. **Critical Warnings for FE**: Truyền theo định dạng FormData, gọi Camera API từ thiết bị để bắt luồng ảnh.
+
+### 22. VoucherController (Cho Customer)
+#### `GET /api/v1/vouchers/me`
+1. **Business Purpose**: Lấy danh sách Voucher của Khách hàng đó.
+2. **Prerequisites**: Customer auth.
+3. **Request Payload**: Không.
+4. **Expected Response**: List Vouchers.
+5. **Next Steps**: Render Kho Voucher.
+6. **Critical Warnings for FE**: API trả về tất cả voucher kể cả chưa đủ điều kiện (Tier). FE tự disable UI mờ đi.
+
+#### `POST /api/v1/vouchers/redeem`
+1. **Business Purpose**: Khách bỏ Loyalty Points ra để mua/đổi lấy 1 Voucher.
+2. **Prerequisites**: Customer Auth.
+3. **Request Payload**: `RedeemVoucherRequestDTO`.
+4. **Expected Response**: `200`. Trừ Point.
+5. **Next Steps**: Update UI.
+6. **Critical Warnings for FE**: Giao dịch trừ điểm, cộng mã voucher vào kho.
+
+### 23. WalletController
+#### `GET /api/v1/wallets/me`
+1. **Business Purpose**: Lấy số dư ví (Balance).
+2. **Prerequisites**: Customer.
+3. **Request Payload**: None.
+4. **Expected Response**: Data ví.
+5. **Next Steps**: Hiện số dư.
+6. **Critical Warnings for FE**: Gọi API này liên tục lúc chờ Nạp tiền Webhook.
+
+#### `POST /api/v1/wallets/top-up` & `top-up/callback`
+(Đã giải thích ở phần Cơ chế Thanh toán). Callback là webhook do PayOS gọi.

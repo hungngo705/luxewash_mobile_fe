@@ -57,13 +57,11 @@ export default function SelectDateScreen() {
   const serviceNameParam = (params.serviceName as string) || '';
   const servicePriceParam = parseInt(params.servicePrice as string) || 0;
   const membershipDiscountParam = parseFloat(params.membershipDiscount as string) || 0;
-  const vehicleIdsParam = (params.vehicleIds as string) || '';
-  const vehicleTypeIdsParam = (params.vehicleTypeIds as string) || '';
-  const vehicleBrandsParam = (params.vehicleBrands as string) || '';
-
-  const vehiclePlateList = vehicleIdsParam ? vehicleIdsParam.split(',') : [];
-  const vehicleTypeIdList = vehicleTypeIdsParam ? vehicleTypeIdsParam.split(',').map(Number) : [];
-  const vehicleBrandList = vehicleBrandsParam ? vehicleBrandsParam.split('|') : [];
+  const vehicleIdParam = (params.vehicleId as string) || '';
+  const vehicleTypeIdParam = parseInt(params.vehicleTypeId as string) || 1;
+  const vehicleBrandParam = (params.vehicleBrand as string) || '';
+  const branchIdParam = parseInt(params.branchId as string) || 1;
+  const branchNameParam = (params.branchName as string) || 'LuxeWash';
 
   const membershipInfo = user ? MembershipConfig[user.membershipTier] : MembershipConfig.standard;
   const maxAdvanceDays = membershipInfo.maxAdvanceDays;
@@ -80,20 +78,13 @@ export default function SelectDateScreen() {
   const [slots, setSlots] = useState<TimeSlot[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
 
-  const bookingVehicles = useMemo(() => {
-    return vehiclePlateList.map((plate, i) => ({
-      vehicleTypeId: vehicleTypeIdList[i] ?? 1,
-      serviceId: serviceIdParam,
-    }));
-  }, [vehiclePlateList, vehicleTypeIdList, serviceIdParam]);
-
   const loadSlots = async (date: Date) => {
     setLoadingSlots(true);
     setSlots([]);
     setSelectedSlot(null);
     try {
       const isoDate = toUTCMidnight(date);
-      const res = await bookingService.getAvailableSlots(isoDate, bookingVehicles);
+      const res = await bookingService.getAvailableSlots(branchIdParam, isoDate, vehicleTypeIdParam, [serviceIdParam]);
       if (res.statusCode === 200 && res.data) {
         setSlots(res.data);
       } else {
@@ -170,12 +161,14 @@ export default function SelectDateScreen() {
         serviceName: serviceNameParam,
         servicePrice: String(servicePriceParam),
         membershipDiscount: String(membershipDiscountParam),
-        vehicleIds: vehicleIdsParam,
-        vehicleTypeIds: vehicleTypeIdsParam,
-        vehicleBrands: vehicleBrandsParam,
+        vehicleId: vehicleIdParam,
+        vehicleTypeId: String(vehicleTypeIdParam),
+        vehicleBrand: vehicleBrandParam,
         date: toLocalDateString(selectedDate),
         slotId: String(selectedSlot.slotId),
         timeRange: selectedSlot.timeRange,
+        branchId: String(branchIdParam),
+        branchName: branchNameParam,
       },
     });
   };
@@ -203,20 +196,25 @@ export default function SelectDateScreen() {
 
         <ProgressSteps
           steps={[
+            { label: 'Chi nhánh' },
             { label: 'Xe' },
             { label: 'Dịch vụ' },
             { label: 'Ngày' },
             { label: 'Xác nhận' },
           ]}
-          currentStep={2}
+          currentStep={3}
         />
 
         <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
           {/* Summary */}
           <View style={styles.summaryCard}>
             <View style={styles.summaryRow}>
+              <Feather name="map-pin" size={16} color={LuxeColors.primaryContainer} />
+              <Text style={styles.summaryText}>{branchNameParam}</Text>
+            </View>
+            <View style={styles.summaryRow}>
               <Feather name="truck" size={16} color={LuxeColors.primaryContainer} />
-              <Text style={styles.summaryText}>{vehiclePlateList.length} xe: {vehicleBrandList.join(', ')}</Text>
+              <Text style={styles.summaryText}>{vehicleBrandParam} - {vehicleIdParam}</Text>
             </View>
             <View style={styles.summaryRow}>
               <Feather name="droplet" size={16} color={LuxeColors.primaryContainer} />
