@@ -40,13 +40,13 @@ export default function BookingConfirmationScreen() {
   const dateParam = (params.date as string) || "";
   const slotIdParam = parseInt(params.slotId as string) || 0;
   const timeRangeParam = (params.timeRange as string) || "";
-  const vehicleIdsParam = (params.vehicleIds as string) || "";
-  const vehicleBrandsParam = (params.vehicleBrands as string) || "";
+  const vehicleIdParam = (params.vehicleId as string) || "";
+  const vehicleTypeIdParam = parseInt(params.vehicleTypeId as string) || 1;
+  const vehicleBrandParam = (params.vehicleBrand as string) || "";
+  const branchIdParam = parseInt(params.branchId as string) || 1;
+  const branchNameParam = (params.branchName as string) || "LuxeWash";
 
-  const vehiclePlateList = vehicleIdsParam ? vehicleIdsParam.split(",") : [];
-
-  const vehicleCount = vehiclePlateList.length;
-  const subtotal = servicePriceParam * vehicleCount;
+  const subtotal = servicePriceParam;
   const membershipDiscountAmount = Math.round(subtotal * membershipDiscountParam);
   const finalPrice = Math.max(0, subtotal - membershipDiscountAmount);
 
@@ -72,23 +72,21 @@ export default function BookingConfirmationScreen() {
     }
 
     setIsSubmitting(true);
-    try {
-      const bookingVehicles = vehiclePlateList.map((plate) => ({
-        licensePlate: plate,
-        serviceId: serviceIdParam,
-      }));
 
+    try {
       const [year, month, day] = dateParam.split("-").map(Number);
       const scheduledDate = new Date(
         Date.UTC(year, month - 1, day, 0, 0, 0, 0),
       ).toISOString();
 
       const res = await bookingService.createBooking({
+        branchId: branchIdParam,
+        licensePlate: vehicleIdParam,
+        serviceIds: [serviceIdParam],
         scheduledDate,
         slotId: slotIdParam,
         pointsToUse: 0,
         voucherId: null,
-        vehicles: bookingVehicles,
       });
 
       if (res.statusCode === 200 || res.statusCode === 201) {
@@ -99,15 +97,14 @@ export default function BookingConfirmationScreen() {
           pathname: "/booking/success",
           params: {
             bookingId: String(bookingId),
-            serviceName: serviceNameParam,
             date: dateParam,
             timeSlot: timeRangeParam,
-            vehicleCount: String(vehicleCount),
             finalAmount: String(finalPrice),
+            branchName: branchNameParam,
           },
         });
       } else {
-        alert(res.message || "Tạo đặt lịch thất bại");
+        alert(res.message || "Đặt lịch thất bại. Vui lòng thử lại.");
       }
     } catch (e: unknown) {
       const err = e as { message?: string };
@@ -124,12 +121,13 @@ export default function BookingConfirmationScreen() {
 
         <ProgressSteps
           steps={[
+            { label: 'Chi nhánh' },
             { label: 'Xe' },
             { label: 'Dịch vụ' },
             { label: 'Ngày' },
             { label: 'Xác nhận' },
           ]}
-          currentStep={3}
+          currentStep={4}
         />
 
         <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
@@ -141,7 +139,7 @@ export default function BookingConfirmationScreen() {
               </View>
               <View style={styles.serviceInfo}>
                 <Text style={styles.serviceName}>{serviceNameParam}</Text>
-                <Text style={styles.serviceMeta}>{vehicleCount} xe • {servicePriceParam.toLocaleString("vi-VN")}đ/xe</Text>
+                <Text style={styles.serviceMeta}>{servicePriceParam.toLocaleString("vi-VN")}đ</Text>
               </View>
             </View>
           </View>
@@ -177,8 +175,8 @@ export default function BookingConfirmationScreen() {
                 <Feather name="truck" size={18} color={LuxeColors.primaryContainer} />
               </View>
               <View style={styles.detailContent}>
-                <Text style={styles.detailLabel}>Xe ({vehicleCount})</Text>
-                <Text style={styles.detailValue}>{vehiclePlateList.join(", ")}</Text>
+                <Text style={styles.detailLabel}>Xe</Text>
+                <Text style={styles.detailValue}>{vehicleIdParam} - {vehicleBrandParam}</Text>
               </View>
             </View>
 
@@ -190,7 +188,7 @@ export default function BookingConfirmationScreen() {
               </View>
               <View style={styles.detailContent}>
                 <Text style={styles.detailLabel}>Trạm</Text>
-                <Text style={styles.detailValue}>LuxeWash</Text>
+                <Text style={styles.detailValue}>{branchNameParam || 'LuxeWash'}</Text>
               </View>
             </View>
           </View>
@@ -256,7 +254,7 @@ export default function BookingConfirmationScreen() {
 
           <View style={styles.billingCard}>
             <View style={styles.billingRow}>
-              <Text style={styles.billingLabel}>{serviceNameParam} × {vehicleCount} xe</Text>
+              <Text style={styles.billingLabel}>{serviceNameParam}</Text>
               <Text style={styles.billingValue}>{subtotal.toLocaleString("vi-VN")}đ</Text>
             </View>
             {membershipDiscountAmount > 0 && (

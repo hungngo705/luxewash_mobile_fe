@@ -24,6 +24,7 @@ export function BookingSuccessScreen() {
   const date = params.date as string;
   const timeSlot = params.timeSlot as string;
   const finalAmount = params.finalAmount as string;
+  const branchName = (params.branchName as string) || 'LuxeWash';
 
   const formattedDate = date
     ? new Date(date).toLocaleDateString("vi-VN", {
@@ -106,7 +107,7 @@ export function BookingSuccessScreen() {
               </View>
               <Text style={styles.detailLabel}>Trạm</Text>
             </View>
-            <Text style={styles.detailValue}>LuxeWash</Text>
+            <Text style={styles.detailValue}>{branchName}</Text>
           </View>
 
           <View style={styles.totalDivider} />

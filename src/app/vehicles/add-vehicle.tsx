@@ -25,7 +25,6 @@ import { fetch as expoFetch } from "expo/fetch";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  FlatList,
   Image,
   Platform,
   ScrollView,
@@ -412,24 +411,68 @@ export default function AddVehicleScreen() {
                         </TouchableOpacity>
                       )}
                     </View>
-                    <FlatList
-                      data={Object.entries(groupedModels)}
-                      keyExtractor={([brand]) => brand}
+                    <ScrollView
                       style={styles.modelList}
                       nestedScrollEnabled
-                      renderItem={({ item: [brand, models] }) => (
-                        <View>
-                          <Text style={styles.modelBrandHeader}>{brand}</Text>
-                          {models.map((model) => (
+                    >
+                      {Object.entries(groupedModels).length === 0 ? (
+                        <Text style={styles.modelEmptyText}>Không tìm thấy dòng xe</Text>
+                      ) : (
+                        <>
+                          {Object.entries(groupedModels).map(([brand, models]) => (
+                            <View key={brand}>
+                              <Text style={styles.modelBrandHeader}>{brand}</Text>
+                              {models.map((model) => (
+                                <TouchableOpacity
+                                  key={model.id}
+                                  style={[
+                                    styles.modelItem,
+                                    selectedCarModel?.id === model.id &&
+                                      styles.modelItemSelected,
+                                  ]}
+                                  onPress={() => {
+                                    setSelectedCarModel(model);
+                                    setShowModelPicker(false);
+                                    setModelSearchQuery("");
+                                  }}
+                                >
+                                  <Text
+                                    style={[
+                                      styles.modelItemText,
+                                      selectedCarModel?.id === model.id &&
+                                        styles.modelItemTextSelected,
+                                    ]}
+                                  >
+                                    {model.name}
+                                  </Text>
+                                  {selectedCarModel?.id === model.id && (
+                                    <Feather
+                                      name="check"
+                                      size={16}
+                                      color={LuxeColors.primaryContainer}
+                                    />
+                                  )}
+                                </TouchableOpacity>
+                              ))}
+                            </View>
+                          ))}
+                          <View>
+                            <View style={styles.khacDivider}>
+                              <View style={styles.khacDividerLine} />
+                              <Text style={styles.khacDividerText}>Khác</Text>
+                              <View style={styles.khacDividerLine} />
+                            </View>
                             <TouchableOpacity
-                              key={model.id}
                               style={[
                                 styles.modelItem,
-                                selectedCarModel?.id === model.id &&
+                                isOtherModelFreeText &&
+                                  !selectedCarModel &&
                                   styles.modelItemSelected,
                               ]}
                               onPress={() => {
-                                setSelectedCarModel(model);
+                                setSelectedCarModel(null);
+                                setOtherCarModelText("");
+                                setIsOtherModelFreeText(true);
                                 setShowModelPicker(false);
                                 setModelSearchQuery("");
                               }}
@@ -437,13 +480,14 @@ export default function AddVehicleScreen() {
                               <Text
                                 style={[
                                   styles.modelItemText,
-                                  selectedCarModel?.id === model.id &&
+                                  isOtherModelFreeText &&
+                                    !selectedCarModel &&
                                     styles.modelItemTextSelected,
                                 ]}
                               >
-                                {model.name}
+                                Khác
                               </Text>
-                              {selectedCarModel?.id === model.id && (
+                              {isOtherModelFreeText && !selectedCarModel && (
                                 <Feather
                                   name="check"
                                   size={16}
@@ -451,57 +495,10 @@ export default function AddVehicleScreen() {
                                 />
                               )}
                             </TouchableOpacity>
-                          ))}
-                        </View>
-                      )}
-                      ListEmptyComponent={
-                        <Text style={styles.modelEmptyText}>
-                          Không tìm thấy dòng xe
-                        </Text>
-                      }
-                      ListFooterComponent={
-                        <View>
-                          <View style={styles.khacDivider}>
-                            <View style={styles.khacDividerLine} />
-                            <Text style={styles.khacDividerText}>Khác</Text>
-                            <View style={styles.khacDividerLine} />
                           </View>
-                          <TouchableOpacity
-                            style={[
-                              styles.modelItem,
-                              isOtherModelFreeText &&
-                                !selectedCarModel &&
-                                styles.modelItemSelected,
-                            ]}
-                            onPress={() => {
-                              setSelectedCarModel(null);
-                              setOtherCarModelText("");
-                              setIsOtherModelFreeText(true);
-                              setShowModelPicker(false);
-                              setModelSearchQuery("");
-                            }}
-                          >
-                            <Text
-                              style={[
-                                styles.modelItemText,
-                                isOtherModelFreeText &&
-                                  !selectedCarModel &&
-                                  styles.modelItemTextSelected,
-                              ]}
-                            >
-                              Khác
-                            </Text>
-                            {isOtherModelFreeText && !selectedCarModel && (
-                              <Feather
-                                name="check"
-                                size={16}
-                                color={LuxeColors.primaryContainer}
-                              />
-                            )}
-                          </TouchableOpacity>
-                        </View>
-                      }
-                    />
+                        </>
+                      )}
+                    </ScrollView>
                   </View>
                 )}
                 {isOtherModelFreeText && (

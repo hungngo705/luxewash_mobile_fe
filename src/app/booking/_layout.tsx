@@ -1,7 +1,7 @@
 /**
  * Booking Stack Layout
  * Hides the tab bar when navigating to booking screens
- * Flow: select-vehicles -> select-service -> select-date -> confirmation -> success
+ * Flow: select-branch -> select-vehicles -> select-service -> select-date -> confirmation -> success
  */
 
 import { Stack } from 'expo-router';
@@ -16,6 +16,7 @@ export default function BookingLayout() {
         animation: 'slide_from_right',
       }}
     >
+      <Stack.Screen name="select-branch" />
       <Stack.Screen name="select-vehicles" />
       <Stack.Screen name="select-service" />
       <Stack.Screen name="select-date" />
