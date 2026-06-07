@@ -43,9 +43,11 @@
         }
       ]
     ],
+    "extra": {
+      "GOONG_API_KEY": "sZV3INYg7A2gklYU5rywAimFUdix3QrrTGn8btWA"
+    },
     "experiments": {
-      "typedRoutes": true,
-      "reactCompiler": true
+      "typedRoutes": true
     }
   }
 }

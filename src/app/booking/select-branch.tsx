@@ -24,7 +24,7 @@ import { branchService, type BranchDTO } from '@/services/api';
 import {
   locationService,
   getCurrentPosition,
-  geocodeAddress,
+  geocodeBranches,
   calculateDistance,
   formatDistance,
   type GeoPoint,
@@ -37,7 +37,7 @@ import { BottomActionBar } from '@/components/ui/BottomActionBar';
 type Tab = 'nearby' | 'recent';
 
 interface BranchWithDistance extends BranchDTO {
-  distance?: number; // km, undefined means unknown
+  distance?: number;
 }
 
 /* ------------------------------------------------------------------ */
@@ -47,36 +47,26 @@ interface BranchWithDistance extends BranchDTO {
 async function resolveBranchLocations(
   branches: BranchDTO[],
   userLocation: GeoPoint | null,
+  onProgress?: (done: number, total: number) => void,
 ): Promise<BranchWithDistance[]> {
-  const resolved = await Promise.all(
-    branches.map(async (branch) => {
-      let coords: GeoPoint | null = null;
+  // Build coordinate map: uses cached coords, API coords, or geocoded addresses
+  const coordsMap = await geocodeBranches(branches, onProgress);
 
-      // 1. Prefer lat/lng directly from API
-      if (branch.latitude != null && branch.longitude != null) {
-        coords = { latitude: branch.latitude, longitude: branch.longitude };
-      }
+  const resolved = branches.map((branch) => {
+    const coords = coordsMap.get(branch.branchId);
+    const distance =
+      coords && userLocation
+        ? calculateDistance(
+            userLocation.latitude,
+            userLocation.longitude,
+            coords.latitude,
+            coords.longitude,
+          )
+        : undefined;
 
-      // 2. Fall back: geocode address via Nominatim
-      if (!coords && branch.address) {
-        coords = await geocodeAddress(branch.address);
-      }
+    return { ...branch, distance };
+  });
 
-      const distance =
-        coords && userLocation
-          ? calculateDistance(
-              userLocation.latitude,
-              userLocation.longitude,
-              coords.latitude,
-              coords.longitude,
-            )
-          : undefined;
-
-      return { ...branch, distance };
-    }),
-  );
-
-  // Sort: known distance first (ascending), then unknown distance
   return resolved.sort((a, b) => {
     if (a.distance == null && b.distance == null) return 0;
     if (a.distance == null) return 1;
@@ -253,6 +243,7 @@ export default function SelectBranchScreen() {
   const [error, setError] = useState<string | null>(null);
   const [locationDenied, setLocationDenied] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [geocodingProgress, setGeocodingProgress] = useState<string>('');
 
   /* Load all branches once */
   const loadBranches = useCallback(async () => {
@@ -273,11 +264,22 @@ export default function SelectBranchScreen() {
   const resolveDistances = useCallback(async () => {
     if (branches.length === 0) return;
     setLoadingNearby(true);
+    setGeocodingProgress('');
     try {
       const userLocation = await getCurrentPosition();
       setLocationDenied(userLocation === null);
-      const withDist = await resolveBranchLocations(branches, userLocation);
+
+      const withDist = await resolveBranchLocations(
+        branches,
+        userLocation,
+        (done, total) => {
+          if (done < total) {
+            setGeocodingProgress(`Đang tìm vị trí (${done}/${total})...`);
+          }
+        },
+      );
       setBranchesWithDistance(withDist);
+      setGeocodingProgress('');
     } finally {
       setLoadingNearby(false);
     }
@@ -307,10 +309,10 @@ export default function SelectBranchScreen() {
 
   /* Resolve distances when switching to nearby tab */
   useEffect(() => {
-    if (activeTab === 'nearby' && branches.length > 0 && branchesWithDistance.length === 0) {
+    if (activeTab === 'nearby' && branches.length > 0) {
       resolveDistances();
     }
-  }, [activeTab, branches, branchesWithDistance.length, resolveDistances]);
+  }, [activeTab, branches, resolveDistances]);
 
   /* Refresh handler */
   const onRefresh = useCallback(async () => {
@@ -373,7 +375,9 @@ export default function SelectBranchScreen() {
       return (
         <View style={styles.centerState}>
           <ActivityIndicator size="large" color={LuxeColors.primaryContainer} />
-          <Text style={styles.centerStateText}>Đang xác định vị trí...</Text>
+          <Text style={styles.centerStateText}>
+            {geocodingProgress || 'Đang xác định vị trí...'}
+          </Text>
         </View>
       );
     }
@@ -486,7 +490,7 @@ export default function SelectBranchScreen() {
           <TabSegment active={activeTab} onChange={handleTabChange} />
 
           {/* Location permission banner */}
-          {activeTab === 'nearby' && locationDenied && !loading && (
+          {activeTab === 'nearby' && locationDenied && (
             <LocationBanner onOpenSettings={handleOpenSettings} />
           )}
 

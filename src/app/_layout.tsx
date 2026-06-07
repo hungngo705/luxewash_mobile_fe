@@ -6,7 +6,7 @@
 import { useEffect } from 'react';
 import { BackHandler } from 'react-native';
 import { useRouter, usePathname, Stack, useNavigationContainerRef } from 'expo-router';
-import { DefaultTheme, ThemeProvider } from 'expo-router';
+import { DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';

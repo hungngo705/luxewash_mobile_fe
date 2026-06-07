@@ -189,10 +189,7 @@ export default function SelectServiceScreen() {
                     </View>
 
                     <View style={styles.servicePriceWrap}>
-                      {membershipDiscount > 0 && (
-                        <Text style={styles.originalPrice}>{basePrice.toLocaleString('vi-VN')}đ</Text>
-                      )}
-                      <Text style={[styles.servicePrice, membershipDiscount > 0 && styles.servicePriceDiscounted]}>
+                      <Text style={styles.servicePrice}>
                         {discountedPrice.toLocaleString('vi-VN')}đ
                       </Text>
                       <Text style={styles.priceNote}>/xe</Text>
@@ -328,9 +325,7 @@ const styles = StyleSheet.create({
   discountBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: LuxeColors.primaryContainer + '18', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, alignSelf: 'flex-start' },
   discountBadgeText: { fontSize: 11, fontWeight: '700', color: LuxeColors.primaryContainer },
   servicePriceWrap: { alignItems: 'flex-end', justifyContent: 'center' },
-  originalPrice: { fontSize: 12, color: LuxeColors.outline, textDecorationLine: 'line-through' },
   servicePrice: { fontSize: 18, fontWeight: '800', color: LuxeColors.onSurface },
-  servicePriceDiscounted: { color: LuxeColors.primaryContainer },
   priceNote: { fontSize: 11, color: LuxeColors.onSurfaceVariant },
   membershipCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: LuxeColors.primaryContainer + '12', borderRadius: 16, padding: 16, gap: 14, marginTop: 16, borderWidth: 1, borderColor: LuxeColors.primaryContainer + '25' },
   membershipIconWrap: { width: 44, height: 44, borderRadius: 14, backgroundColor: '#ffffff', alignItems: 'center', justifyContent: 'center' },

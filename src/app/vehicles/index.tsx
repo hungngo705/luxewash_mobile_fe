@@ -4,11 +4,10 @@
  */
 
 import { useConfirmDialog } from "@/components/ConfirmDialog";
+import { Header } from "@/components/ui/Header";
 import {
-    LuxeBorderRadius,
-    LuxeColors,
-    LuxeSpacing,
-    LuxeShadows,
+  LuxeColors,
+  LuxeShadows
 } from "@/constants/luxeTheme";
 import { useAuth } from "@/contexts/AuthContext";
 import { Vehicle } from "@/data/types";
@@ -16,15 +15,13 @@ import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React from "react";
 import {
-    Image,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Image,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { Header } from "@/components/ui/Header";
 
 export default function VehiclesScreen() {
   const router = useRouter();
@@ -63,18 +60,29 @@ export default function VehiclesScreen() {
             style={styles.addBtn}
             onPress={() => router.push("/vehicles/add-vehicle")}
           >
-            <Feather name="plus" size={18} color={LuxeColors.primaryContainer} />
+            <Feather
+              name="plus"
+              size={18}
+              color={LuxeColors.primaryContainer}
+            />
             <Text style={styles.addBtnText}>Thêm</Text>
           </TouchableOpacity>
         }
         showBack
       />
 
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+      >
         {vehicles.length === 0 ? (
           <View style={styles.emptyState}>
             <View style={styles.emptyIconWrap}>
-              <Feather name="truck" size={48} color={LuxeColors.outlineVariant} />
+              <Feather
+                name="truck"
+                size={48}
+                color={LuxeColors.outlineVariant}
+              />
             </View>
             <Text style={styles.emptyTitle}>Chưa có xe nào</Text>
             <Text style={styles.emptyText}>
@@ -94,10 +102,17 @@ export default function VehiclesScreen() {
               <View key={vehicle.id} style={styles.vehicleCard}>
                 <View style={styles.vehicleImageContainer}>
                   {vehicle.imageUrl ? (
-                    <Image source={{ uri: vehicle.imageUrl }} style={styles.vehicleImage} />
+                    <Image
+                      source={{ uri: vehicle.imageUrl }}
+                      style={styles.vehicleImage}
+                    />
                   ) : (
                     <View style={styles.vehicleImagePlaceholder}>
-                      <Feather name="truck" size={36} color={LuxeColors.outline} />
+                      <Feather
+                        name="truck"
+                        size={36}
+                        color={LuxeColors.outline}
+                      />
                     </View>
                   )}
                 </View>
@@ -105,7 +120,9 @@ export default function VehiclesScreen() {
                   <View style={styles.vehicleHeader}>
                     <View style={styles.vehicleHeaderLeft}>
                       <View style={styles.plateBadge}>
-                        <Text style={styles.plateText}>{vehicle.licensePlate}</Text>
+                        <Text style={styles.plateText}>
+                          {vehicle.licensePlate}
+                        </Text>
                       </View>
                       <TouchableOpacity
                         style={styles.deleteBtn}
@@ -122,7 +139,11 @@ export default function VehiclesScreen() {
                     <Text style={styles.vehicleBrand}>{vehicle.brand}</Text>
                   )}
                   <View style={styles.vehicleTypeBadge}>
-                    <Feather name="tag" size={12} color={LuxeColors.primaryContainer} />
+                    <Feather
+                      name="tag"
+                      size={12}
+                      color={LuxeColors.primaryContainer}
+                    />
                     <Text style={styles.vehicleTypeText}>{vehicle.brand}</Text>
                   </View>
                 </View>
@@ -135,7 +156,11 @@ export default function VehiclesScreen() {
                 onPress={() => router.push("/vehicles/add-vehicle")}
               >
                 <View style={styles.addMoreIconWrap}>
-                  <Feather name="plus" size={20} color={LuxeColors.primaryContainer} />
+                  <Feather
+                    name="plus"
+                    size={20}
+                    color={LuxeColors.primaryContainer}
+                  />
                 </View>
                 <Text style={styles.addMoreText}>Thêm xe mới</Text>
               </TouchableOpacity>
@@ -157,27 +182,47 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: LuxeColors.primaryContainer + '18',
+    backgroundColor: LuxeColors.primaryContainer + "18",
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 12,
   },
-  addBtnText: { fontSize: 14, fontWeight: "600", color: LuxeColors.primaryContainer },
+  addBtnText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: LuxeColors.primaryContainer,
+  },
   emptyState: { alignItems: "center", paddingVertical: 48 },
   emptyIconWrap: {
-    width: 80, height: 80, borderRadius: 40,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     backgroundColor: LuxeColors.surfaceContainer,
-    alignItems: "center", justifyContent: "center",
+    alignItems: "center",
+    justifyContent: "center",
     marginBottom: 20,
   },
-  emptyTitle: { fontSize: 20, fontWeight: "700", color: LuxeColors.onSurface, marginBottom: 8 },
-  emptyText: { fontSize: 14, color: LuxeColors.onSurfaceVariant, textAlign: "center", marginBottom: 24, paddingHorizontal: 20, lineHeight: 20 },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: LuxeColors.onSurface,
+    marginBottom: 8,
+  },
+  emptyText: {
+    fontSize: 14,
+    color: LuxeColors.onSurfaceVariant,
+    textAlign: "center",
+    marginBottom: 24,
+    paddingHorizontal: 20,
+    lineHeight: 20,
+  },
   emptyAddBtn: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
     backgroundColor: LuxeColors.primaryContainer,
-    paddingHorizontal: 24, paddingVertical: 14,
+    paddingHorizontal: 24,
+    paddingVertical: 14,
     borderRadius: 14,
     ...LuxeShadows.primary,
   },
@@ -191,37 +236,67 @@ const styles = StyleSheet.create({
     ...LuxeShadows.md,
   },
   vehicleImageContainer: {
-    width: 88, height: 88, borderRadius: 14, overflow: "hidden",
+    width: 88,
+    height: 88,
+    borderRadius: 14,
+    overflow: "hidden",
     marginRight: 16,
   },
   vehicleImage: { width: "100%", height: "100%" },
   vehicleImagePlaceholder: {
-    width: "100%", height: "100%",
+    width: "100%",
+    height: "100%",
     backgroundColor: LuxeColors.surfaceContainer,
-    alignItems: "center", justifyContent: "center",
+    alignItems: "center",
+    justifyContent: "center",
   },
   vehicleInfo: { flex: 1, justifyContent: "center" },
   vehicleHeader: { marginBottom: 4 },
-  vehicleHeaderLeft: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  vehicleHeaderLeft: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
   plateBadge: {
     backgroundColor: LuxeColors.primaryContainer,
-    paddingHorizontal: 10, paddingVertical: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
     borderRadius: 8,
   },
-  plateText: { fontSize: 13, fontWeight: "800", color: "#ffffff", letterSpacing: 0.5 },
+  plateText: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: "#ffffff",
+    letterSpacing: 0.5,
+  },
   deleteBtn: { padding: 4 },
-  vehicleCarModel: { fontSize: 16, fontWeight: "700", color: LuxeColors.onSurface, marginTop: 4 },
-  vehicleBrand: { fontSize: 12, color: LuxeColors.onSurfaceVariant, marginTop: 2, marginBottom: 8 },
+  vehicleCarModel: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: LuxeColors.onSurface,
+    marginTop: 4,
+  },
+  vehicleBrand: {
+    fontSize: 12,
+    color: LuxeColors.onSurfaceVariant,
+    marginTop: 2,
+    marginBottom: 8,
+  },
   vehicleTypeBadge: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: LuxeColors.primaryContainer + '15',
-    paddingHorizontal: 10, paddingVertical: 4,
+    backgroundColor: LuxeColors.primaryContainer + "15",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
     borderRadius: 6,
     alignSelf: "flex-start",
   },
-  vehicleTypeText: { fontSize: 11, fontWeight: "600", color: LuxeColors.primaryContainer },
+  vehicleTypeText: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: LuxeColors.primaryContainer,
+  },
   addMoreCard: {
     flexDirection: "row",
     alignItems: "center",
@@ -236,10 +311,22 @@ const styles = StyleSheet.create({
     ...LuxeShadows.sm,
   },
   addMoreIconWrap: {
-    width: 32, height: 32, borderRadius: 16,
-    backgroundColor: LuxeColors.primaryContainer + '18',
-    alignItems: "center", justifyContent: "center",
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: LuxeColors.primaryContainer + "18",
+    alignItems: "center",
+    justifyContent: "center",
   },
-  addMoreText: { fontSize: 16, fontWeight: "600", color: LuxeColors.primaryContainer },
-  limitNote: { textAlign: "center", fontSize: 12, color: LuxeColors.outline, marginTop: 16 },
+  addMoreText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: LuxeColors.primaryContainer,
+  },
+  limitNote: {
+    textAlign: "center",
+    fontSize: 12,
+    color: LuxeColors.outline,
+    marginTop: 16,
+  },
 });

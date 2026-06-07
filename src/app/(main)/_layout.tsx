@@ -4,9 +4,9 @@
  */
 
 import { LuxeColors } from "@/constants/luxeTheme";
+import { Feather } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
 import { StyleSheet, View } from "react-native";
-import { Feather } from "@expo/vector-icons";
 
 type IconName = "home" | "calendar" | "award" | "user";
 
@@ -16,7 +16,9 @@ function TabIcon({ icon, focused }: { icon: IconName; focused: boolean }) {
       <Feather
         name={icon}
         size={22}
-        color={focused ? LuxeColors.primaryContainer : LuxeColors.onSurfaceVariant}
+        color={
+          focused ? LuxeColors.primaryContainer : LuxeColors.onSurfaceVariant
+        }
       />
       {focused && <View style={styles.focusedDot} />}
     </View>
@@ -38,28 +40,36 @@ export default function MainTabsLayout() {
         name="index"
         options={{
           title: "Trang chủ",
-          tabBarIcon: ({ focused }) => <TabIcon icon="home" focused={focused} />,
+          tabBarIcon: ({ focused }) => (
+            <TabIcon icon="home" focused={focused} />
+          ),
         }}
       />
       <Tabs.Screen
         name="appointments"
         options={{
           title: "Lịch hẹn",
-          tabBarIcon: ({ focused }) => <TabIcon icon="calendar" focused={focused} />,
+          tabBarIcon: ({ focused }) => (
+            <TabIcon icon="calendar" focused={focused} />
+          ),
         }}
       />
       <Tabs.Screen
         name="rewards"
         options={{
           title: "Phần thưởng",
-          tabBarIcon: ({ focused }) => <TabIcon icon="award" focused={focused} />,
+          tabBarIcon: ({ focused }) => (
+            <TabIcon icon="award" focused={focused} />
+          ),
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
           title: "Cá nhân",
-          tabBarIcon: ({ focused }) => <TabIcon icon="user" focused={focused} />,
+          tabBarIcon: ({ focused }) => (
+            <TabIcon icon="user" focused={focused} />
+          ),
         }}
       />
     </Tabs>
@@ -69,11 +79,14 @@ export default function MainTabsLayout() {
 const styles = StyleSheet.create({
   tabBar: {
     position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
     backgroundColor: "rgba(255, 255, 255, 0.95)",
     borderTopWidth: 1,
     borderTopColor: LuxeColors.outlineVariant + "30",
-    height: 60,
-    paddingBottom: 8,
+    height: 74,
+    paddingBottom: 34,
     paddingTop: 8,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: -4 },
