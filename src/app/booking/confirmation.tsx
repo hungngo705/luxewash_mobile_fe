@@ -11,6 +11,7 @@ import {
 } from "@/constants/luxeTheme";
 import { useAuth } from "@/contexts/AuthContext";
 import { bookingService } from "@/services/api";
+import { branchHistoryService } from "@/services/branchHistoryService";
 import { Feather } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useState } from "react";
@@ -93,6 +94,13 @@ export default function BookingConfirmationScreen() {
         const bookingId = (res.data as any)?.bookingId || 0;
         await refreshWallet?.();
         bookingService.triggerEmail(bookingId);
+        // Record this branch as recently used for the "Đã đặt" tab
+        branchHistoryService.addRecentBranch({
+          branchId: branchIdParam,
+          name: branchNameParam,
+          address: '',
+          isActive: true,
+        });
         router.replace({
           pathname: "/booking/success",
           params: {

@@ -10,6 +10,8 @@ export interface BranchDTO {
   name: string;
   address: string;
   isActive: boolean;
+  latitude?: number;
+  longitude?: number;
 }
 
 export const branchService = {

@@ -1,9 +1,11 @@
 /**
  * Advance Booking Flow - Step 0: Select Branch
- * Choose a branch before proceeding with vehicle/service/date selection
+ * Redesigned with two tabs:
+ *   - "Gần đây": all branches sorted by distance from user's GPS location
+ *   - "Đã đặt": up to 3 recently booked branches (unique, most recent first)
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -11,49 +13,347 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
+  Linking,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { LuxeColors, LuxeShadows } from '@/constants/luxeTheme';
 import { branchService, type BranchDTO } from '@/services/api';
+import {
+  locationService,
+  getCurrentPosition,
+  geocodeAddress,
+  calculateDistance,
+  formatDistance,
+  type GeoPoint,
+} from '@/services/locationService';
+import { branchHistoryService, type RecentBranch } from '@/services/branchHistoryService';
 import { Header } from '@/components/ui/Header';
 import { ProgressSteps } from '@/components/ui/ProgressSteps';
 import { BottomActionBar } from '@/components/ui/BottomActionBar';
 
+type Tab = 'nearby' | 'recent';
+
+interface BranchWithDistance extends BranchDTO {
+  distance?: number; // km, undefined means unknown
+}
+
+/* ------------------------------------------------------------------ */
+/*  Helpers                                                            */
+/* ------------------------------------------------------------------ */
+
+async function resolveBranchLocations(
+  branches: BranchDTO[],
+  userLocation: GeoPoint | null,
+): Promise<BranchWithDistance[]> {
+  const resolved = await Promise.all(
+    branches.map(async (branch) => {
+      let coords: GeoPoint | null = null;
+
+      // 1. Prefer lat/lng directly from API
+      if (branch.latitude != null && branch.longitude != null) {
+        coords = { latitude: branch.latitude, longitude: branch.longitude };
+      }
+
+      // 2. Fall back: geocode address via Nominatim
+      if (!coords && branch.address) {
+        coords = await geocodeAddress(branch.address);
+      }
+
+      const distance =
+        coords && userLocation
+          ? calculateDistance(
+              userLocation.latitude,
+              userLocation.longitude,
+              coords.latitude,
+              coords.longitude,
+            )
+          : undefined;
+
+      return { ...branch, distance };
+    }),
+  );
+
+  // Sort: known distance first (ascending), then unknown distance
+  return resolved.sort((a, b) => {
+    if (a.distance == null && b.distance == null) return 0;
+    if (a.distance == null) return 1;
+    if (b.distance == null) return -1;
+    return a.distance - b.distance;
+  });
+}
+
+/* ------------------------------------------------------------------ */
+/*  Branch Card                                                        */
+/* ------------------------------------------------------------------ */
+
+interface BranchCardProps {
+  branch: BranchDTO;
+  isSelected: boolean;
+  onSelect: (branch: BranchDTO) => void;
+  distance?: number;
+  isNearest?: boolean;
+  showClock?: boolean;
+}
+
+function BranchCard({
+  branch,
+  isSelected,
+  onSelect,
+  distance,
+  isNearest,
+  showClock,
+}: BranchCardProps) {
+  return (
+    <TouchableOpacity
+      style={[
+        styles.branchCard,
+        isSelected && styles.branchCardSelected,
+        isNearest && !isSelected && styles.branchCardNearest,
+      ]}
+      onPress={() => onSelect(branch)}
+      activeOpacity={0.8}
+    >
+      {/* Radio indicator */}
+      <View style={[styles.radio, isSelected && styles.radioSelected]}>
+        {isSelected && <View style={styles.radioInner} />}
+      </View>
+
+      <View style={styles.branchIconWrap}>
+        <Feather
+          name={showClock ? 'clock' : 'map-pin'}
+          size={24}
+          color={
+            isSelected
+              ? LuxeColors.primaryContainer
+              : LuxeColors.onSurfaceVariant
+          }
+        />
+      </View>
+
+      <View style={styles.branchInfo}>
+        <View style={styles.branchNameRow}>
+          <Text
+            style={[
+              styles.branchName,
+              isSelected && styles.branchNameSelected,
+            ]}
+            numberOfLines={1}
+          >
+            {branch.name}
+          </Text>
+          {isNearest && (
+            <View style={styles.nearestBadge}>
+              <Feather name="navigation" size={10} color="#fff" />
+              <Text style={styles.nearestBadgeText}>Gần bạn nhất</Text>
+            </View>
+          )}
+        </View>
+        {branch.address && (
+          <Text style={styles.branchAddress} numberOfLines={2}>
+            <Feather name="map" size={11} color={LuxeColors.onSurfaceVariant} />{' '}
+            {branch.address}
+          </Text>
+        )}
+        {distance != null && (
+          <View style={styles.distanceRow}>
+            <Feather name="navigation" size={11} color={LuxeColors.primaryContainer} />
+            <Text style={styles.distanceText}>{formatDistance(distance)}</Text>
+          </View>
+        )}
+      </View>
+
+      {isSelected && (
+        <View style={styles.checkBadge}>
+          <Feather name="check" size={14} color="#fff" />
+        </View>
+      )}
+    </TouchableOpacity>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Tab Segment Control                                                */
+/* ------------------------------------------------------------------ */
+
+function TabSegment({ active, onChange }: { active: Tab; onChange: (t: Tab) => void }) {
+  return (
+    <View style={styles.tabSegment}>
+      <TouchableOpacity
+        style={[styles.tabBtn, active === 'nearby' && styles.tabBtnActive]}
+        onPress={() => onChange('nearby')}
+        activeOpacity={0.8}
+      >
+        <Feather
+          name="navigation"
+          size={14}
+          color={active === 'nearby' ? '#fff' : LuxeColors.onSurfaceVariant}
+        />
+        <Text style={[styles.tabBtnText, active === 'nearby' && styles.tabBtnTextActive]}>
+          Gần đây
+        </Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={[styles.tabBtn, active === 'recent' && styles.tabBtnActive]}
+        onPress={() => onChange('recent')}
+        activeOpacity={0.8}
+      >
+        <Feather
+          name="clock"
+          size={14}
+          color={active === 'recent' ? '#fff' : LuxeColors.onSurfaceVariant}
+        />
+        <Text style={[styles.tabBtnText, active === 'recent' && styles.tabBtnTextActive]}>
+          Đã đặt
+        </Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Location Permission Banner                                         */
+/* ------------------------------------------------------------------ */
+
+function LocationBanner({ onOpenSettings }: { onOpenSettings: () => void }) {
+  return (
+    <View style={styles.banner}>
+      <View style={styles.bannerIcon}>
+        <Feather name="map-pin" size={18} color={LuxeColors.primaryContainer} />
+      </View>
+      <View style={styles.bannerContent}>
+        <Text style={styles.bannerTitle}>Bật định vị để xem chi nhánh gần nhất</Text>
+        <Text style={styles.bannerSub}>Chi nhánh sẽ được sắp xếp theo khoảng cách</Text>
+      </View>
+      <TouchableOpacity style={styles.bannerBtn} onPress={onOpenSettings}>
+        <Text style={styles.bannerBtnText}>Bật</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Main Screen                                                        */
+/* ------------------------------------------------------------------ */
+
 export default function SelectBranchScreen() {
   const router = useRouter();
 
+  const [activeTab, setActiveTab] = useState<Tab>('nearby');
   const [branches, setBranches] = useState<BranchDTO[]>([]);
+  const [branchesWithDistance, setBranchesWithDistance] = useState<BranchWithDistance[]>([]);
+  const [recentBranches, setRecentBranches] = useState<RecentBranch[]>([]);
   const [selectedBranch, setSelectedBranch] = useState<BranchDTO | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const loadBranches = async () => {
-      setLoading(true);
+  const [loading, setLoading] = useState(true);
+  const [loadingNearby, setLoadingNearby] = useState(false);
+  const [loadingRecent, setLoadingRecent] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [locationDenied, setLocationDenied] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  /* Load all branches once */
+  const loadBranches = useCallback(async () => {
+    try {
       setError(null);
-      try {
-        const res = await branchService.getBranches();
-        if (res.statusCode === 200 && res.data) {
-          setBranches(res.data);
-        } else {
-          setError('Không thể tải danh sách chi nhánh');
-        }
-      } catch (e) {
+      const res = await branchService.getBranches();
+      if (res.statusCode === 200 && res.data) {
+        setBranches(res.data);
+      } else {
         setError('Không thể tải danh sách chi nhánh');
-      } finally {
-        setLoading(false);
       }
-    };
-    loadBranches();
+    } catch {
+      setError('Không thể tải danh sách chi nhánh');
+    }
   }, []);
 
-  const handleSelectBranch = (branch: BranchDTO) => {
-    setSelectedBranch(branch);
-  };
+  /* Resolve distances when branches or tab changes */
+  const resolveDistances = useCallback(async () => {
+    if (branches.length === 0) return;
+    setLoadingNearby(true);
+    try {
+      const userLocation = await getCurrentPosition();
+      setLocationDenied(userLocation === null);
+      const withDist = await resolveBranchLocations(branches, userLocation);
+      setBranchesWithDistance(withDist);
+    } finally {
+      setLoadingNearby(false);
+    }
+  }, [branches]);
 
-  const handleContinue = () => {
+  /* Load recent branches from storage */
+  const loadRecentBranches = useCallback(async () => {
+    setLoadingRecent(true);
+    try {
+      const recent = await branchHistoryService.getRecentBranches();
+      setRecentBranches(recent);
+    } finally {
+      setLoadingRecent(false);
+    }
+  }, []);
+
+  /* Initial load */
+  useEffect(() => {
+    const init = async () => {
+      setLoading(true);
+      await loadBranches();
+      await loadRecentBranches();
+      setLoading(false);
+    };
+    init();
+  }, [loadBranches, loadRecentBranches]);
+
+  /* Resolve distances when switching to nearby tab */
+  useEffect(() => {
+    if (activeTab === 'nearby' && branches.length > 0 && branchesWithDistance.length === 0) {
+      resolveDistances();
+    }
+  }, [activeTab, branches, branchesWithDistance.length, resolveDistances]);
+
+  /* Refresh handler */
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    if (activeTab === 'nearby') {
+      await loadBranches();
+      setBranchesWithDistance([]);
+      await resolveDistances();
+    } else {
+      await loadRecentBranches();
+    }
+    setRefreshing(false);
+  }, [activeTab, loadBranches, loadRecentBranches, resolveDistances]);
+
+  /* When a tab changes, reload its data */
+  const handleTabChange = useCallback(
+    async (tab: Tab) => {
+      setActiveTab(tab);
+      setSelectedBranch(null);
+      if (tab === 'nearby') {
+        if (branchesWithDistance.length === 0) {
+          setLoadingNearby(true);
+          await resolveDistances();
+          setLoadingNearby(false);
+        }
+      } else {
+        setLoadingRecent(true);
+        await loadRecentBranches();
+        setLoadingRecent(false);
+      }
+    },
+    [branchesWithDistance.length, resolveDistances, loadRecentBranches],
+  );
+
+  const handleSelectBranch = useCallback((branch: BranchDTO) => {
+    setSelectedBranch(branch);
+  }, []);
+
+  const handleOpenSettings = useCallback(() => {
+    Linking.openSettings();
+  }, []);
+
+  const handleContinue = useCallback(() => {
     if (!selectedBranch) return;
     router.push({
       pathname: '/booking/select-vehicles',
@@ -62,6 +362,89 @@ export default function SelectBranchScreen() {
         branchName: selectedBranch.name,
       },
     });
+  }, [selectedBranch, router]);
+
+  /* ------------------------------------------------------------------ */
+  /*  Render                                                            */
+  /* ------------------------------------------------------------------ */
+
+  const renderBranchList = (list: BranchWithDistance[], showDistances: boolean) => {
+    if (loadingNearby) {
+      return (
+        <View style={styles.centerState}>
+          <ActivityIndicator size="large" color={LuxeColors.primaryContainer} />
+          <Text style={styles.centerStateText}>Đang xác định vị trí...</Text>
+        </View>
+      );
+    }
+
+    if (list.length === 0) {
+      return (
+        <View style={styles.centerState}>
+          <Feather name="map-pin" size={48} color={LuxeColors.outlineVariant} />
+          <Text style={styles.centerStateText}>Không có chi nhánh nào</Text>
+        </View>
+      );
+    }
+
+    return (
+      <View style={styles.branchList}>
+        {list.map((branch, idx) => {
+          const isSelected = selectedBranch?.branchId === branch.branchId;
+          const isNearest = idx === 0 && branch.distance != null;
+          return (
+            <BranchCard
+              key={branch.branchId}
+              branch={branch}
+              isSelected={isSelected}
+              onSelect={handleSelectBranch}
+              distance={showDistances ? branch.distance : undefined}
+              isNearest={isNearest}
+            />
+          );
+        })}
+      </View>
+    );
+  };
+
+  const renderRecentList = () => {
+    if (loadingRecent) {
+      return (
+        <View style={styles.centerState}>
+          <ActivityIndicator size="large" color={LuxeColors.primaryContainer} />
+          <Text style={styles.centerStateText}>Đang tải...</Text>
+        </View>
+      );
+    }
+
+    if (recentBranches.length === 0) {
+      return (
+        <View style={styles.centerState}>
+          <Feather name="clock" size={48} color={LuxeColors.outlineVariant} />
+          <Text style={styles.centerStateText}>Chưa có chi nhánh nào đã đặt gần đây</Text>
+          <Text style={styles.centerStateSub}>
+            Các chi nhánh bạn đặt sẽ xuất hiện ở đây
+          </Text>
+        </View>
+      );
+    }
+
+    return (
+      <View style={styles.branchList}>
+        {recentBranches.map((branch) => {
+          const isSelected = selectedBranch?.branchId === branch.branchId;
+          return (
+            <BranchCard
+              key={branch.branchId}
+              branch={branch}
+              isSelected={isSelected}
+              onSelect={handleSelectBranch}
+              showClock
+            />
+          );
+        })}
+      </View>
+    );
   };
 
   return (
@@ -83,6 +466,13 @@ export default function SelectBranchScreen() {
         <ScrollView
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={LuxeColors.primaryContainer}
+            />
+          }
         >
           {/* Welcome */}
           <View style={styles.welcomeSection}>
@@ -92,104 +482,40 @@ export default function SelectBranchScreen() {
             </Text>
           </View>
 
-          {/* Branch List */}
+          {/* Tab toggle */}
+          <TabSegment active={activeTab} onChange={handleTabChange} />
+
+          {/* Location permission banner */}
+          {activeTab === 'nearby' && locationDenied && !loading && (
+            <LocationBanner onOpenSettings={handleOpenSettings} />
+          )}
+
+          {/* Content */}
           {loading ? (
-            <View style={styles.loadingState}>
+            <View style={styles.centerState}>
               <ActivityIndicator size="large" color={LuxeColors.primaryContainer} />
-              <Text style={styles.loadingText}>Đang tải danh sách chi nhánh...</Text>
+              <Text style={styles.centerStateText}>Đang tải danh sách chi nhánh...</Text>
             </View>
           ) : error ? (
-            <View style={styles.errorState}>
+            <View style={styles.centerState}>
               <Feather name="alert-circle" size={48} color={LuxeColors.error} />
               <Text style={styles.errorText}>{error}</Text>
               <TouchableOpacity
                 style={styles.retryBtn}
-                onPress={() => {
+                onPress={async () => {
                   setLoading(true);
                   setError(null);
-                  branchService.getBranches().then((res) => {
-                    if (res.statusCode === 200 && res.data) {
-                      setBranches(res.data);
-                    } else {
-                      setError('Không thể tải danh sách chi nhánh');
-                    }
-                    setLoading(false);
-                  }).catch(() => {
-                    setError('Không thể tải danh sách chi nhánh');
-                    setLoading(false);
-                  });
+                  await loadBranches();
+                  setLoading(false);
                 }}
               >
                 <Text style={styles.retryBtnText}>Thử lại</Text>
               </TouchableOpacity>
             </View>
-          ) : branches.length === 0 ? (
-            <View style={styles.emptyState}>
-              <Feather name="map-pin" size={48} color={LuxeColors.outlineVariant} />
-              <Text style={styles.emptyText}>Không có chi nhánh nào</Text>
-            </View>
+          ) : activeTab === 'nearby' ? (
+            renderBranchList(branchesWithDistance, true)
           ) : (
-            <View style={styles.branchList}>
-              {branches.map((branch) => {
-                const isSelected = selectedBranch?.branchId === branch.branchId;
-                return (
-                  <TouchableOpacity
-                    key={branch.branchId}
-                    style={[
-                      styles.branchCard,
-                      isSelected && styles.branchCardSelected,
-                    ]}
-                    onPress={() => handleSelectBranch(branch)}
-                    activeOpacity={0.8}
-                  >
-                    {/* Radio indicator */}
-                    <View
-                      style={[
-                        styles.radio,
-                        isSelected && styles.radioSelected,
-                      ]}
-                    >
-                      {isSelected && <View style={styles.radioInner} />}
-                    </View>
-
-                    <View style={styles.branchIconWrap}>
-                      <Feather
-                        name="map-pin"
-                        size={24}
-                        color={
-                          isSelected
-                            ? LuxeColors.primaryContainer
-                            : LuxeColors.onSurfaceVariant
-                        }
-                      />
-                    </View>
-
-                    <View style={styles.branchInfo}>
-                      <Text
-                        style={[
-                          styles.branchName,
-                          isSelected && styles.branchNameSelected,
-                        ]}
-                      >
-                        {branch.name}
-                      </Text>
-                      {branch.address && (
-                        <Text style={styles.branchAddress} numberOfLines={2}>
-                          <Feather name="map" size={11} color={LuxeColors.onSurfaceVariant} />{' '}
-                          {branch.address}
-                        </Text>
-                      )}
-                    </View>
-
-                    {isSelected && (
-                      <View style={styles.checkBadge}>
-                        <Feather name="check" size={14} color="#fff" />
-                      </View>
-                    )}
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
+            renderRecentList()
           )}
 
           {/* Selected Summary */}
@@ -226,12 +552,16 @@ export default function SelectBranchScreen() {
   );
 }
 
+/* ------------------------------------------------------------------ */
+/*  Styles                                                             */
+/* ------------------------------------------------------------------ */
+
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: LuxeColors.background },
   safeArea: { flex: 1 },
   scrollView: { flex: 1 },
   scrollContent: { paddingHorizontal: 20, paddingTop: 8 },
-  welcomeSection: { marginBottom: 24 },
+  welcomeSection: { marginBottom: 16 },
   welcomeTitle: {
     fontSize: 26,
     fontWeight: '800',
@@ -243,22 +573,94 @@ const styles = StyleSheet.create({
     color: LuxeColors.onSurfaceVariant,
     lineHeight: 20,
   },
-  loadingState: {
-    alignItems: 'center',
-    padding: 40,
-    gap: 12,
+
+  // Tab segment
+  tabSegment: {
+    flexDirection: 'row',
+    backgroundColor: LuxeColors.surfaceContainer,
+    borderRadius: 14,
+    padding: 4,
+    marginBottom: 16,
   },
-  loadingText: {
+  tabBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: 11,
+  },
+  tabBtnActive: {
+    backgroundColor: LuxeColors.primaryContainer,
+  },
+  tabBtnText: {
     fontSize: 14,
+    fontWeight: '600',
     color: LuxeColors.onSurfaceVariant,
   },
-  errorState: {
+  tabBtnTextActive: {
+    color: '#fff',
+  },
+
+  // Location banner
+  banner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: LuxeColors.primaryContainer + '15',
+    borderRadius: 14,
+    padding: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: LuxeColors.primaryContainer + '30',
+    gap: 10,
+  },
+  bannerIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    backgroundColor: LuxeColors.primaryContainer + '20',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bannerContent: { flex: 1 },
+  bannerTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: LuxeColors.onSurface,
+    marginBottom: 2,
+  },
+  bannerSub: {
+    fontSize: 12,
+    color: LuxeColors.onSurfaceVariant,
+  },
+  bannerBtn: {
+    backgroundColor: LuxeColors.primaryContainer,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 10,
+  },
+  bannerBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#fff',
+  },
+
+  // States
+  centerState: {
     alignItems: 'center',
     padding: 40,
     gap: 12,
-    backgroundColor: '#ffffff',
-    borderRadius: 20,
-    ...LuxeShadows.sm,
+  },
+  centerStateText: {
+    fontSize: 14,
+    color: LuxeColors.onSurfaceVariant,
+    textAlign: 'center',
+  },
+  centerStateSub: {
+    fontSize: 12,
+    color: LuxeColors.outline,
+    textAlign: 'center',
   },
   errorText: {
     fontSize: 14,
@@ -276,15 +678,8 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontSize: 14,
   },
-  emptyState: {
-    alignItems: 'center',
-    padding: 40,
-    gap: 12,
-  },
-  emptyText: {
-    fontSize: 16,
-    color: LuxeColors.onSurfaceVariant,
-  },
+
+  // Branch list
   branchList: { gap: 12 },
   branchCard: {
     flexDirection: 'row',
@@ -300,6 +695,9 @@ const styles = StyleSheet.create({
     borderColor: LuxeColors.primaryContainer,
     backgroundColor: LuxeColors.primaryContainer + '08',
     ...LuxeShadows.md,
+  },
+  branchCardNearest: {
+    borderColor: LuxeColors.primaryContainer + '40',
   },
   radio: {
     width: 22,
@@ -331,14 +729,34 @@ const styles = StyleSheet.create({
     marginRight: 14,
   },
   branchInfo: { flex: 1 },
+  branchNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+    flexWrap: 'wrap',
+  },
   branchName: {
     fontSize: 16,
     fontWeight: '700',
     color: LuxeColors.onSurface,
-    marginBottom: 4,
   },
   branchNameSelected: {
     color: LuxeColors.primaryContainer,
+  },
+  nearestBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: LuxeColors.primaryContainer,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  nearestBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#fff',
   },
   branchAddress: {
     fontSize: 13,
@@ -346,9 +764,16 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     marginBottom: 2,
   },
-  branchPhone: {
+  distanceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    marginTop: 2,
+  },
+  distanceText: {
     fontSize: 12,
-    color: LuxeColors.onSurfaceVariant,
+    fontWeight: '700',
+    color: LuxeColors.primaryContainer,
   },
   checkBadge: {
     width: 24,
@@ -359,6 +784,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginLeft: 8,
   },
+
+  // Selected summary
   selectedSummary: {
     backgroundColor: '#ffffff',
     borderRadius: 16,
