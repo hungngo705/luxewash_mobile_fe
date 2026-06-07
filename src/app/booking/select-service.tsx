@@ -48,7 +48,7 @@ export default function SelectServiceScreen() {
     const loadServices = async () => {
       setLoading(true);
       try {
-        const res = await bookingService.getServices();
+        const res = await bookingService.getServices(branchIdParam);
         if (res.statusCode === 200 && res.data) {
           setServices(res.data);
         }

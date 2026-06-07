@@ -94,8 +94,8 @@ export interface GetMyBookingsParams {
 }
 
 export const bookingService = {
-  getServices: async (): Promise<ApiResponse<Service[]>> => {
-    return apiClient.get<Service[]>('/services');
+  getServices: async (branchId?: number): Promise<ApiResponse<Service[]>> => {
+    return apiClient.get<Service[]>('/services', branchId ? { branchId } : undefined);
   },
 
   checkCompatibility: async (data: {
