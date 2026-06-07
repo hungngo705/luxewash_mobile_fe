@@ -27,6 +27,7 @@ export type {
   CompatibilityDTO,
   BookingDetail,
   BookingDetailVehicle,
+  BookingDetailResponse,
   CreateBookingResponse,
   MyBookingItem,
   GetMyBookingsParams,

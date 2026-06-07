@@ -227,7 +227,11 @@ export default function AppointmentsScreen() {
     const vehicleImage = userVehicle?.imageUrl;
 
     return (
-      <View style={styles.card}>
+      <TouchableOpacity
+        style={styles.card}
+        onPress={() => router.push(`/booking/${item.bookingId}`)}
+        activeOpacity={0.7}
+      >
         <View
           style={[styles.cardAccentBar, { backgroundColor: statusStyle.dot }]}
         />
@@ -304,7 +308,7 @@ export default function AppointmentsScreen() {
             </View>
           </View>
         </View>
-      </View>
+      </TouchableOpacity>
     );
   };
 
