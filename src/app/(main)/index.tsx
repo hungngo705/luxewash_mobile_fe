@@ -19,6 +19,7 @@ import { useRouter } from 'expo-router';
 import { LuxeColors, LuxeSpacing, LuxeBorderRadius, LuxeShadows, MembershipConfig } from '@/constants/luxeTheme';
 import { useAuth } from '@/contexts/AuthContext';
 import { bookingService } from '@/services/api';
+import { loyaltyService, Voucher } from '@/services/api/loyaltyService';
 import { mockVouchers, mockServices } from '@/data/types';
 
 export default function HomeScreen() {
@@ -26,6 +27,8 @@ export default function HomeScreen() {
   const { user, walletBalance, isAuthenticated } = useAuth();
   const [services, setServices] = useState<Array<{ serviceId: number; serviceName: string; description: string; prices: Array<{ vehicleTypeId: number; vehicleTypeName: string; price: number }> }>>([]);
   const [loadingServices, setLoadingServices] = useState(false);
+  const [vouchers, setVouchers] = useState<Voucher[]>([]);
+  const [loadingVouchers, setLoadingVouchers] = useState(false);
 
   const currentUser = user;
   const vehicles = user?.vehicles || [];
@@ -46,6 +49,25 @@ export default function HomeScreen() {
     };
     if (isAuthenticated) {
       loadServices();
+    }
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    const loadVouchers = async () => {
+      setLoadingVouchers(true);
+      try {
+        const res = await loyaltyService.getMyVouchers();
+        if (res.statusCode === 200 && res.data) {
+          const unused = res.data.filter(v => !v.isUsed);
+          setVouchers(unused);
+        }
+      } catch (e) {
+        console.error('Failed to load vouchers:', e);
+      }
+      setLoadingVouchers(false);
+    };
+    if (isAuthenticated) {
+      loadVouchers();
     }
   }, [isAuthenticated]);
 
@@ -264,28 +286,38 @@ export default function HomeScreen() {
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Khuyến mãi</Text>
-              <TouchableOpacity>
+              <TouchableOpacity onPress={() => router.push('/vouchers')}>
                 <Text style={styles.seeAll}>Xem tất cả</Text>
               </TouchableOpacity>
             </View>
-            <View style={styles.promoCards}>
-              {mockVouchers.slice(0, 2).map((voucher) => (
-                <View key={voucher.id} style={styles.promoCard}>
-                  <View style={styles.promoBadge}>
-                    <Text style={styles.promoBadgeText}>
-                      {voucher.discountType === 'percentage'
-                        ? `${voucher.discountAmount}%`
-                        : `${voucher.discountAmount.toLocaleString('vi-VN')}đ`}
-                    </Text>
+            {loadingVouchers ? (
+              <View style={[styles.promoCards, { justifyContent: 'center', paddingVertical: 20 }]}>
+                <Text style={{ color: LuxeColors.onSurfaceVariant, fontSize: 13 }}>Đang tải...</Text>
+              </View>
+            ) : vouchers.length > 0 ? (
+              <View style={styles.promoCards}>
+                {vouchers.slice(0, 2).map((voucher) => (
+                  <View key={voucher.voucherId} style={styles.promoCard}>
+                    <View style={styles.promoBadge}>
+                      <Text style={styles.promoBadgeText}>
+                        {voucher.discountType === 'percentage'
+                          ? `${voucher.discountAmount}%`
+                          : `${voucher.discountAmount.toLocaleString('vi-VN')}đ`}
+                      </Text>
+                    </View>
+                    <Text style={styles.promoTitle}>{voucher.title}</Text>
+                    <Text style={styles.promoDesc}>{voucher.description}</Text>
+                    <View style={styles.promoCodeWrap}>
+                      <Text style={styles.promoCode}>{voucher.code}</Text>
+                    </View>
                   </View>
-                  <Text style={styles.promoTitle}>{voucher.title}</Text>
-                  <Text style={styles.promoDesc}>{voucher.description}</Text>
-                  <View style={styles.promoCodeWrap}>
-                    <Text style={styles.promoCode}>{voucher.code}</Text>
-                  </View>
-                </View>
-              ))}
-            </View>
+                ))}
+              </View>
+            ) : (
+              <View style={[styles.promoCards, { justifyContent: 'center', paddingVertical: 20 }]}>
+                <Text style={{ color: LuxeColors.onSurfaceVariant, fontSize: 13 }}>Chưa có voucher nào</Text>
+              </View>
+            )}
           </View>
 
           {/* Stats */}

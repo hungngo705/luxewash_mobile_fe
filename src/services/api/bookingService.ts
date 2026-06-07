@@ -71,6 +71,18 @@ export interface BookingDetail {
   vehicles: BookingDetailVehicle[];
 }
 
+export interface BookingDetailResponse {
+  bookingId: number;
+  licensePlate: string;
+  serviceNames: string[];
+  scheduledTime: string;
+  status: string;
+  originalPrice: number;
+  pointDiscountAmount: number;
+  voucherDiscountAmount: number;
+  finalAmount: number;
+}
+
 export interface CreateBookingResponse {
   bookingId: number;
 }
@@ -94,8 +106,8 @@ export interface GetMyBookingsParams {
 }
 
 export const bookingService = {
-  getServices: async (): Promise<ApiResponse<Service[]>> => {
-    return apiClient.get<Service[]>('/services');
+  getServices: async (branchId?: number): Promise<ApiResponse<Service[]>> => {
+    return apiClient.get<Service[]>('/services', branchId ? { branchId } : undefined);
   },
 
   checkCompatibility: async (data: {
@@ -141,5 +153,9 @@ export const bookingService = {
 
   triggerEmail: async (bookingId: number): Promise<ApiResponse<void>> => {
     return apiClient.post<void>(`/bookings/${bookingId}/trigger-email`, {});
+  },
+
+  getBookingDetail: async (bookingId: number): Promise<ApiResponse<BookingDetailResponse>> => {
+    return apiClient.get<BookingDetailResponse>(`/bookings/${bookingId}`);
   },
 };

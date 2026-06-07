@@ -11,7 +11,14 @@ import {
 } from "@/constants/luxeTheme";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import {
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { PrimaryButton, SecondaryButton } from "@/components/ui/Button";
@@ -45,109 +52,119 @@ export function BookingSuccessScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
-        {/* Success Icon */}
-        <View style={styles.successIconWrap}>
-          <View style={styles.successCircle}>
-            <Feather name="check" size={48} color="#ffffff" />
-          </View>
-          <View style={styles.successRing} />
-        </View>
-
-        {/* Message */}
-        <View style={styles.messageSection}>
-          <Text style={styles.successTitle}>Đặt lịch thành công!</Text>
-          <Text style={styles.successSubtitle}>
-            Cảm ơn bạn đã đặt lịch tại LuxeWash. Chúng tôi đã gửi xác nhận đến số điện thoại của bạn.
-          </Text>
-        </View>
-
-        {/* Booking Details Card */}
-        <View style={styles.detailsCard}>
-          <View style={styles.detailRow}>
-            <View style={styles.detailLeft}>
-              <View style={styles.detailIconWrap}>
-                <Feather name="hash" size={16} color={LuxeColors.primaryContainer} />
-              </View>
-              <Text style={styles.detailLabel}>Mã đặt lịch</Text>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        style={styles.keyboardAvoid}
+      >
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* Success Icon */}
+          <View style={styles.successIconWrap}>
+            <View style={styles.successCircle}>
+              <Feather name="check" size={48} color="#ffffff" />
             </View>
-            <Text style={styles.detailValue}>#{bookingId}</Text>
+            <View style={styles.successRing} />
           </View>
 
-          <View style={styles.detailDivider} />
+          {/* Message */}
+          <View style={styles.messageSection}>
+            <Text style={styles.successTitle}>Đặt lịch thành công!</Text>
+            <Text style={styles.successSubtitle}>
+              Cảm ơn bạn đã đặt lịch tại LuxeWash. Chúng tôi đã gửi xác nhận đến số điện thoại của bạn.
+            </Text>
+          </View>
 
-          <View style={styles.detailRow}>
-            <View style={styles.detailLeft}>
-              <View style={styles.detailIconWrap}>
-                <Feather name="calendar" size={16} color={LuxeColors.primaryContainer} />
+          {/* Booking Details Card */}
+          <View style={styles.detailsCard}>
+            <View style={styles.detailRow}>
+              <View style={styles.detailLeft}>
+                <View style={styles.detailIconWrap}>
+                  <Feather name="hash" size={16} color={LuxeColors.primaryContainer} />
+                </View>
+                <Text style={styles.detailLabel}>Mã đặt lịch</Text>
               </View>
-              <Text style={styles.detailLabel}>Ngày</Text>
+              <Text style={styles.detailValue}>#{bookingId}</Text>
             </View>
-            <Text style={styles.detailValue}>{formattedDate}</Text>
-          </View>
 
-          <View style={styles.detailDivider} />
+            <View style={styles.detailDivider} />
 
-          <View style={styles.detailRow}>
-            <View style={styles.detailLeft}>
-              <View style={styles.detailIconWrap}>
-                <Feather name="clock" size={16} color={LuxeColors.primaryContainer} />
+            <View style={styles.detailRow}>
+              <View style={styles.detailLeft}>
+                <View style={styles.detailIconWrap}>
+                  <Feather name="calendar" size={16} color={LuxeColors.primaryContainer} />
+                </View>
+                <Text style={styles.detailLabel}>Ngày</Text>
               </View>
-              <Text style={styles.detailLabel}>Giờ</Text>
+              <Text style={styles.detailValue}>{formattedDate}</Text>
             </View>
-            <Text style={styles.detailValue}>{timeSlot}</Text>
-          </View>
 
-          <View style={styles.detailDivider} />
+            <View style={styles.detailDivider} />
 
-          <View style={styles.detailRow}>
-            <View style={styles.detailLeft}>
-              <View style={styles.detailIconWrap}>
-                <Feather name="map-pin" size={16} color={LuxeColors.primaryContainer} />
+            <View style={styles.detailRow}>
+              <View style={styles.detailLeft}>
+                <View style={styles.detailIconWrap}>
+                  <Feather name="clock" size={16} color={LuxeColors.primaryContainer} />
+                </View>
+                <Text style={styles.detailLabel}>Giờ</Text>
               </View>
-              <Text style={styles.detailLabel}>Trạm</Text>
+              <Text style={styles.detailValue}>{timeSlot}</Text>
             </View>
-            <Text style={styles.detailValue}>{branchName}</Text>
+
+            <View style={styles.detailDivider} />
+
+            <View style={styles.detailRow}>
+              <View style={styles.detailLeft}>
+                <View style={styles.detailIconWrap}>
+                  <Feather name="map-pin" size={16} color={LuxeColors.primaryContainer} />
+                </View>
+                <Text style={styles.detailLabel}>Trạm</Text>
+              </View>
+              <Text style={styles.detailValue}>{branchName}</Text>
+            </View>
+
+            <View style={styles.totalDivider} />
+
+            <View style={styles.totalRow}>
+              <Text style={styles.totalLabel}>Tổng thanh toán</Text>
+              <Text style={styles.totalValue}>
+                {parseInt(finalAmount || "0").toLocaleString("vi-VN")}đ
+              </Text>
+            </View>
           </View>
 
-          <View style={styles.totalDivider} />
-
-          <View style={styles.totalRow}>
-            <Text style={styles.totalLabel}>Tổng thanh toán</Text>
-            <Text style={styles.totalValue}>{parseInt(finalAmount || "0").toLocaleString("vi-VN")}đ</Text>
+          {/* Info Box */}
+          <View style={styles.infoBox}>
+            <View style={styles.infoIconWrap}>
+              <Feather name="info" size={18} color={LuxeColors.primaryContainer} />
+            </View>
+            <Text style={styles.infoText}>
+              Vui lòng đến đúng giờ hoặc trước 5 phút. Nếu cần hủy lịch, vui
+              lòng thông báo trước ít nhất 2 giờ.
+            </Text>
           </View>
-        </View>
+        </ScrollView>
 
-        {/* Info Box */}
-        <View style={styles.infoBox}>
-          <View style={styles.infoIconWrap}>
-            <Feather name="info" size={18} color={LuxeColors.primaryContainer} />
-          </View>
-          <Text style={styles.infoText}>
-            Vui lòng đến đúng giờ hoặc trước 5 phút. Nếu cần hủy lịch, vui lòng thông báo trước ít nhất 2 giờ.
-          </Text>
-        </View>
-
-        {/* Actions */}
+        {/* Pinned Actions — always visible at the bottom */}
         <View style={styles.actions}>
           <PrimaryButton
             title="Xem lịch hẹn"
             onPress={handleViewDetails}
             icon={<Feather name="calendar" size={18} color="#ffffff" />}
           />
-          <SecondaryButton
-            title="Quay về trang chủ"
-            onPress={handleBackToHome}
-          />
+          <SecondaryButton title="Quay về trang chủ" onPress={handleBackToHome} />
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: LuxeColors.background },
-  content: { flex: 1, paddingHorizontal: 24, paddingTop: 40, alignItems: "center" },
+  keyboardAvoid: { flex: 1 },
+  scrollContent: { paddingHorizontal: 24, paddingTop: 40, paddingBottom: 16, alignItems: "center" },
   successIconWrap: {
     width: 120, height: 120, alignItems: "center", justifyContent: "center", marginBottom: 32,
   },
@@ -183,10 +200,18 @@ const styles = StyleSheet.create({
   totalRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 6 },
   totalLabel: { fontSize: 16, fontWeight: "800", color: LuxeColors.onSurface },
   totalValue: { fontSize: 22, fontWeight: "800", color: LuxeColors.primaryContainer },
-  infoBox: { flexDirection: "row", backgroundColor: LuxeColors.primaryContainer + '10', borderRadius: 16, padding: 16, gap: 12, marginBottom: 32, ...LuxeShadows.sm },
+  infoBox: { flexDirection: "row", backgroundColor: LuxeColors.primaryContainer + '10', borderRadius: 16, padding: 16, gap: 12, marginBottom: 16, ...LuxeShadows.sm },
   infoIconWrap: { width: 36, height: 36, borderRadius: 12, backgroundColor: '#ffffff', alignItems: "center", justifyContent: "center", flexShrink: 0 },
   infoText: { flex: 1, fontSize: 13, color: LuxeColors.onSurfaceVariant, lineHeight: 20 },
-  actions: { width: "100%", gap: 12 },
+  actions: {
+    width: "100%",
+    backgroundColor: LuxeColors.background,
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    borderTopWidth: 1,
+    borderTopColor: LuxeColors.outlineVariant + '25',
+    gap: 12,
+  },
 });
 
 export default BookingSuccessScreen;
