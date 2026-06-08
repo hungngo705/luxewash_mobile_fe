@@ -10,11 +10,41 @@ import React, {
     useEffect,
     useState,
 } from "react";
-import { AuthUser, LoginCredentials, Vehicle } from "../data/types";
 import { authService } from "../services/api/authService";
 import { ApiError, getStoredTokens } from "../services/api/client";
 import { vehicleService } from "../services/api/vehicleService";
 import { walletService } from "../services/api/walletService";
+
+export interface Vehicle {
+  id: string;
+  licensePlate: string;
+  brand: string;
+  model: string;
+  color: string;
+  vehicleTypeId?: number;
+  imageUrl?: string;
+  userId: string;
+  createdAt: Date;
+}
+
+export interface AuthUser {
+  id: string;
+  phoneNumber: string;
+  email?: string;
+  name: string;
+  role: 'customer' | 'staff' | 'admin';
+  membershipId: string;
+  membershipTier: 'standard' | 'silver' | 'gold' | 'platinum' | 'diamond';
+  loyaltyPoints: number;
+  createdAt: Date;
+  updatedAt: Date;
+  vehicles: Vehicle[];
+}
+
+interface LoginCredentials {
+  phoneOrEmail: string;
+  password: string;
+}
 
 interface AuthState {
   user: AuthUser | null;

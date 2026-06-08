@@ -18,7 +18,7 @@ import {
   VehicleType,
 } from "@/services/api/vehicleService";
 import { Feather } from "@expo/vector-icons";
-import { File } from "expo-file-system";
+import { File as ExpoFile } from "expo-file-system";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import { fetch as expoFetch } from "expo/fetch";
@@ -70,7 +70,7 @@ export default function AddVehicleScreen() {
   );
   const [showModelPicker, setShowModelPicker] = useState(false);
   const [modelSearchQuery, setModelSearchQuery] = useState("");
-  // Free-text car model when user selects "Khác" in dòng xe dropdown
+  // Free-text car model when user selects "Khác" in mẫu xe dropdown
   const [otherCarModelText, setOtherCarModelText] = useState("");
   const [isOtherModelFreeText, setIsOtherModelFreeText] = useState(false);
 
@@ -220,12 +220,12 @@ export default function AddVehicleScreen() {
     }
   };
 
-  const getFileObject = (): File | Blob => {
+  const getFileObject = (): Blob => {
     if (Platform.OS === "web" && webFileRef.current) {
       return webFileRef.current;
     }
     if (registrationPhoto) {
-      return new File(registrationPhoto);
+      return new ExpoFile(registrationPhoto);
     }
     throw new Error("No image selected");
   };
@@ -236,7 +236,7 @@ export default function AddVehicleScreen() {
       return;
     }
     if (!isOtherModelFreeText && !selectedCarModel) {
-      alert("Vui lòng chọn dòng xe");
+      alert("Vui lòng chọn mẫu xe");
       return;
     }
     if (!selectedTypeId) {
@@ -262,7 +262,7 @@ export default function AddVehicleScreen() {
       }
 
       const file = getFileObject();
-      formData.append("PhotoFile", file as unknown as Blob);
+      formData.append("PhotoFile", file as Blob);
 
       const { accessToken } = await getStoredTokens();
       const response = await expoFetch(`${BASE_URL}/vehicles`, {
@@ -341,14 +341,14 @@ export default function AddVehicleScreen() {
 
           {/* Car Model Dropdown */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Dòng xe *</Text>
+            <Text style={styles.label}>Mẫu xe *</Text>
             {loadingModels ? (
               <View style={styles.loadingRow}>
                 <ActivityIndicator
                   size="small"
                   color={LuxeColors.primaryContainer}
                 />
-                <Text style={styles.loadingText}>Đang tải dòng xe...</Text>
+                <Text style={styles.loadingText}>Đang tải mẫu xe...</Text>
               </View>
             ) : (
               <>
@@ -374,7 +374,7 @@ export default function AddVehicleScreen() {
                         ? "Khác"
                         : selectedCarModel
                           ? `${selectedCarModel.brand} ${selectedCarModel.name}`
-                          : "Chọn dòng xe"}
+                          : "Chọn mẫu xe"}
                     </Text>
                   </View>
                   <Feather
@@ -395,7 +395,7 @@ export default function AddVehicleScreen() {
                         style={styles.modelSearchInput}
                         value={modelSearchQuery}
                         onChangeText={setModelSearchQuery}
-                        placeholder="Tìm dòng xe..."
+                        placeholder="Tìm mẫu xe..."
                         placeholderTextColor={LuxeColors.onSurfaceVariant}
                         autoCapitalize="words"
                       />
@@ -411,51 +411,54 @@ export default function AddVehicleScreen() {
                         </TouchableOpacity>
                       )}
                     </View>
-                    <ScrollView
-                      style={styles.modelList}
-                      nestedScrollEnabled
-                    >
+                    <ScrollView style={styles.modelList} nestedScrollEnabled>
                       {Object.entries(groupedModels).length === 0 ? (
-                        <Text style={styles.modelEmptyText}>Không tìm thấy dòng xe</Text>
+                        <Text style={styles.modelEmptyText}>
+                          Không tìm thấy mẫu xe
+                        </Text>
                       ) : (
                         <>
-                          {Object.entries(groupedModels).map(([brand, models]) => (
-                            <View key={brand}>
-                              <Text style={styles.modelBrandHeader}>{brand}</Text>
-                              {models.map((model) => (
-                                <TouchableOpacity
-                                  key={model.id}
-                                  style={[
-                                    styles.modelItem,
-                                    selectedCarModel?.id === model.id &&
-                                      styles.modelItemSelected,
-                                  ]}
-                                  onPress={() => {
-                                    setSelectedCarModel(model);
-                                    setShowModelPicker(false);
-                                    setModelSearchQuery("");
-                                  }}
-                                >
-                                  <Text
+                          {Object.entries(groupedModels).map(
+                            ([brand, models]) => (
+                              <View key={brand}>
+                                <Text style={styles.modelBrandHeader}>
+                                  {brand}
+                                </Text>
+                                {models.map((model) => (
+                                  <TouchableOpacity
+                                    key={model.id}
                                     style={[
-                                      styles.modelItemText,
+                                      styles.modelItem,
                                       selectedCarModel?.id === model.id &&
-                                        styles.modelItemTextSelected,
+                                        styles.modelItemSelected,
                                     ]}
+                                    onPress={() => {
+                                      setSelectedCarModel(model);
+                                      setShowModelPicker(false);
+                                      setModelSearchQuery("");
+                                    }}
                                   >
-                                    {model.name}
-                                  </Text>
-                                  {selectedCarModel?.id === model.id && (
-                                    <Feather
-                                      name="check"
-                                      size={16}
-                                      color={LuxeColors.primaryContainer}
-                                    />
-                                  )}
-                                </TouchableOpacity>
-                              ))}
-                            </View>
-                          ))}
+                                    <Text
+                                      style={[
+                                        styles.modelItemText,
+                                        selectedCarModel?.id === model.id &&
+                                          styles.modelItemTextSelected,
+                                      ]}
+                                    >
+                                      {model.name}
+                                    </Text>
+                                    {selectedCarModel?.id === model.id && (
+                                      <Feather
+                                        name="check"
+                                        size={16}
+                                        color={LuxeColors.primaryContainer}
+                                      />
+                                    )}
+                                  </TouchableOpacity>
+                                ))}
+                              </View>
+                            ),
+                          )}
                           <View>
                             <View style={styles.khacDivider}>
                               <View style={styles.khacDividerLine} />
@@ -516,8 +519,8 @@ export default function AddVehicleScreen() {
             )}
             {!loadingModels && !isOtherModelFreeText && (
               <Text style={styles.hint}>
-                Chọn dòng xe từ danh sách. Nếu không có, chọn "Khác" và nhập
-                dòng xe.
+                Chọn mẫu xe từ danh sách. Nếu không có, chọn "Khác" và nhập mẫu
+                xe.
               </Text>
             )}
           </View>

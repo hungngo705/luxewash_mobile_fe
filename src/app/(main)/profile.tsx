@@ -11,7 +11,6 @@ import {
   MembershipConfig,
 } from "@/constants/luxeTheme";
 import { useAuth } from "@/contexts/AuthContext";
-import { mockVehicles } from "@/data/types";
 import { vndToPoints } from "@/utils/format";
 import { useRouter } from "expo-router";
 import React from "react";
@@ -140,7 +139,7 @@ export default function ProfileScreen() {
               <View style={styles.profileStatDivider} />
               <View style={styles.profileStat}>
                 <Text style={styles.profileStatValue}>
-                  {currentUser?.vehicles?.length || mockVehicles.length}
+                  {user?.vehicles?.length ?? 0}
                 </Text>
                 <Text style={styles.profileStatLabel}>Xe</Text>
               </View>

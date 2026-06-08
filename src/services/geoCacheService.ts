@@ -49,7 +49,8 @@ async function webDel(key: string): Promise<void> {
 
 async function getCache(): Promise<GeoCache> {
   if (isWeb) {
-    return webGet<GeoCache>(CACHE_KEY) ?? {};
+    const val = await webGet<GeoCache>(CACHE_KEY);
+    return val ?? {};
   }
   try {
     const raw = await AsyncStorage.getItem(CACHE_KEY);
@@ -91,32 +92,11 @@ export async function setCached(
   await saveCache(cache);
 }
 
-/** Batch-cache multiple results. */
-export async function setCachedMany(
-  entries: Array<{ address: string | null | undefined; coords: { latitude: number; longitude: number } }>,
-): Promise<void> {
-  const valid = entries.filter(e => !!e.address);
-  if (valid.length === 0) return;
-  const cache = await getCache();
-  if (!cache) return;
-  for (const { address, coords } of valid) {
-    cache[normalize(address!)] = { ...coords, cachedAt: Date.now() };
-  }
-  await saveCache(cache);
-}
-
 /** Clear the entire geocode cache. */
 export async function clearCache(): Promise<void> {
   if (isWeb) {
-    Object.keys(webCache).forEach(k => delete webCache[k]);
     await webDel(CACHE_KEY);
   } else {
     await AsyncStorage.removeItem(CACHE_KEY);
   }
-}
-
-/** Get count of cached entries. */
-export async function cacheSize(): Promise<number> {
-  const cache = await getCache();
-  return Object.keys(cache).length;
 }

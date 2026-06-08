@@ -52,40 +52,28 @@ export function AnimatedIcon() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    alignItems: 'center',
-    width: '100%',
-    zIndex: 1000,
-    position: 'absolute',
-    top: 128 / 2 + 138,
-  },
-  imageContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   iconContainer: {
     justifyContent: 'center',
     alignItems: 'center',
     width: 128,
     height: 128,
   },
-  image: {
-    position: 'absolute',
-    width: 76,
-    height: 71,
-  },
   background: {
     width: 128,
     height: 128,
     position: 'absolute',
     borderRadius: 40,
-    backgroundImage: `linear-gradient(180deg, #3C9FFE, #0274DF)`,
+    overflow: 'hidden',
+  },
+  imageContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   webBackground: {
     width: '100%',
     height: '100%',
     borderRadius: 40,
-    backgroundImage: `linear-gradient(180deg, #3C9FFE, #0274DF)`,
+    backgroundColor: '#3C9FFE',
   },
   webPlaceholder: {
     width: 76,

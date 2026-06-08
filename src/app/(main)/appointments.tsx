@@ -229,7 +229,7 @@ export default function AppointmentsScreen() {
     return (
       <TouchableOpacity
         style={styles.card}
-        onPress={() => router.push(`/booking/${item.bookingId}`)}
+        onPress={() => router.push(`/booking/${String(item.bookingId)}` as any)}
         activeOpacity={0.7}
       >
         <View
@@ -528,7 +528,7 @@ export default function AppointmentsScreen() {
                     }
                   : {}
               }
-              markingType="simple"
+              markingType="dot"
               theme={{
                 backgroundColor: "#fff",
                 calendarBackground: "#fff",
@@ -567,7 +567,7 @@ export default function AppointmentsScreen() {
                     }
                   : {}
               }
-              markingType="simple"
+              markingType="dot"
               theme={{
                 backgroundColor: "#fff",
                 calendarBackground: "#fff",
@@ -674,7 +674,6 @@ const styles = StyleSheet.create({
     color: LuxeColors.onSurfaceVariant,
   },
   dateChipTextActive: { color: LuxeColors.primaryContainer },
-  dateSep: { color: LuxeColors.outlineVariant, fontSize: 14 },
   clearFilterBtn: {
     width: 28,
     height: 28,
@@ -767,6 +766,11 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   priceRow: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    alignItems: "center",
+  },
+  priceRight: {
     alignItems: "flex-end",
   },
   priceLabel: {

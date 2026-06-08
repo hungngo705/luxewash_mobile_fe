@@ -10,7 +10,7 @@ import {
   LuxeShadows
 } from "@/constants/luxeTheme";
 import { useAuth } from "@/contexts/AuthContext";
-import { Vehicle } from "@/data/types";
+import type { Vehicle } from "@/contexts/AuthContext";
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React from "react";

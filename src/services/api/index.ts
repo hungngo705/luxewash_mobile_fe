@@ -16,8 +16,6 @@ export type {
 } from './authService';
 export { vehicleService } from './vehicleService';
 export type { VehicleResponse, CarModel } from './vehicleService';
-export { uploadImage } from './uploadService';
-export type { UploadResult } from './uploadService';
 export { bookingService } from './bookingService';
 export type {
   TimeSlot,
