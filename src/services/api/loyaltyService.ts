@@ -13,19 +13,38 @@ export interface Tier {
   bookingWindowDays?: number;
 }
 
+export type VoucherCampaignType =
+  | 'Manual'
+  | 'Birthday'
+  | 'Age'
+  | 'Winback'
+  | 'Vip'
+  | 'Milestone';
+
+export type VoucherType = 'Discount' | 'PhysicalGift';
+
 export interface Voucher {
   voucherId: number;
   code: string;
-  title: string;
-  description: string;
   discountAmount: number;
-  discountType: 'percentage' | 'fixed';
-  minOrderAmount: number;
-  maxDiscountAmount: number | null;
-  isUsed: boolean;
-  validFrom: string;
+  pointsRequired: number;
   expiryDate: string;
+  campaignExpiryDate: string;
+  receivedDate: string;
+  isUsed: boolean;
   usedDate: string | null;
+  usageCount: number;
+  maxUsagePerUser: number;
+  remainingUsage: number;
+  minOrderAmount: number;
+  isActive: boolean;
+  campaignType: VoucherCampaignType;
+  voucherType: VoucherType;
+  imageUrl: string | null;
+  requiredTierId: number | null;
+  requiredTierName: string | null;
+  validStartTime: string | null;
+  validEndTime: string | null;
 }
 
 export const loyaltyService = {
@@ -37,7 +56,11 @@ export const loyaltyService = {
     return apiClient.get<Voucher[]>('/vouchers/me');
   },
 
-  redeemVoucher: async (code: string): Promise<ApiResponse<void>> => {
-    return apiClient.post<void>('/vouchers/redeem', { code });
+  getAvailableVouchers: async (): Promise<ApiResponse<Voucher[]>> => {
+    return apiClient.get<Voucher[]>('/vouchers/available');
+  },
+
+  redeemVoucher: async (voucherId: number): Promise<ApiResponse<void>> => {
+    return apiClient.post<void>('/vouchers/redeem', { voucherId });
   },
 };
