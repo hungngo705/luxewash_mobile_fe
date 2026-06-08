@@ -1,42 +1,38 @@
 import { SymbolView } from 'expo-symbols';
 import { PropsWithChildren, useState } from 'react';
-import { Pressable, StyleSheet } from 'react-native';
+import { Pressable, StyleSheet, View, Text } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
+import { LuxeColors, LuxeSpacing, LuxeBorderRadius } from '@/constants/luxeTheme';
 
 export function Collapsible({ children, title }: PropsWithChildren & { title: string }) {
   const [isOpen, setIsOpen] = useState(false);
-  const theme = useTheme();
 
   return (
-    <ThemedView>
+    <View>
       <Pressable
         style={({ pressed }) => [styles.heading, pressed && styles.pressedHeading]}
         onPress={() => setIsOpen((value) => !value)}>
-        <ThemedView type="backgroundElement" style={styles.button}>
+        <View style={styles.button}>
           <SymbolView
-            name={{ ios: 'chevron.right', android: 'chevron_right', web: 'chevron_right' }}
+            name="chevron.right"
             size={14}
             weight="bold"
-            tintColor={theme.text}
+            tintColor={LuxeColors.onSurface}
             style={{ transform: [{ rotate: isOpen ? '-90deg' : '90deg' }] }}
           />
-        </ThemedView>
+        </View>
 
-        <ThemedText type="small">{title}</ThemedText>
+        <Text style={styles.title}>{title}</Text>
       </Pressable>
       {isOpen && (
         <Animated.View entering={FadeIn.duration(200)}>
-          <ThemedView type="backgroundElement" style={styles.content}>
+          <View style={styles.content}>
             {children}
-          </ThemedView>
+          </View>
         </Animated.View>
       )}
-    </ThemedView>
+    </View>
   );
 }
 
@@ -44,22 +40,29 @@ const styles = StyleSheet.create({
   heading: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.two,
+    gap: LuxeSpacing.sm,
   },
   pressedHeading: {
     opacity: 0.7,
   },
   button: {
-    width: Spacing.four,
-    height: Spacing.four,
-    borderRadius: 12,
+    width: 28,
+    height: 28,
+    borderRadius: LuxeBorderRadius.md,
+    backgroundColor: LuxeColors.surfaceVariant,
     justifyContent: 'center',
     alignItems: 'center',
   },
+  title: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: LuxeColors.onSurface,
+  },
   content: {
-    marginTop: Spacing.three,
-    borderRadius: Spacing.three,
-    marginLeft: Spacing.four,
-    padding: Spacing.four,
+    marginTop: LuxeSpacing.md,
+    marginLeft: 28,
+    padding: LuxeSpacing.md,
+    backgroundColor: LuxeColors.surfaceVariant,
+    borderRadius: LuxeBorderRadius.md,
   },
 });

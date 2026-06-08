@@ -33,10 +33,6 @@ export const loyaltyService = {
     return apiClient.get<Tier[]>('/tiers');
   },
 
-  getPointsHistory: async (): Promise<ApiResponse<unknown>> => {
-    return apiClient.get<unknown>('/points/history');
-  },
-
   getMyVouchers: async (): Promise<ApiResponse<Voucher[]>> => {
     return apiClient.get<Voucher[]>('/vouchers/me');
   },

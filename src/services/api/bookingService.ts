@@ -140,7 +140,7 @@ export const bookingService = {
   },
 
   getMyBookings: async (params?: GetMyBookingsParams): Promise<ApiResponse<MyBookingItem[]>> => {
-    return apiClient.get<MyBookingItem[]>('/bookings/me', params);
+    return apiClient.get<MyBookingItem[]>('/bookings/me', params as Record<string, unknown> | undefined);
   },
 
   cancelBooking: async (bookingId: number): Promise<ApiResponse<void>> => {

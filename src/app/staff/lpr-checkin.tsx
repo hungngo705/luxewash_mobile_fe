@@ -9,8 +9,8 @@ import {
   LuxeSpacing,
   MembershipConfig,
   MembershipTier,
+  MembershipColors,
 } from "@/constants/luxeTheme";
-import { CheckInRecord, LPRResult, mockCheckInRecords } from "@/data/types";
 import React, { useEffect, useRef, useState } from "react";
 import {
   Animated,
@@ -26,10 +26,71 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
+interface LPRResult {
+  plateNumber: string;
+  confidence: number;
+  timestamp: Date;
+  imageUrl?: string;
+}
+
+interface CheckInRecord {
+  id: string;
+  vehicleId: string;
+  userId: string;
+  bookingId?: string;
+  licensePlate: string;
+  membershipTier: string;
+  checkInTime: Date;
+  queuePosition: number;
+  assignedLaneId: string;
+  isPriority: boolean;
+  status: string;
+  recognizedImageUrl?: string;
+}
+
+const MOCK_CHECK_IN_RECORDS: CheckInRecord[] = [
+  {
+    id: 'checkin_001',
+    vehicleId: 'veh_001',
+    userId: 'user_001',
+    licensePlate: '30A-888.88',
+    membershipTier: 'gold',
+    checkInTime: new Date(),
+    queuePosition: 2,
+    assignedLaneId: 'lane_001',
+    isPriority: false,
+    status: 'waiting',
+  },
+  {
+    id: 'checkin_002',
+    vehicleId: 'veh_004',
+    userId: 'user_002',
+    licensePlate: '29A-111.11',
+    membershipTier: 'platinum',
+    checkInTime: new Date(),
+    queuePosition: 1,
+    assignedLaneId: 'lane_003',
+    isPriority: true,
+    status: 'in_service',
+  },
+  {
+    id: 'checkin_003',
+    vehicleId: 'veh_005',
+    userId: 'user_003',
+    licensePlate: '60A-222.22',
+    membershipTier: 'standard',
+    checkInTime: new Date(),
+    queuePosition: 3,
+    assignedLaneId: 'lane_002',
+    isPriority: false,
+    status: 'waiting',
+  },
+];
+
 interface DetectedVehicle extends LPRResult {
   userId?: string;
   userName?: string;
-  membershipTier?: MembershipTier;
+  membershipTier?: string;
   vehicleId?: string;
   bookingId?: string;
   status: "detecting" | "recognized" | "not_found";
@@ -39,7 +100,7 @@ export default function LPRCheckInScreen() {
   const [detectedPlate, setDetectedPlate] = useState<DetectedVehicle | null>(
     null,
   );
-  const [queueItems] = useState<CheckInRecord[]>(mockCheckInRecords);
+  const [queueItems] = useState<CheckInRecord[]>(MOCK_CHECK_IN_RECORDS);
   const [isScanning, setIsScanning] = useState(true);
   const [lastUpdate, setLastUpdate] = useState(new Date());
 
@@ -131,12 +192,17 @@ export default function LPRCheckInScreen() {
     return () => clearInterval(interval);
   }, [isScanning]);
 
-  const getMembershipBadgeStyle = (tier: MembershipTier) => {
-    const config = MembershipConfig[tier];
+  const getMembershipColor = (tier: string) =>
+    MembershipColors[tier as MembershipTier] ?? MembershipColors.standard;
+  const getMembershipNameVi = (tier: string) =>
+    MembershipConfig[tier as MembershipTier]?.nameVi ?? tier;
+
+  const getMembershipBadgeStyle = (tier: string) => {
+    const color = getMembershipColor(tier);
     return {
-      backgroundColor: config.color + "20",
-      borderColor: config.color,
-      textColor: config.color,
+      backgroundColor: color + "20",
+      borderColor: color,
+      textColor: color,
     };
   };
 
@@ -270,7 +336,7 @@ export default function LPRCheckInScreen() {
                         },
                       ]}
                     >
-                      {MembershipConfig[detectedPlate.membershipTier!].nameVi}
+                      {getMembershipNameVi(detectedPlate.membershipTier!)}
                     </Text>
                   </View>
                 </View>
@@ -355,7 +421,7 @@ export default function LPRCheckInScreen() {
                           styles.membershipBadgeSmall,
                           {
                             backgroundColor:
-                              MembershipConfig[item.membershipTier].color +
+                              getMembershipColor(item.membershipTier) +
                               "20",
                           },
                         ]}
@@ -365,11 +431,11 @@ export default function LPRCheckInScreen() {
                             styles.membershipBadgeSmallText,
                             {
                               color:
-                                MembershipConfig[item.membershipTier].color,
+                                getMembershipColor(item.membershipTier),
                             },
                           ]}
                         >
-                          {MembershipConfig[item.membershipTier].nameVi}
+                          {getMembershipNameVi(item.membershipTier)}
                         </Text>
                       </View>
                     </View>
@@ -408,7 +474,7 @@ export default function LPRCheckInScreen() {
                           styles.membershipBadgeSmall,
                           {
                             backgroundColor:
-                              MembershipConfig[item.membershipTier].color +
+                              getMembershipColor(item.membershipTier) +
                               "20",
                           },
                         ]}
@@ -418,11 +484,11 @@ export default function LPRCheckInScreen() {
                             styles.membershipBadgeSmallText,
                             {
                               color:
-                                MembershipConfig[item.membershipTier].color,
+                                getMembershipColor(item.membershipTier),
                             },
                           ]}
                         >
-                          {MembershipConfig[item.membershipTier].nameVi}
+                          {getMembershipNameVi(item.membershipTier)}
                         </Text>
                       </View>
                     </View>
@@ -521,7 +587,7 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 5,
   },
-  gridOverlay: { ...StyleSheet.absoluteFill },
+  gridOverlay: { ...StyleSheet.absoluteFillObject },
   gridLine: {
     position: "absolute",
     backgroundColor: "rgba(255, 255, 255, 0.2)",
@@ -537,7 +603,7 @@ const styles = StyleSheet.create({
   },
   scanPromptSubtext: { fontSize: 12, color: "rgba(255, 255, 255, 0.6)" },
   detectionResult: {
-    ...StyleSheet.absoluteFill,
+    ...StyleSheet.absoluteFillObject,
     alignItems: "center",
     justifyContent: "center",
   },

@@ -93,7 +93,7 @@ export default function BookingConfirmationScreen() {
       if (res.statusCode === 200 || res.statusCode === 201) {
         const bookingId = (res.data as any)?.bookingId || 0;
         await refreshWallet?.();
-        bookingService.triggerEmail(bookingId);
+        bookingService.triggerEmail(bookingId).catch(() => {});
         // Record this branch as recently used for the "Đã đặt" tab
         branchHistoryService.addRecentBranch({
           branchId: branchIdParam,

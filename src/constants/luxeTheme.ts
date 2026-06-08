@@ -3,8 +3,6 @@
  * Professional, clean design with gradient accents and modern shadows
  */
 
-import { Platform } from 'react-native';
-
 export const LuxeColors = {
   // Primary palette
   primary: '#006689',
@@ -134,34 +132,13 @@ export const MembershipConfig: Record<MembershipTier, {
   },
 };
 
-export const LuxeFonts = Platform.select({
-  ios: {
-    headline: 'System',
-    body: 'System',
-    label: 'System',
-  },
-  default: {
-    headline: 'Sora, sans-serif',
-    body: 'Inter, sans-serif',
-    label: 'Geist, sans-serif',
-  },
-  web: {
-    headline: 'Sora, sans-serif',
-    body: 'Inter, sans-serif',
-    label: 'Geist, sans-serif',
-  },
-});
-
 export const LuxeSpacing = {
-  unit: 8,
   xs: 4,
-  sm: 12,
-  md: 16,
-  lg: 24,
-  xl: 32,
-  xxl: 48,
-  gutter: 24,
-  containerMargin: 20,
+  sm: 8,
+  md: 12,
+  lg: 16,
+  xl: 24,
+  xxl: 32,
 } as const;
 
 export const LuxeBorderRadius = {
@@ -172,28 +149,6 @@ export const LuxeBorderRadius = {
   full: 9999,
 } as const;
 
-// Spacing helpers
-export const Spacing = {
-  xs: 4,
-  sm: 8,
-  md: 12,
-  lg: 16,
-  xl: 24,
-  xxl: 32,
-} as const;
-
-export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
-export const MaxContentWidth = 480;
-
-// Bold Design System - Gradients
-export const LuxeGradients = {
-  primary: ['#006689', '#4aa9d7'] as const,
-  primaryLight: ['#4aa9d7', '#7ad1ff'] as const,
-  dark: ['#003b51', '#006689'] as const,
-  membershipCard: ['#006689', '#4aa9d7'] as const,
-} as const;
-
-// Bold Design System - Shadows (using brand colors)
 export const LuxeShadows = {
   sm: {
     shadowColor: '#4aa9d7',
@@ -230,24 +185,4 @@ export const LuxeShadows = {
     shadowRadius: 20,
     elevation: 10,
   },
-} as const;
-
-// Bold Design System - Typography scale
-export const LuxeTypography = {
-  // Headlines
-  h1: { fontSize: 32, fontWeight: '700' as const, lineHeight: 40 },
-  h2: { fontSize: 26, fontWeight: '700' as const, lineHeight: 34 },
-  h3: { fontSize: 22, fontWeight: '700' as const, lineHeight: 30 },
-  h4: { fontSize: 18, fontWeight: '600' as const, lineHeight: 26 },
-  // Body
-  body: { fontSize: 16, fontWeight: '400' as const, lineHeight: 24 },
-  bodyBold: { fontSize: 16, fontWeight: '600' as const, lineHeight: 24 },
-  // Labels
-  label: { fontSize: 14, fontWeight: '500' as const, lineHeight: 20 },
-  labelBold: { fontSize: 14, fontWeight: '700' as const, lineHeight: 20 },
-  // Caption
-  caption: { fontSize: 12, fontWeight: '400' as const, lineHeight: 16 },
-  captionBold: { fontSize: 12, fontWeight: '600' as const, lineHeight: 16 },
-  // Small
-  sm: { fontSize: 11, fontWeight: '400' as const, lineHeight: 14 },
 } as const;

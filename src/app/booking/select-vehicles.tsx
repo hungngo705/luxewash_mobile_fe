@@ -8,7 +8,7 @@ import { Header } from "@/components/ui/Header";
 import { ProgressSteps } from "@/components/ui/ProgressSteps";
 import { LuxeColors, LuxeShadows } from "@/constants/luxeTheme";
 import { useAuth } from "@/contexts/AuthContext";
-import { Vehicle } from "@/data/types";
+import type { Vehicle } from "@/contexts/AuthContext";
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";

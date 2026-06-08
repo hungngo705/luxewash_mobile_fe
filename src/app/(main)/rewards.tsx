@@ -22,8 +22,7 @@ import { loyaltyService, type Tier, type Voucher } from '@/services/api';
 export default function RewardsScreen() {
   const router = useRouter();
   const { user } = useAuth();
-  const currentUser = user;
-  const membershipInfo = currentUser ? MembershipConfig[currentUser.membershipTier] : MembershipConfig.standard;
+  const membershipInfo = user ? MembershipConfig[user.membershipTier] : MembershipConfig.standard;
 
   const formatCurrency = (amount: number): string => {
     return new Intl.NumberFormat('vi-VN').format(amount);
@@ -65,7 +64,7 @@ export default function RewardsScreen() {
               <Text style={styles.pointsLabel}>Số dư hiện tại</Text>
             </View>
             <View style={styles.pointsDisplay}>
-              <Text style={styles.pointsValue}>{currentUser?.loyaltyPoints?.toLocaleString('vi-VN') || '0'}</Text>
+              <Text style={styles.pointsValue}>{user?.loyaltyPoints?.toLocaleString('vi-VN') || '0'}</Text>
               <Text style={styles.pointsUnit}>Điểm</Text>
             </View>
             <View style={styles.membershipInfo}>

@@ -99,5 +99,4 @@ export async function clearRecentBranches(): Promise<void> {
 export const branchHistoryService = {
   getRecentBranches,
   addRecentBranch,
-  clearRecentBranches,
 };

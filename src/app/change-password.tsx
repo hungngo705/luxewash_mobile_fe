@@ -7,7 +7,6 @@ import { useConfirmDialog } from "@/components/ConfirmDialog";
 import {
     LuxeBorderRadius,
     LuxeColors,
-    LuxeSpacing,
     LuxeShadows,
 } from "@/constants/luxeTheme";
 import { useAuth } from "@/contexts/AuthContext";

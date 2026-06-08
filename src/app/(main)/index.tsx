@@ -20,7 +20,13 @@ import { LuxeColors, LuxeSpacing, LuxeBorderRadius, LuxeShadows, MembershipConfi
 import { useAuth } from '@/contexts/AuthContext';
 import { bookingService } from '@/services/api';
 import { loyaltyService, Voucher } from '@/services/api/loyaltyService';
-import { mockVouchers, mockServices } from '@/data/types';
+
+const MOCK_SERVICES = [
+  { id: 'svc_001', name: 'Rửa xe tiêu chuẩn', category: 'basic', price: 150000 },
+  { id: 'svc_002', name: 'Rửa xe cao cấp', category: 'premium', price: 300000 },
+  { id: 'svc_003', name: 'Vệ sinh chuyên sâu', category: 'deep_clean', price: 500000 },
+  { id: 'svc_004', name: 'Phủ Ceramic', category: 'special', price: 1000000 },
+];
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -30,9 +36,8 @@ export default function HomeScreen() {
   const [vouchers, setVouchers] = useState<Voucher[]>([]);
   const [loadingVouchers, setLoadingVouchers] = useState(false);
 
-  const currentUser = user;
   const vehicles = user?.vehicles || [];
-  const membershipInfo = currentUser ? MembershipConfig[currentUser.membershipTier] : MembershipConfig.standard;
+  const membershipInfo = user ? MembershipConfig[user.membershipTier] : MembershipConfig.standard;
 
   useEffect(() => {
     const loadServices = async () => {
@@ -98,7 +103,7 @@ export default function HomeScreen() {
           <View style={styles.header}>
             <View style={styles.headerLeft}>
               <Text style={styles.greeting}>Xin chào,</Text>
-              <Text style={styles.userName}>{currentUser?.name || 'Khách'}</Text>
+              <Text style={styles.userName}>{user?.name || 'Khách'}</Text>
             </View>
             <TouchableOpacity
               style={styles.notificationBtn}
@@ -123,7 +128,7 @@ export default function HomeScreen() {
               <View style={[styles.pointsBadge, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
                 <Feather name="star" size={14} color="#fff" />
                 <Text style={styles.pointsText}>
-                  {currentUser?.loyaltyPoints?.toLocaleString('vi-VN') || '0'}
+                  {user?.loyaltyPoints?.toLocaleString('vi-VN') || '0'}
                 </Text>
               </View>
             </View>
@@ -262,7 +267,7 @@ export default function HomeScreen() {
               </TouchableOpacity>
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.servicesScroll}>
-              {(services.length > 0 ? services : mockServices).map((service: any) => {
+              {(services.length > 0 ? services : MOCK_SERVICES).map((service: any) => {
                 const price = services.length > 0 ? getLowestPrice(service) : service.price;
                 const cat = services.length > 0 ? 'basic' : service.category;
                 return (
@@ -336,7 +341,7 @@ export default function HomeScreen() {
                   <Feather name="star" size={18} color="#F59E0B" />
                 </View>
                 <Text style={styles.statValue}>
-                  {currentUser?.loyaltyPoints ? `${(currentUser.loyaltyPoints / 1000).toFixed(1)}K` : '0'}
+                  {user?.loyaltyPoints ? `${(user.loyaltyPoints / 1000).toFixed(1)}K` : '0'}
                 </Text>
                 <Text style={styles.statLabel}>Điểm tích luỹ</Text>
               </View>

@@ -12,7 +12,7 @@
 
 import * as ExpoLocation from 'expo-location';
 import Constants from 'expo-constants';
-import { getCached, setCached, setCachedMany } from './geoCacheService';
+import { getCached, setCached, clearCache } from './geoCacheService';
 import { type BranchDTO } from './api';
 
 export interface GeoPoint {
@@ -207,15 +207,12 @@ export async function geocodeBranches(
     }
   }
 
-  const pending: Array<{ address: string; coords: GeoPoint }> = [];
-
   for (let i = 0; i < toGeocode.length; i++) {
     const { branch, address } = toGeocode[i];
 
     const coords = await geocodeAddress(address);
     if (coords) {
       result.set(branch.branchId, coords);
-      pending.push({ address, coords });
     }
 
     onProgress?.(result.size, branches.length);
@@ -229,10 +226,6 @@ export async function geocodeBranches(
     }
   }
 
-  if (pending.length > 0) {
-    await setCachedMany(pending.map(p => ({ address: p.address, coords: p.coords })));
-  }
-
   return result;
 }
 
@@ -240,7 +233,6 @@ export async function geocodeBranches(
  * Clear the geocode cache (forces re-geocoding on next load).
  */
 export async function clearGeocodeCache(): Promise<void> {
-  const { clearCache } = await import('./geoCacheService');
   await clearCache();
 }
 
