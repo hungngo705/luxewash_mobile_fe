@@ -63,7 +63,7 @@ export default function HomeScreen() {
       try {
         const res = await loyaltyService.getMyVouchers();
         if (res.statusCode === 200 && res.data) {
-          const unused = res.data.filter(v => !v.isUsed);
+          const unused = res.data.filter(v => v.remainingUsage > 0 && new Date(v.expiryDate) > new Date());
           setVouchers(unused);
         }
       } catch (e) {
@@ -305,13 +305,13 @@ export default function HomeScreen() {
                   <View key={voucher.voucherId} style={styles.promoCard}>
                     <View style={styles.promoBadge}>
                       <Text style={styles.promoBadgeText}>
-                        {voucher.discountType === 'percentage'
-                          ? `${voucher.discountAmount}%`
-                          : `${voucher.discountAmount.toLocaleString('vi-VN')}đ`}
+                        -{voucher.discountAmount.toLocaleString('vi-VN')}đ
                       </Text>
                     </View>
-                    <Text style={styles.promoTitle}>{voucher.title}</Text>
-                    <Text style={styles.promoDesc}>{voucher.description}</Text>
+                    <Text style={styles.promoTitle}>{voucher.code}</Text>
+                    <Text style={styles.promoDesc}>
+                      Giảm {voucher.discountAmount.toLocaleString('vi-VN')}đ cho đơn từ {voucher.minOrderAmount.toLocaleString('vi-VN')}đ
+                    </Text>
                     <View style={styles.promoCodeWrap}>
                       <Text style={styles.promoCode}>{voucher.code}</Text>
                     </View>

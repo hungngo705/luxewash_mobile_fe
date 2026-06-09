@@ -35,4 +35,9 @@ export type { BranchDTO } from './branchService';
 export { walletService } from './walletService';
 export type { WalletBalance, TopUpRequest, Transaction, TransactionType, TransactionStatus } from './walletService';
 export { loyaltyService } from './loyaltyService';
-export type { Tier, Voucher } from './loyaltyService';
+export type {
+  Tier,
+  Voucher,
+  VoucherCampaignType,
+  VoucherType,
+} from './loyaltyService';

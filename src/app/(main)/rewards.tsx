@@ -41,7 +41,10 @@ export default function RewardsScreen() {
           loyaltyService.getMyVouchers(),
         ]);
         if (tiersRes.statusCode === 200 && tiersRes.data) setTiers(tiersRes.data);
-        if (vouchersRes.statusCode === 200 && vouchersRes.data) setVouchers(vouchersRes.data);
+        if (vouchersRes.statusCode === 200 && vouchersRes.data) {
+          const available = vouchersRes.data.filter((v) => !v.isUsed && v.remainingUsage > 0);
+          setVouchers(available);
+        }
       } catch (e) {
         console.error('Failed to load loyalty data:', e);
       }
@@ -114,7 +117,7 @@ export default function RewardsScreen() {
                   onPress={() => router.push('/vouchers' as RelativePathString)}
                 >
                   <View style={styles.rewardContent}>
-                    <Text style={styles.rewardTitle}>{voucher.title || voucher.code}</Text>
+                    <Text style={styles.rewardTitle}>{voucher.code}</Text>
                     <Text style={styles.rewardDesc}>
                       Giảm {formatCurrency(voucher.discountAmount)}đ
                     </Text>
