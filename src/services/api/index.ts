@@ -3,41 +3,36 @@
  * Re-exports all services for convenient imports
  */
 
-export { apiClient, ApiResponse, ApiError, setTokens, clearTokens, getStoredTokens, BASE_URL } from './client';
-export { authService } from './authService';
+export { authService } from "./authService";
 export type {
-  LoginRequest,
-  LoginResponse,
-  RegisterRequest,
-  UserProfile,
-  RefreshTokenResponse,
-  ChangePasswordRequest,
-  UpdateProfileRequest,
-} from './authService';
-export { vehicleService } from './vehicleService';
-export type { VehicleResponse, CarModel } from './vehicleService';
-export { bookingService } from './bookingService';
+    ChangePasswordRequest, LoginRequest,
+    LoginResponse, RefreshTokenResponse, RegisterRequest, UpdateProfileRequest, UserProfile
+} from "./authService";
+export { bookingService } from "./bookingService";
 export type {
-  TimeSlot,
-  Service,
-  ServicePrice,
-  BookingRequest,
-  CompatibilityDTO,
-  BookingDetail,
-  BookingDetailVehicle,
-  BookingDetailResponse,
-  CreateBookingResponse,
-  MyBookingItem,
-  GetMyBookingsParams,
-} from './bookingService';
-export { branchService } from './branchService';
-export type { BranchDTO } from './branchService';
-export { walletService } from './walletService';
-export type { WalletBalance, TopUpRequest, Transaction, TransactionType, TransactionStatus } from './walletService';
-export { loyaltyService } from './loyaltyService';
+    BookingDetail, BookingDetailResponse, BookingDetailVehicle, BookingRequest,
+    CompatibilityDTO, CreateBookingResponse, GetMyBookingsParams, MyBookingItem, Service,
+    ServicePrice, TimeSlot
+} from "./bookingService";
+export { branchService } from "./branchService";
+export type { BranchDTO } from "./branchService";
+export {
+    ApiError, ApiResponse, BASE_URL, apiClient, clearTokens,
+    getStoredTokens, setTokens, setSessionExpiredHandler, clearSessionExpiredHandler
+} from "./client";
+export { loyaltyService } from "./loyaltyService";
+export {
+    Tier,
+    Voucher,
+    VoucherCampaignType,
+    VoucherType,
+    CAMPAIGN_BADGE_CONFIG,
+} from "./loyaltyService";
+export { vehicleService } from "./vehicleService";
+export type { CarModel, VehicleResponse } from "./vehicleService";
+export { walletService } from "./walletService";
 export type {
-  Tier,
-  Voucher,
-  VoucherCampaignType,
-  VoucherType,
-} from './loyaltyService';
+    TopUpRequest,
+    Transaction, TransactionStatus, TransactionType, WalletBalance
+} from "./walletService";
+

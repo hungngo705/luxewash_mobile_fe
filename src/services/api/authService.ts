@@ -38,9 +38,12 @@ export interface UserProfile {
     licensePlate: string;
     vehicleTypeId: number;
     vehicleType: string;
-    registrationPhotoUrl: string;
+    registrationPhotoUrl: string | null;
     carModel: string | null;
   }>;
+  dateOfBirth: string | null;
+  email: string | null;
+  status: string;
 }
 
 export interface RefreshTokenResponse {
@@ -57,6 +60,23 @@ export interface UpdateProfileRequest {
   fullName?: string;
   phoneNumber?: string;
   email?: string;
+  dateOfBirth?: string;
+}
+
+export interface VerifyOtpRequest {
+  email: string;
+  otp: string;
+}
+
+export interface ResendOtpRequest {
+  email: string;
+}
+
+export interface ResendOtpResponse {
+  userId: number;
+  email: string;
+  status: string;
+  otpExpiresAt: string;
 }
 
 export const authService = {
@@ -90,5 +110,17 @@ export const authService = {
 
   updateProfile: async (data: UpdateProfileRequest): Promise<ApiResponse<void>> => {
     return apiClient.put<void>('/users/me', data);
+  },
+
+  verifyOtp: async (data: VerifyOtpRequest): Promise<ApiResponse<LoginResponse>> => {
+    const response = await apiClient.post<LoginResponse>('/auth/verify-otp', data);
+    if (response.data?.token) {
+      await setTokens(response.data.token, response.data.refreshToken);
+    }
+    return response;
+  },
+
+  resendOtp: async (data: ResendOtpRequest): Promise<ApiResponse<ResendOtpResponse>> => {
+    return apiClient.post<ResendOtpResponse>('/auth/resend-otp', data);
   },
 };

@@ -32,6 +32,7 @@ export default function SelectServiceScreen() {
   const params = useLocalSearchParams();
 
   const vehicleIdParam = (params.vehicleId as string) || '';
+  const vehicleDbIdParam = (params.vehicleDbId as string) || '';
   const vehicleTypeIdParam = parseInt(params.vehicleTypeId as string) || 1;
   const vehicleBrandParam = (params.vehicleBrand as string) || '';
   const branchIdParam = parseInt(params.branchId as string) || 1;
@@ -79,6 +80,7 @@ export default function SelectServiceScreen() {
         servicePrice: String(price),
         membershipDiscount: String(membershipDiscount),
         vehicleId: vehicleIdParam,
+        vehicleDbId: vehicleDbIdParam,
         vehicleTypeId: String(vehicleTypeIdParam),
         vehicleBrand: vehicleBrandParam,
         branchId: String(branchIdParam),

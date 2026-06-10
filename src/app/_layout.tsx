@@ -90,12 +90,10 @@ function InnerNavigator() {
   useEffect(() => {
     if (isLoading) return;
 
-    if (!isAuthenticated && pathname !== '/login' && pathname !== '/register') {
+    if (!isAuthenticated && pathname !== '/login' && pathname !== '/register' && pathname !== '/verify-otp') {
       router.replace('/login');
     } else if (isAuthenticated && (pathname === '/login' || pathname === '/register')) {
       router.replace('/(main)' as any);
-    } else if (!isAuthenticated && (pathname === '/change-password' || pathname.startsWith('/vouchers') || pathname === '/profile-edit')) {
-      router.replace('/login');
     }
   }, [isLoading, isAuthenticated, pathname]);
 
@@ -140,6 +138,7 @@ function InnerNavigator() {
     >
       <Stack.Screen name="login" />
       <Stack.Screen name="register" />
+      <Stack.Screen name="verify-otp" />
       <Stack.Screen name="change-password" />
       <Stack.Screen name="profile-edit" />
       <Stack.Screen name="(main)" />

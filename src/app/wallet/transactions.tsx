@@ -16,20 +16,26 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
-import { LuxeColors, LuxeSpacing, LuxeBorderRadius } from '@/constants/luxeTheme';
+import { LuxeColors, LuxeSpacing, LuxeBorderRadius, LuxeShadows } from '@/constants/luxeTheme';
 import { walletService, type Transaction } from '@/services/api';
 
-const formatCurrency = (amount: number): string => {
-  return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
+const transactionTypeConfig: Record<string, { label: string; color: string; icon: string; borderColor: string }> = {
+  TopUp:       { label: 'Nạp tiền',          color: '#10b981', icon: 'plus-circle',   borderColor: '#10b981' },
+  Refund:      { label: 'Hoàn điểm',         color: '#10b981', icon: 'rotate-ccw',    borderColor: '#10b981' },
+  Booking:     { label: 'Thanh toán đơn hàng', color: '#ef4444', icon: 'truck',         borderColor: '#ef4444' },
+  Upsell:      { label: 'Phụ phí',           color: '#f97316', icon: 'plus-square',   borderColor: '#f97316' },
+  PointReward: { label: 'Tích điểm',         color: '#f59e0b', icon: 'star',          borderColor: '#f59e0b' },
+  PointRedeem: { label: 'Đổi điểm',         color: '#8b5cf6', icon: 'gift',          borderColor: '#8b5cf6' },
 };
 
-const typeConfig: Record<string, { label: string; color: string; icon: string }> = {
-  TopUp: { label: 'Nạp tiền', color: '#10b981', icon: 'plus-circle' },
-  Refund: { label: 'Hoàn tiền', color: '#10b981', icon: 'rotate-ccw' },
-  Booking: { label: 'Thanh toán đơn hàng', color: '#ef4444', icon: 'truck' },
-  Upsell: { label: 'Phụ phí', color: '#ef4444', icon: 'plus-square' },
-  PointReward: { label: 'Tích điểm', color: '#f59e0b', icon: 'star' },
-  PointRedeem: { label: 'Đổi điểm', color: '#8b5cf6', icon: 'gift' },
+const statusConfig: Record<string, { label: string; bg: string; text: string }> = {
+  Completed: { label: 'Thành công', bg: '#dcfce7', text: '#15803d' },
+  Pending:   { label: 'Đang xử lý', bg: '#fef3c7', text: '#92400e' },
+  Failed:    { label: 'Thất bại',    bg: '#fee2e2', text: '#dc2626' },
+};
+
+const formatCurrency = (amount: number): string => {
+  return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(Math.abs(amount));
 };
 
 export default function TransactionsScreen() {
@@ -75,8 +81,7 @@ export default function TransactionsScreen() {
     });
   };
 
-  const isPositive = (txn: Transaction) =>
-    txn.transactionType === 'TopUp' || txn.transactionType === 'Refund' || txn.transactionType === 'PointReward';
+  const isPositive = (txn: Transaction) => txn.amount >= 0;
 
   if (loading) {
     return (
@@ -119,28 +124,42 @@ export default function TransactionsScreen() {
             />
           }
           renderItem={({ item: txn }) => {
-            const config = typeConfig[txn.transactionType] ?? { label: txn.transactionType, color: '#6f787f', icon: 'circle' };
+            const config = transactionTypeConfig[txn.transactionType] ?? {
+              label: txn.transactionType,
+              color: '#6f787f',
+              icon: 'circle',
+              borderColor: '#6f787f',
+            };
             const positive = isPositive(txn);
+            const amountColor = positive ? '#10b981' : '#ef4444';
+            const arrowIcon = positive ? 'arrow-up-right' : 'arrow-down-right';
+            const status = statusConfig[txn.status] ?? statusConfig['Pending'];
 
             return (
-              <View style={styles.txnCard}>
+              <View style={[styles.txnCard, { borderLeftColor: config.borderColor }]}>
                 <View style={styles.txnHeader}>
                   <View style={styles.txnLeft}>
                     <View style={[styles.txnIconWrap, { backgroundColor: config.color + '20' }]}>
                       <Feather name={config.icon as any} size={16} color={config.color} />
                     </View>
-                    <View>
+                    <View style={styles.txnLeftContent}>
                       <Text style={styles.txnLabel}>{config.label}</Text>
                       {txn.referenceId && (
                         <Text style={styles.txnRef}>#{txn.referenceId}</Text>
                       )}
                     </View>
                   </View>
-                  <View style={styles.txnRight}>
-                      <Text style={styles.txnAmount} numberOfLines={1}>
-                        {`${positive ? '+' : '-'}${formatCurrency(Math.abs(txn.amount))}`}
-                      </Text>
-                    <Text style={styles.txnDate}>{formatDate(txn.createdAt)}</Text>
+                  <View style={[styles.statusBadge, { backgroundColor: status.bg }]}>
+                    <Text style={[styles.statusText, { color: status.text }]}>{status.label}</Text>
+                  </View>
+                </View>
+                <View style={styles.txnFooter}>
+                  <Text style={styles.txnDate}>{formatDate(txn.createdAt)}</Text>
+                  <View style={styles.amountRow}>
+                    <Feather name={arrowIcon as any} size={14} color={amountColor} />
+                    <Text style={[styles.txnAmount, { color: amountColor }]}>
+                      {`${positive ? '+' : '-'} ${formatCurrency(Math.abs(txn.amount))}`}
+                    </Text>
                   </View>
                 </View>
                 {txn.description && (
@@ -213,21 +232,22 @@ const styles = StyleSheet.create({
     paddingBottom: 100,
   },
   txnCard: {
-    backgroundColor: 'rgba(255,255,255,0.9)',
+    backgroundColor: 'rgba(255,255,255,0.95)',
     borderRadius: LuxeBorderRadius.lg,
     padding: LuxeSpacing.md,
-    borderWidth: 1,
-    borderColor: LuxeColors.outlineVariant,
+    borderLeftWidth: 4,
+    ...LuxeShadows.sm,
   },
   txnHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
+    marginBottom: 10,
   },
   txnLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
     flex: 1,
   },
   txnIconWrap: {
@@ -236,10 +256,12 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
   },
+  txnLeftContent: { flex: 1 },
   txnLabel: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '700',
     color: LuxeColors.onSurface,
   },
   txnRef: {
@@ -250,20 +272,45 @@ const styles = StyleSheet.create({
   txnRight: {
     alignItems: 'flex-end',
   },
+  statusBadge: {
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    flexShrink: 0,
+  },
+  statusText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  txnFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginLeft: 50,
+    marginTop: 6,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: LuxeColors.outlineVariant + '40',
+  },
+  amountRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
   txnAmount: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   txnDate: {
-    fontSize: 11,
+    fontSize: 12,
     color: LuxeColors.onSurfaceVariant,
-    marginTop: 2,
   },
   txnDesc: {
     fontSize: 12,
     color: LuxeColors.onSurfaceVariant,
     marginTop: 8,
-    marginLeft: 52,
+    marginLeft: 50,
     lineHeight: 18,
+    fontStyle: 'italic',
   },
 });

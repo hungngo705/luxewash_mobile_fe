@@ -51,6 +51,7 @@ export default function SelectVehiclesScreen() {
       pathname: "/booking/select-service",
       params: {
         vehicleId: selectedVehicle.licensePlate,
+        vehicleDbId: selectedVehicle.id,
         vehicleTypeId: String(selectedVehicle.vehicleTypeId ?? 1),
         vehicleBrand: `${selectedVehicle.brand}${selectedVehicle.model ? ` · ${selectedVehicle.model}` : ""}`,
         branchId: String(branchIdParam),
@@ -62,162 +63,159 @@ export default function SelectVehiclesScreen() {
   const handleAddVehicle = () => router.push("/vehicles/add-vehicle");
 
   return (
-    <View style={styles.container}>
-      <SafeAreaView style={styles.safeArea} edges={["top"]}>
-        <Header title="Đặt lịch rửa xe" onBack={() => router.back()} />
+    <SafeAreaView style={styles.container} edges={["top"]}>
+      <Header title="Đặt lịch rửa xe" onBack={() => router.back()} />
 
-        <ProgressSteps
-          steps={[
-            { label: 'Chi nhánh' },
-            { label: 'Xe' },
-            { label: 'Dịch vụ' },
-            { label: 'Ngày' },
-            { label: 'Xác nhận' },
-          ]}
-          currentStep={1}
-        />
+      <ProgressSteps
+        steps={[
+          { label: 'Chi nhánh' },
+          { label: 'Xe' },
+          { label: 'Dịch vụ' },
+          { label: 'Ngày' },
+          { label: 'Xác nhận' },
+        ]}
+        currentStep={1}
+      />
 
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
-        >
-          {/* Welcome */}
-          <View style={styles.welcomeSection}>
-            <Text style={styles.welcomeTitle}>Chọn xe của bạn</Text>
-          </View>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+      >
+        {/* Welcome */}
+        <View style={styles.welcomeSection}>
+          <Text style={styles.welcomeTitle}>Chọn xe của bạn</Text>
+        </View>
 
-          {/* Section Header */}
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Xe của tôi</Text>
+        {/* Section Header */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Xe của tôi</Text>
+          <TouchableOpacity
+            style={styles.addVehicleBtn}
+            onPress={handleAddVehicle}
+          >
+            <Feather
+              name="plus"
+              size={14}
+              color={LuxeColors.primaryContainer}
+            />
+            <Text style={styles.addVehicleText}>Thêm xe</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Vehicle List */}
+        {vehicles.length === 0 ? (
+          <View style={styles.emptyState}>
+            <View style={styles.emptyIconWrap}>
+              <Feather
+                name="truck"
+                size={40}
+                color={LuxeColors.outlineVariant}
+              />
+            </View>
+            <Text style={styles.emptyTitle}>Bạn chưa có xe nào</Text>
+            <Text style={styles.emptySubtitle}>
+              Thêm xe để đặt lịch rửa xe
+            </Text>
             <TouchableOpacity
-              style={styles.addVehicleBtn}
+              style={styles.emptyAddBtn}
               onPress={handleAddVehicle}
             >
-              <Feather
-                name="plus"
-                size={14}
-                color={LuxeColors.primaryContainer}
-              />
-              <Text style={styles.addVehicleText}>Thêm xe</Text>
+              <Feather name="plus" size={16} color="#fff" />
+              <Text style={styles.emptyAddBtnText}>+ Thêm xe mới</Text>
             </TouchableOpacity>
           </View>
-
-          {/* Vehicle List */}
-          {vehicles.length === 0 ? (
-            <View style={styles.emptyState}>
-              <View style={styles.emptyIconWrap}>
-                <Feather
-                  name="truck"
-                  size={40}
-                  color={LuxeColors.outlineVariant}
-                />
-              </View>
-              <Text style={styles.emptyTitle}>Bạn chưa có xe nào</Text>
-              <Text style={styles.emptySubtitle}>
-                Thêm xe để đặt lịch rửa xe
-              </Text>
-              <TouchableOpacity
-                style={styles.emptyAddBtn}
-                onPress={handleAddVehicle}
-              >
-                <Feather name="plus" size={16} color="#fff" />
-                <Text style={styles.emptyAddBtnText}>+ Thêm xe mới</Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <View style={styles.vehicleList}>
-              {vehicles.map((vehicle) => {
-                const isSelected =
-                  selectedVehicle?.licensePlate === vehicle.licensePlate;
-                return (
-                  <TouchableOpacity
-                    key={vehicle.licensePlate}
-                    style={[
-                      styles.vehicleCard,
-                      isSelected && styles.vehicleCardSelected,
-                    ]}
-                    onPress={() => handleSelectVehicle(vehicle)}
-                    activeOpacity={0.8}
+        ) : (
+          <View style={styles.vehicleList}>
+            {vehicles.map((vehicle) => {
+              const isSelected =
+                selectedVehicle?.licensePlate === vehicle.licensePlate;
+              return (
+                <TouchableOpacity
+                  key={vehicle.licensePlate}
+                  style={[
+                    styles.vehicleCard,
+                    isSelected && styles.vehicleCardSelected,
+                  ]}
+                  onPress={() => handleSelectVehicle(vehicle)}
+                  activeOpacity={0.8}
+                >
+                  {/* Radio indicator */}
+                  <View
+                    style={[styles.radio, isSelected && styles.radioSelected]}
                   >
-                    {/* Radio indicator */}
-                    <View
-                      style={[styles.radio, isSelected && styles.radioSelected]}
-                    >
-                      {isSelected && <View style={styles.radioInner} />}
-                    </View>
+                    {isSelected && <View style={styles.radioInner} />}
+                  </View>
 
-                    <View style={styles.vehicleImageWrap}>
-                      {vehicle.imageUrl ? (
-                        <Image
-                          source={{ uri: vehicle.imageUrl }}
-                          style={styles.vehicleImage}
+                  <View style={styles.vehicleImageWrap}>
+                    {vehicle.imageUrl ? (
+                      <Image
+                        source={{ uri: vehicle.imageUrl }}
+                        style={styles.vehicleImage}
+                      />
+                    ) : (
+                      <View style={styles.vehicleImagePlaceholder}>
+                        <Feather
+                          name="truck"
+                          size={28}
+                          color={LuxeColors.outline}
                         />
-                      ) : (
-                        <View style={styles.vehicleImagePlaceholder}>
-                          <Feather
-                            name="truck"
-                            size={28}
-                            color={LuxeColors.outline}
-                          />
-                        </View>
-                      )}
-                    </View>
-
-                    <View style={styles.vehicleInfo}>
-                      <Text style={styles.vehicleName}>
-                        {vehicle.model
-                          ? `${vehicle.brand} · ${vehicle.model}`
-                          : vehicle.brand}
-                      </Text>
-                      <View style={styles.plateBadge}>
-                        <Text style={styles.plateText}>
-                          {vehicle.licensePlate}
-                        </Text>
                       </View>
+                    )}
+                  </View>
+
+                  <View style={styles.vehicleInfo}>
+                    <Text style={styles.vehicleName}>
+                      {vehicle.model
+                        ? `${vehicle.brand} · ${vehicle.model}`
+                        : vehicle.brand}
+                    </Text>
+                    <View style={styles.plateBadge}>
+                      <Text style={styles.plateText}>
+                        {vehicle.licensePlate}
+                      </Text>
                     </View>
-                  </TouchableOpacity>
-                );
-              })}
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        )}
+
+        {/* Selected Summary */}
+        {selectedVehicle && (
+          <View style={styles.selectedSummary}>
+            <View style={styles.selectedSummaryHeader}>
+              <Feather
+                name="check-circle"
+                size={18}
+                color={LuxeColors.primaryContainer}
+              />
+              <Text style={styles.selectedSummaryTitle}>Xe đã chọn</Text>
             </View>
-          )}
+            <Text style={styles.selectedItem}>
+              {selectedVehicle.licensePlate} —{' '}
+              {selectedVehicle.model
+                ? `${selectedVehicle.brand} · ${selectedVehicle.model}`
+                : selectedVehicle.brand}
+            </Text>
+          </View>
+        )}
 
-          {/* Selected Summary */}
-          {selectedVehicle && (
-            <View style={styles.selectedSummary}>
-              <View style={styles.selectedSummaryHeader}>
-                <Feather
-                  name="check-circle"
-                  size={18}
-                  color={LuxeColors.primaryContainer}
-                />
-                <Text style={styles.selectedSummaryTitle}>Xe đã chọn</Text>
-              </View>
-              <Text style={styles.selectedItem}>
-                {selectedVehicle.licensePlate} —{" "}
-                {selectedVehicle.model
-                  ? `${selectedVehicle.brand} · ${selectedVehicle.model}`
-                  : selectedVehicle.brand}
-              </Text>
-            </View>
-          )}
+        <View style={{ height: 120 }} />
+      </ScrollView>
 
-          <View style={{ height: 120 }} />
-        </ScrollView>
-
-        <BottomActionBar
-          title={selectedVehicle ? "TIẾP THEO" : "CHỌN XE ĐỂ TIẾP TỤC"}
-          onPress={handleContinue}
-          disabled={!selectedVehicle}
-          icon="arrow-right"
-        />
-      </SafeAreaView>
-    </View>
+      <BottomActionBar
+        title={selectedVehicle ? "TIẾP THEO" : "CHỌN XE ĐỂ TIẾP TỤC"}
+        onPress={handleContinue}
+        disabled={!selectedVehicle}
+        icon="arrow-right"
+      />
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: LuxeColors.background },
-  safeArea: { flex: 1 },
   scrollView: { flex: 1 },
   scrollContent: { paddingHorizontal: 20, paddingTop: 8 },
   welcomeSection: { marginBottom: 20 },

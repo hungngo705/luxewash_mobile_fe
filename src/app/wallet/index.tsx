@@ -7,7 +7,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { LuxeColors, LuxeSpacing, LuxeBorderRadius, LuxeShadows } from '@/constants/luxeTheme';
@@ -19,7 +19,7 @@ import { Header } from '@/components/ui/Header';
 const POINTS_LABEL = 'điểm';
 
 const transactionTypeLabel: Record<string, string> = {
-  TopUp: 'Nạp điểm',
+  TopUp: 'Nạp tiền',
   Booking: 'Thanh toán đơn hàng',
   Refund: 'Hoàn điểm',
   Upsell: 'Phụ phí',
@@ -27,17 +27,24 @@ const transactionTypeLabel: Record<string, string> = {
   PointRedeem: 'Đổi điểm',
 };
 
-const transactionTypeColor: Record<string, string> = {
-  TopUp: '#10b981',
-  Refund: '#10b981',
-  Booking: '#ef4444',
-  Upsell: '#ef4444',
-  PointReward: '#F59E0B',
-  PointRedeem: '#8B5CF6',
+const transactionTypeConfig: Record<string, { color: string; icon: string; borderColor: string }> = {
+  TopUp:      { color: '#10b981', icon: 'plus-circle',  borderColor: '#10b981' },
+  Refund:     { color: '#10b981', icon: 'rotate-ccw',   borderColor: '#10b981' },
+  Booking:    { color: '#ef4444', icon: 'truck',        borderColor: '#ef4444' },
+  Upsell:     { color: '#f97316', icon: 'plus-square',  borderColor: '#f97316' },
+  PointReward:{ color: '#f59e0b', icon: 'star',         borderColor: '#f59e0b' },
+  PointRedeem:{ color: '#8b5cf6', icon: 'gift',         borderColor: '#8b5cf6' },
+};
+
+const statusConfig: Record<string, { label: string; bg: string; text: string }> = {
+  Completed: { label: 'Thành công', bg: '#dcfce7', text: '#15803d' },
+  Pending:   { label: 'Đang xử lý', bg: '#fef3c7', text: '#92400e' },
+  Failed:    { label: 'Thất bại',    bg: '#fee2e2', text: '#dc2626' },
 };
 
 export default function WalletScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { walletBalance, refreshWallet } = useAuth();
 
   const [wallet, setWallet] = useState<WalletBalance | null>(null);
@@ -82,7 +89,7 @@ export default function WalletScreen() {
 
   if (loading) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, { paddingTop: insets.top }]}>
         <Header title="Ví của tôi" onBack={() => router.back()} />
         <View style={styles.loading}>
           <ActivityIndicator size="large" color={LuxeColors.primaryContainer} />
@@ -92,7 +99,7 @@ export default function WalletScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       <Header title="Ví của tôi" onBack={() => router.back()} />
 
       <ScrollView
@@ -163,14 +170,20 @@ export default function WalletScreen() {
           ) : (
             <View style={styles.txnList}>
               {recentTxns.map((txn) => {
-                const isPositive = txn.transactionType === 'TopUp' || txn.transactionType === 'Refund' || txn.transactionType === 'PointReward';
-                const points = vndToPoints(Math.abs(txn.amount));
-                const color = transactionTypeColor[txn.transactionType] ?? '#6f787f';
+                const isPositive = txn.amount >= 0;
+                const color = transactionTypeConfig[txn.transactionType]?.color ?? '#6f787f';
+                const borderColor = transactionTypeConfig[txn.transactionType]?.borderColor ?? color;
+                const icon = transactionTypeConfig[txn.transactionType]?.icon ?? 'circle';
+                const status = statusConfig[txn.status] ?? statusConfig['Pending'];
+                const amountColor = isPositive ? '#10b981' : '#ef4444';
+                const arrowIcon = isPositive ? 'arrow-up-right' : 'arrow-down-right';
                 return (
-                  <View key={txn.transactionId} style={styles.txnItem}>
+                  <View key={txn.transactionId} style={[styles.txnItem, { borderLeftColor: borderColor }]}>
                     <View style={styles.txnLeft}>
-                      <View style={[styles.txnDot, { backgroundColor: color }]} />
-                      <View>
+                      <View style={[styles.txnIconWrap, { backgroundColor: color + '20' }]}>
+                        <Feather name={icon as any} size={14} color={color} />
+                      </View>
+                      <View style={styles.txnLeftText}>
                         <Text style={styles.txnLabel}>
                           {transactionTypeLabel[txn.transactionType] ?? txn.transactionType}
                         </Text>
@@ -178,10 +191,15 @@ export default function WalletScreen() {
                       </View>
                     </View>
                     <View style={styles.txnRight}>
-                      <Text style={[styles.txnPoints, { color }]}>
-                        {`${isPositive ? '+' : '-'}${points}`}
-                      </Text>
-                      <Text style={styles.txnUnit}>{POINTS_LABEL}</Text>
+                      <View style={styles.txnAmountRow}>
+                        <Feather name={arrowIcon as any} size={12} color={amountColor} />
+                        <Text style={[styles.txnPoints, { color: amountColor }]}>
+                          {isPositive ? '+' : '-'}{Math.abs(txn.amount).toLocaleString('vi-VN')}
+                        </Text>
+                      </View>
+                      <View style={[styles.statusBadge, { backgroundColor: status.bg }]}>
+                        <Text style={[styles.statusText, { color: status.text }]}>{status.label}</Text>
+                      </View>
                     </View>
                   </View>
                 );
@@ -190,7 +208,7 @@ export default function WalletScreen() {
           )}
         </View>
 
-        <View style={{ height: 80 }} />
+        <View style={{ height: 80 + insets.bottom }} />
       </ScrollView>
     </View>
   );
@@ -200,7 +218,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: LuxeColors.background },
   loading: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   scrollView: { flex: 1 },
-  scrollContent: { padding: 20, gap: 16 },
+  scrollContent: { padding: 20, gap: 16, paddingBottom: 20 },
   balanceCard: {
     backgroundColor: LuxeColors.primary,
     borderRadius: 24,
@@ -301,14 +319,30 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#ffffff',
     borderRadius: 14,
-    padding: 16,
+    padding: 14,
+    borderLeftWidth: 3,
     ...LuxeShadows.sm,
   },
-  txnLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
-  txnDot: { width: 10, height: 10, borderRadius: 5, flexShrink: 0 },
-  txnLabel: { fontSize: 14, fontWeight: '700', color: LuxeColors.onSurface },
-  txnDate: { fontSize: 12, color: LuxeColors.onSurfaceVariant, marginTop: 2 },
-  txnRight: { alignItems: 'flex-end' },
-  txnPoints: { fontSize: 16, fontWeight: '800' },
-  txnUnit: { fontSize: 11, color: LuxeColors.onSurfaceVariant, marginTop: 2 },
+  txnLeft: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
+  txnIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  txnLeftText: { flex: 1 },
+  txnLabel: { fontSize: 13, fontWeight: '600', color: LuxeColors.onSurface },
+  txnDate: { fontSize: 11, color: LuxeColors.onSurfaceVariant, marginTop: 2 },
+  txnRight: { alignItems: 'flex-end', gap: 4 },
+  txnAmountRow: { flexDirection: 'row', alignItems: 'center', gap: 2 },
+  txnPoints: { fontSize: 14, fontWeight: '800' },
+  txnUnit: { fontSize: 11, color: LuxeColors.onSurfaceVariant },
+  statusBadge: {
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  statusText: { fontSize: 10, fontWeight: '600' },
 });

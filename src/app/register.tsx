@@ -14,6 +14,7 @@ import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -25,7 +26,6 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
-import { useConfirmDialog } from "@/components/ConfirmDialog";
 
 const PASSWORD_MIN_LENGTH = 8;
 
@@ -41,7 +41,6 @@ interface FieldErrors {
 export default function RegisterScreen() {
   const router = useRouter();
   const { register } = useAuth();
-  const { confirm } = useConfirmDialog();
   const [fullName, setFullName] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [email, setEmail] = useState("");
@@ -64,6 +63,8 @@ export default function RegisterScreen() {
   };
 
   const validateAndSubmit = async () => {
+    Keyboard.dismiss();
+
     const errors: FieldErrors = {};
 
     if (!fullName.trim()) {
@@ -118,11 +119,9 @@ export default function RegisterScreen() {
     setIsSubmitting(false);
 
     if (result.success) {
-      confirm({
-        title: "Đăng ký thành công",
-        message: "Tài khoản của bạn đã được tạo. Vui lòng đăng nhập.",
-        confirmText: "OK",
-        onConfirm: () => router.replace("/login"),
+      router.replace({
+        pathname: "/verify-otp",
+        params: { email: email.trim() },
       });
     } else {
       setFieldErrors({ apiError: result.error || "Đăng ký thất bại. Vui lòng thử lại." });
@@ -282,21 +281,28 @@ export default function RegisterScreen() {
               showConfirmPassword,
             )}
 
-            <TouchableOpacity
-              style={[styles.registerBtn, isSubmitting && styles.registerBtnDisabled]}
-              onPress={validateAndSubmit}
-              disabled={isSubmitting}
-              activeOpacity={0.85}
-            >
-              {isSubmitting ? (
-                <ActivityIndicator color="#ffffff" />
-              ) : (
-                <>
-                  <Text style={styles.registerBtnText}>Đăng ký</Text>
-                  <Feather name="arrow-right" size={18} color="#ffffff" />
-                </>
-              )}
-            </TouchableOpacity>
+            <View style={styles.btnWrapper}>
+              <TouchableOpacity
+                style={[
+                  styles.registerBtn,
+                  isSubmitting && styles.registerBtnDisabled,
+                ]}
+                onPress={validateAndSubmit}
+                disabled={isSubmitting}
+                activeOpacity={0.85}
+              >
+                <View style={styles.registerBtnContent}>
+                  {isSubmitting ? (
+                    <ActivityIndicator color="#ffffff" size="small" />
+                  ) : (
+                    <>
+                      <Text style={styles.registerBtnText}>Đăng ký</Text>
+                      <Feather name="arrow-right" size={18} color="#ffffff" />
+                    </>
+                  )}
+                </View>
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* Login Link */}
@@ -443,18 +449,25 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   registerBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
+    height: 57,
     backgroundColor: LuxeColors.primaryContainer,
     borderRadius: LuxeBorderRadius.lg,
-    paddingVertical: 16,
-    marginTop: 6,
+    alignItems: "center",
+    justifyContent: "center",
     ...LuxeShadows.primary,
   },
   registerBtnDisabled: {
     opacity: 0.7,
+  },
+  btnWrapper: {
+    marginTop: 6,
+  },
+  registerBtnContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    minHeight: 24,
   },
   registerBtnText: {
     color: "#ffffff",

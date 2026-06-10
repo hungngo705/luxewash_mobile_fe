@@ -20,7 +20,7 @@ export interface VehicleResponse {
   licensePlate: string;
   vehicleTypeId: number;
   vehicleType: string;
-  registrationPhotoUrl: string;
+  registrationPhotoUrl: string | null;
   carModel: string | null;
 }
 

@@ -13,15 +13,9 @@ export interface Tier {
   bookingWindowDays?: number;
 }
 
-export type VoucherCampaignType =
-  | 'Manual'
-  | 'Birthday'
-  | 'Age'
-  | 'Winback'
-  | 'Vip'
-  | 'Milestone';
+export type VoucherCampaignType = 0 | 1 | 2 | 3 | 4 | 5;
 
-export type VoucherType = 'Discount' | 'PhysicalGift';
+export type VoucherType = 0 | 1;
 
 export interface Voucher {
   voucherId: number;
@@ -46,6 +40,29 @@ export interface Voucher {
   validStartTime: string | null;
   validEndTime: string | null;
 }
+
+export const VOUCHER_TYPE_LABELS: Record<VoucherType, string> = {
+  [0]: 'Discount',
+  [1]: 'PhysicalGift',
+};
+
+export const CAMPAIGN_TYPE_LABELS: Record<VoucherCampaignType, string> = {
+  [0]: 'Manual',
+  [1]: 'Birthday',
+  [2]: 'Age',
+  [3]: 'Winback',
+  [4]: 'Vip',
+  [5]: 'Milestone',
+};
+
+export const CAMPAIGN_BADGE_CONFIG: Record<VoucherCampaignType, { label: string; bg: string; color: string; icon: string }> = {
+  [0]: { label: 'Đổi điểm', bg: '#E0E7FF', color: '#4F46E5', icon: 'tag' },
+  [1]: { label: 'Sinh nhật', bg: '#FEF3C7', color: '#D97706', icon: 'gift' },
+  [2]: { label: 'Theo tuổi', bg: '#DBEAFE', color: '#2563EB', icon: 'calendar' },
+  [3]: { label: 'Quay lại', bg: '#FCE7F3', color: '#DB2777', icon: 'repeat' },
+  [4]: { label: 'VIP', bg: '#F3E8FF', color: '#7C3AED', icon: 'star' },
+  [5]: { label: 'Kỷ niệm', bg: '#D1FAE5', color: '#059669', icon: 'award' },
+};
 
 export const loyaltyService = {
   getTiers: async (): Promise<ApiResponse<Tier[]>> => {

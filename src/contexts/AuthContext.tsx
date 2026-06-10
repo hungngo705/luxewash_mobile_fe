@@ -4,14 +4,16 @@
  */
 
 import React, {
-    createContext,
-    ReactNode,
-    useContext,
-    useEffect,
-    useState,
+  createContext,
+  ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
 } from "react";
 import { authService } from "../services/api/authService";
-import { ApiError, getStoredTokens } from "../services/api/client";
+import { ApiError, getStoredTokens, setSessionExpiredHandler } from "../services/api/client";
 import { vehicleService } from "../services/api/vehicleService";
 import { walletService } from "../services/api/walletService";
 
@@ -32,13 +34,17 @@ export interface AuthUser {
   phoneNumber: string;
   email?: string;
   name: string;
-  role: 'customer' | 'staff' | 'admin';
+  role: "customer" | "staff" | "admin";
   membershipId: string;
-  membershipTier: 'standard' | 'silver' | 'gold' | 'platinum' | 'diamond';
+  membershipTier: "standard" | "silver" | "gold" | "platinum" | "diamond";
   loyaltyPoints: number;
   createdAt: Date;
   updatedAt: Date;
   vehicles: Vehicle[];
+  status?: string;
+  dateOfBirth?: string | null;
+  promotionPoint?: number;
+  churnScore?: number;
 }
 
 interface LoginCredentials {
@@ -51,13 +57,14 @@ interface AuthState {
   walletBalance: number;
   isLoading: boolean;
   isLoggingIn: boolean;
+  isRegistering: boolean;
   isAuthenticated: boolean;
 }
 
 interface AuthContextType extends AuthState {
   login: (
     credentials: LoginCredentials,
-  ) => Promise<{ success: boolean; error?: string }>;
+  ) => Promise<{ success: boolean; error?: string; unverifiedEmail?: string }>;
   register: (
     phoneNumber: string,
     email: string,
@@ -80,6 +87,12 @@ interface AuthContextType extends AuthState {
     oldPassword: string,
     newPassword: string,
   ) => Promise<{ success: boolean; error?: string }>;
+  loginFromOtp: (
+    userId: string,
+    phoneNumber: string,
+    fullName: string,
+    role: string,
+  ) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -95,7 +108,7 @@ function mapVehicleApiToVehicle(
     model: v.carModel || "",
     color: "",
     vehicleTypeId: v.vehicleTypeId,
-    imageUrl: v.registrationPhotoUrl,
+    imageUrl: v.registrationPhotoUrl ?? undefined,
     userId,
     createdAt: new Date(),
   };
@@ -107,8 +120,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     walletBalance: 0,
     isLoading: true,
     isLoggingIn: false,
+    isRegistering: false,
     isAuthenticated: false,
   });
+
+  const logoutRef = useRef<(() => Promise<void>) | null>(null);
+
+  useEffect(() => {
+    const handleSessionExpired = () => {
+      logoutRef.current?.();
+    };
+    setSessionExpiredHandler(handleSessionExpired);
+    return () => {
+      setSessionExpiredHandler(null);
+    };
+  }, []);
 
   useEffect(() => {
     const restoreSession = async () => {
@@ -154,11 +180,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             id: userId,
             phoneNumber: profile.phoneNumber,
             name: profile.fullName,
+            email: profile.email ?? undefined,
             role: "customer" as const,
             membershipId: profile.tierName?.toLowerCase() || "standard",
             membershipTier: (profile.tierName?.toLowerCase() ||
               "standard") as any,
             loyaltyPoints: profile.totalPoint ?? 0,
+            promotionPoint: profile.promotionPoint ?? 0,
+            churnScore: profile.churnScore ?? 0,
+            status: profile.status ?? "Active",
+            dateOfBirth: profile.dateOfBirth ?? null,
             createdAt: new Date(),
             updatedAt: new Date(),
             vehicles,
@@ -169,6 +200,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             walletBalance,
             isLoading: false,
             isLoggingIn: false,
+            isRegistering: false,
             isAuthenticated: true,
           });
         } else {
@@ -206,7 +238,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (
     credentials: LoginCredentials,
-  ): Promise<{ success: boolean; error?: string }> => {
+  ): Promise<{ success: boolean; error?: string; unverifiedEmail?: string }> => {
     setState((prev) => ({ ...prev, isLoggingIn: true }));
 
     try {
@@ -214,6 +246,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         phoneOrEmail: credentials.phoneOrEmail,
         password: credentials.password,
       });
+
+      if (response.statusCode === 401 &&
+          response.message?.toLowerCase().includes("xác thực")) {
+        const email = credentials.phoneOrEmail.includes("@")
+          ? credentials.phoneOrEmail
+          : "";
+        setState((prev) => ({ ...prev, isLoggingIn: false }));
+        return {
+          success: false,
+          error: response.message || "Tài khoản chưa xác thực email",
+          unverifiedEmail: email,
+        };
+      }
 
       if (response.statusCode !== 200) {
         return {
@@ -239,6 +284,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         membershipId: profile?.tierName?.toLowerCase() || "standard",
         membershipTier: (profile?.tierName?.toLowerCase() || "standard") as any,
         loyaltyPoints: profile?.totalPoint ?? 0,
+        promotionPoint: profile?.promotionPoint ?? 0,
+        churnScore: profile?.churnScore ?? 0,
+        status: profile?.status ?? "Active",
+        dateOfBirth: profile?.dateOfBirth ?? null,
         createdAt: new Date(),
         updatedAt: new Date(),
         vehicles,
@@ -249,16 +298,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         walletBalance,
         isLoading: false,
         isLoggingIn: false,
+        isRegistering: false,
         isAuthenticated: true,
       });
       return { success: true };
     } catch (error) {
+      const isUnverified =
+        error instanceof ApiError &&
+        error.statusCode === 401 &&
+        error.message?.toLowerCase().includes("xác thực");
       const message =
         error instanceof ApiError
           ? error.message
           : "Đã xảy ra lỗi. Vui lòng thử lại";
       setState((prev) => ({ ...prev, isLoggingIn: false }));
-      return { success: false, error: message };
+      return {
+        success: false,
+        error: message,
+        unverifiedEmail: isUnverified ? (credentials.phoneOrEmail.includes("@") ? credentials.phoneOrEmail : "") : undefined,
+      };
     }
   };
 
@@ -274,11 +332,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             ...prev.user,
             name: profile?.fullName ?? prev.user.name,
             phoneNumber: profile?.phoneNumber ?? prev.user.phoneNumber,
+            email: profile?.email ?? prev.user.email,
             membershipId:
               profile?.tierName?.toLowerCase() || prev.user.membershipId,
             membershipTier: (profile?.tierName?.toLowerCase() ||
               prev.user.membershipTier) as any,
             loyaltyPoints: profile?.totalPoint ?? prev.user.loyaltyPoints,
+            promotionPoint: profile?.promotionPoint ?? prev.user.promotionPoint,
+            churnScore: profile?.churnScore ?? prev.user.churnScore,
+            status: profile?.status ?? prev.user.status,
+            dateOfBirth: profile?.dateOfBirth ?? prev.user.dateOfBirth,
             vehicles,
           }
         : null,
@@ -292,7 +355,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     password: string,
     fullName: string,
   ): Promise<{ success: boolean; error?: string }> => {
-    setState((prev) => ({ ...prev, isLoading: true }));
+    setState((prev) => ({ ...prev, isRegistering: true }));
 
     try {
       const response = await authService.register({
@@ -309,14 +372,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         };
       }
 
-      setState((prev) => ({ ...prev, isLoading: false }));
+      setState((prev) => ({ ...prev, isRegistering: false }));
       return { success: true };
     } catch (error) {
       const message =
         error instanceof ApiError
           ? error.message
           : "Đã xảy ra lỗi. Vui lòng thử lại";
-      setState((prev) => ({ ...prev, isLoading: false }));
+      setState((prev) => ({ ...prev, isRegistering: false }));
       return { success: false, error: message };
     }
   };
@@ -335,16 +398,56 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const logout = async () => {
+  const loginFromOtp = async (
+    userId: string,
+    phoneNumber: string,
+    fullName: string,
+    role: string,
+  ): Promise<void> => {
+    const { profile, walletBalance, vehicles } = await fetchProfileAndWallet(userId);
+    const authUser: AuthUser = {
+      id: userId,
+      phoneNumber: profile?.phoneNumber ?? phoneNumber,
+      name: profile?.fullName ?? fullName,
+      email: profile?.email ?? undefined,
+      role: (role?.toLowerCase() || "customer") as
+        | "customer"
+        | "staff"
+        | "admin",
+      membershipId: profile?.tierName?.toLowerCase() || "standard",
+      membershipTier: (profile?.tierName?.toLowerCase() || "standard") as any,
+      loyaltyPoints: profile?.totalPoint ?? 0,
+      promotionPoint: profile?.promotionPoint ?? 0,
+      churnScore: profile?.churnScore ?? 0,
+      status: profile?.status ?? "Active",
+      dateOfBirth: profile?.dateOfBirth ?? null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      vehicles,
+    };
+    setState({
+      user: authUser,
+      walletBalance,
+      isLoading: false,
+      isLoggingIn: false,
+      isRegistering: false,
+      isAuthenticated: true,
+    });
+  };
+
+  const logout = useCallback(async () => {
     await authService.logout();
     setState({
       user: null,
       walletBalance: 0,
       isLoading: false,
       isLoggingIn: false,
+      isRegistering: false,
       isAuthenticated: false,
     });
-  };
+  }, []);
+
+  logoutRef.current = logout;
 
   const addVehicle = async (
     licensePlate: string,
@@ -428,6 +531,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         addVehicle,
         removeVehicle,
         changePassword,
+        loginFromOtp,
       }}
     >
       {children}

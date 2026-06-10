@@ -43,6 +43,7 @@ export interface BookingRequest {
   slotId: number;
   pointsToUse: number;
   voucherId: number | null;
+  paymentMethod?: string;
 }
 
 export interface BookingDetailVehicle {

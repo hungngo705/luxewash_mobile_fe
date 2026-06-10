@@ -97,6 +97,16 @@ const processQueue = (error: ApiError | null) => {
   refreshQueue = [];
 };
 
+let onSessionExpired: (() => void) | null = null;
+
+export const setSessionExpiredHandler = (handler: (() => void) | null) => {
+  onSessionExpired = handler;
+};
+
+export const clearSessionExpiredHandler = () => {
+  onSessionExpired = null;
+};
+
 const buildQueryString = (params: Record<string, unknown>): string => {
   const searchParams = new URLSearchParams();
   Object.entries(params).forEach(([key, value]) => {
@@ -168,9 +178,11 @@ async function request<T>(
         }
 
         await clearTokens();
+        if (onSessionExpired) onSessionExpired();
         processQueue(new ApiError(401, 'Session expired. Please login again.', null));
       } catch {
         await clearTokens();
+        if (onSessionExpired) onSessionExpired();
         processQueue(new ApiError(401, 'Session expired. Please login again.', null));
       }
       isRefreshing = false;
@@ -266,9 +278,11 @@ async function requestFormData<T>(
         }
 
         await clearTokens();
+        if (onSessionExpired) onSessionExpired();
         processQueue(new ApiError(401, 'Session expired. Please login again.', null));
       } catch {
         await clearTokens();
+        if (onSessionExpired) onSessionExpired();
         processQueue(new ApiError(401, 'Session expired. Please login again.', null));
       }
       isRefreshing = false;

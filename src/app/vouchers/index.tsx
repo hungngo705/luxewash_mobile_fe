@@ -10,12 +10,11 @@ import {
   LuxeShadows,
 } from '@/constants/luxeTheme';
 import { useAuth } from '@/contexts/AuthContext';
-import { loyaltyService, type Voucher, type VoucherCampaignType } from '@/services/api';
+import { loyaltyService, CAMPAIGN_BADGE_CONFIG, type Voucher, type VoucherCampaignType } from '@/services/api';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Image,
   Modal,
   Platform,
   Pressable,
@@ -23,7 +22,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -59,17 +57,10 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: 'expired', label: 'Hết hạn' },
 ];
 
-const CAMPAIGN_Badge_CONFIG: Record<VoucherCampaignType, { label: string; bg: string; color: string; icon: string }> = {
-  Birthday: { label: 'Sinh nhật', bg: '#FEF3C7', color: '#D97706', icon: 'gift' },
-  Age: { label: 'Theo tuổi', bg: '#DBEAFE', color: '#2563EB', icon: 'calendar' },
-  Winback: { label: 'Quay lại', bg: '#FCE7F3', color: '#DB2777', icon: 'repeat' },
-  Vip: { label: 'VIP', bg: '#F3E8FF', color: '#7C3AED', icon: 'star' },
-  Milestone: { label: 'Kỷ niệm', bg: '#D1FAE5', color: '#059669', icon: 'award' },
-  Manual: { label: 'Đổi điểm', bg: '#E0E7FF', color: '#4F46E5', icon: 'tag' },
-};
+// CAMPAIGN_BADGE_CONFIG is now imported from loyaltyService.ts
 
 function CampaignBadge({ campaignType }: { campaignType: VoucherCampaignType }) {
-  const cfg = CAMPAIGN_Badge_CONFIG[campaignType] ?? CAMPAIGN_Badge_CONFIG.Manual;
+  const cfg = CAMPAIGN_BADGE_CONFIG[campaignType] ?? CAMPAIGN_BADGE_CONFIG[0];
   return (
     <View style={[styles.campaignBadge, { backgroundColor: cfg.bg }]}>
       <Feather name={cfg.icon as any} size={10} color={cfg.color} />
@@ -88,6 +79,7 @@ function TierBadge({ tierName }: { tierName: string | null }) {
   );
 }
 
+/** VoucherCard - 2-column split layout: left = discount hero, right = info */
 function VoucherCard({
   voucher,
   onPress,
@@ -98,8 +90,9 @@ function VoucherCard({
   const daysLeft = getDaysRemaining(voucher.expiryDate);
   const isExpired = daysLeft === 0;
   const isUsed = voucher.isUsed || voucher.usageCount >= voucher.maxUsagePerUser;
+  const cfg = CAMPAIGN_BADGE_CONFIG[voucher.campaignType] ?? CAMPAIGN_BADGE_CONFIG[0];
 
-  const cfg = CAMPAIGN_Badge_CONFIG[voucher.campaignType] ?? CAMPAIGN_Badge_CONFIG.Manual;
+  const cardOpacity = isUsed ? 0.55 : isExpired ? 0.65 : 1;
 
   return (
     <Pressable
@@ -108,99 +101,103 @@ function VoucherCard({
         isUsed && styles.voucherCardUsed,
         isExpired && !isUsed && styles.voucherCardExpired,
         pressed && styles.voucherCardPressed,
+        { opacity: cardOpacity },
       ]}
       onPress={onPress}
       disabled={isUsed || isExpired}
     >
-      {/* Image banner */}
-      {voucher.imageUrl && (
-        <Image source={{ uri: voucher.imageUrl }} style={styles.voucherImage} />
-      )}
+      {/* Top accent bar */}
+      <View style={[styles.cardAccent, { backgroundColor: cfg.color }]} />
 
-      {/* Color accent strip */}
-      <View style={[styles.cardAccent, { backgroundColor: cfg.color + '30' }]} />
-
-      <View style={styles.cardContent}>
-        {/* Top row: badge + tier */}
-        <View style={styles.cardTopRow}>
-          <CampaignBadge campaignType={voucher.campaignType} />
-          <TierBadge tierName={voucher.requiredTierName} />
-        </View>
-
-        {/* Discount amount */}
-        <View style={styles.discountRow}>
-          <Text style={[styles.discountAmount, isUsed && styles.textMuted]}>
+      <View style={styles.cardBody}>
+        {/* LEFT: Discount hero panel */}
+        <View style={[styles.discountPanel, { backgroundColor: cfg.color + '18' }]}>
+          <Text style={[styles.discountAmount, { color: cfg.color }]}>
             -{formatCurrency(voucher.discountAmount)}đ
           </Text>
+          <Text style={[styles.discountLabel, { color: cfg.color + 'BB' }]}>GIẢM</Text>
           {voucher.pointsRequired > 0 && (
-            <Text style={styles.pointsCost}>
-              {voucher.pointsRequired.toLocaleString('vi-VN')} điểm
-            </Text>
+            <View style={[styles.pointsChip, { backgroundColor: cfg.color + '22' }]}>
+              <Text style={[styles.pointsChipText, { color: cfg.color }]}>
+                {voucher.pointsRequired.toLocaleString('vi-VN')} pts
+              </Text>
+            </View>
           )}
         </View>
 
-        {/* Code */}
-        <Text style={[styles.voucherCode, isUsed && styles.textMuted]}>
-          {voucher.code}
-        </Text>
+        {/* Divider */}
+        <View style={[styles.cardDivider, { backgroundColor: cfg.color + '30' }]} />
 
-        {/* Min order */}
-        {voucher.minOrderAmount > 0 && (
-          <Text style={styles.minOrder}>
-            Đơn tối thiểu: {formatCurrency(voucher.minOrderAmount)}đ
-          </Text>
-        )}
-
-        {/* Usage progress */}
-        <View style={styles.usageRow}>
-          <View style={styles.usageBar}>
-            <View
-              style={[
-                styles.usageFill,
-                {
-                  width: `${Math.min((voucher.usageCount / voucher.maxUsagePerUser) * 100, 100)}%`,
-                  backgroundColor: cfg.color,
-                },
-              ]}
-            />
+        {/* RIGHT: Info panel */}
+        <View style={styles.infoPanel}>
+          {/* Badges row */}
+          <View style={styles.badgeRow}>
+            <CampaignBadge campaignType={voucher.campaignType} />
+            <TierBadge tierName={voucher.requiredTierName} />
           </View>
-          <Text style={styles.usageText}>
-            {voucher.usageCount}/{voucher.maxUsagePerUser} lượt
-          </Text>
-        </View>
 
-        {/* Valid time window */}
-        {voucher.validStartTime && voucher.validEndTime && (
-          <Text style={styles.timeWindow}>
-            Chỉ áp dụng: {voucher.validStartTime} - {voucher.validEndTime}
-          </Text>
-        )}
+          {/* Code */}
+          <View style={styles.codeRow}>
+            <Text style={styles.codeLabel}>CODE</Text>
+            <Text style={styles.voucherCode}>{voucher.code}</Text>
+          </View>
 
-        {/* Bottom: expiry + status */}
-        <View style={styles.cardBottomRow}>
-          {isUsed ? (
-            <View style={styles.usedBadge}>
-              <Feather name="check-circle" size={12} color={LuxeColors.onSurfaceVariant} />
-              <Text style={styles.usedBadgeText}>Đã dùng</Text>
-            </View>
-          ) : isExpired ? (
-            <View style={styles.expiredBadge}>
-              <Feather name="clock" size={12} color={LuxeColors.error} />
-              <Text style={styles.expiredBadgeText}>Hết hạn</Text>
-            </View>
-          ) : daysLeft <= 3 ? (
-            <View style={styles.expirySoonBadge}>
-              <Feather name="alert-circle" size={12} color="#D97706" />
-              <Text style={styles.expirySoonText}>Còn {daysLeft} ngày</Text>
-            </View>
-          ) : (
-            <Text style={styles.expiryText}>HSD: {formatDate(voucher.expiryDate)}</Text>
-          )}
-          {!isUsed && !isExpired && (
-            <Text style={styles.remainingText}>
-              {voucher.remainingUsage} lượt còn lại
+          {/* Min order */}
+          {voucher.minOrderAmount > 0 && (
+            <Text style={styles.minOrder}>
+              Tối thiểu {formatCurrency(voucher.minOrderAmount)}đ
             </Text>
           )}
+
+          {/* Usage progress */}
+          <View style={styles.usageRow}>
+            <View style={styles.usageBar}>
+              <View
+                style={[
+                  styles.usageFill,
+                  {
+                    width: `${Math.min((voucher.usageCount / voucher.maxUsagePerUser) * 100, 100)}%`,
+                    backgroundColor: cfg.color,
+                  },
+                ]}
+              />
+            </View>
+            <Text style={styles.usageText}>
+              {voucher.usageCount}/{voucher.maxUsagePerUser}
+            </Text>
+          </View>
+
+          {/* Time window */}
+          {voucher.validStartTime && voucher.validEndTime && (
+            <Text style={styles.timeWindow}>
+              {voucher.validStartTime} - {voucher.validEndTime}
+            </Text>
+          )}
+
+          {/* Bottom status row */}
+          <View style={styles.statusRow}>
+            {isUsed ? (
+              <View style={[styles.statusBadge, styles.statusUsed]}>
+                <Feather name="check-circle" size={11} color={LuxeColors.onSurfaceVariant} />
+                <Text style={[styles.statusBadgeText, { color: LuxeColors.onSurfaceVariant }]}>Đã dùng</Text>
+              </View>
+            ) : isExpired ? (
+              <View style={[styles.statusBadge, styles.statusExpired]}>
+                <Feather name="clock" size={11} color={LuxeColors.error} />
+                <Text style={[styles.statusBadgeText, { color: LuxeColors.error }]}>Hết hạn</Text>
+              </View>
+            ) : daysLeft <= 3 ? (
+              <View style={[styles.statusBadge, styles.statusSoon]}>
+                <Feather name="alert-circle" size={11} color="#D97706" />
+                <Text style={[styles.statusBadgeText, { color: '#D97706' }]}>Còn {daysLeft} ngày</Text>
+              </View>
+            ) : (
+              <Text style={styles.expiryText}>HSD: {formatDate(voucher.expiryDate)}</Text>
+            )}
+            {!isUsed && !isExpired && (
+              <Text style={styles.remainingText}>{voucher.remainingUsage} lượt</Text>
+            )}
+          </View>
         </View>
       </View>
     </Pressable>
@@ -242,73 +239,107 @@ function RedeemModal({
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <View style={styles.modalOverlay}>
         <View style={styles.modalContent}>
+          {/* Drag handle */}
+          <View style={styles.modalDragHandle} />
+
           <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Đổi voucher</Text>
-            <TouchableOpacity onPress={onClose}>
-              <Feather name="x" size={22} color={LuxeColors.onSurface} />
+            <View>
+              <Text style={styles.modalTitle}>Đổi voucher</Text>
+              <Text style={styles.modalSubtitle}>
+                Dùng điểm tích luỹ để đổi voucher
+              </Text>
+            </View>
+            <TouchableOpacity style={styles.modalCloseBtn} onPress={onClose}>
+              <Feather name="x" size={20} color={LuxeColors.onSurfaceVariant} />
             </TouchableOpacity>
           </View>
 
-          <Text style={styles.modalSubtitle}>
-            Chọn voucher bạn muốn đổi bằng điểm tích luỹ
-          </Text>
-
-          <ScrollView style={styles.modalList}>
+          <ScrollView style={styles.modalList} showsVerticalScrollIndicator={false}>
             {redeemable.length === 0 ? (
-              <Text style={styles.emptyModalText}>Không có voucher nào khả dụng</Text>
+              <View style={styles.emptyModalState}>
+                <Feather name="gift" size={40} color={LuxeColors.outlineVariant} />
+                <Text style={styles.emptyModalTitle}>Không có voucher nào khả dụng</Text>
+                <Text style={styles.emptyModalDesc}>
+                  Tích luỹ thêm điểm để đổi voucher
+                </Text>
+              </View>
             ) : (
-              redeemable.map((v) => (
-                <Pressable
-                  key={v.voucherId}
-                  style={[
-                    styles.redeemItem,
-                    selectedId === v.voucherId && styles.redeemItemSelected,
-                  ]}
-                  onPress={() => setSelectedId(v.voucherId)}
-                >
-                  <View style={styles.redeemItemInfo}>
-                    <Text style={styles.redeemItemCode}>{v.code}</Text>
-                    <Text style={styles.redeemItemDiscount}>
-                      -{formatCurrency(v.discountAmount)}đ
-                    </Text>
-                  </View>
-                  <View style={styles.redeemItemRight}>
-                    <Text style={styles.redeemItemPoints}>
-                      {v.pointsRequired.toLocaleString('vi-VN')} điểm
-                    </Text>
-                    <Feather
-                      name={selectedId === v.voucherId ? 'check-circle' : 'circle'}
-                      size={20}
-                      color={
-                        selectedId === v.voucherId
-                          ? LuxeColors.primaryContainer
-                          : LuxeColors.outline
-                      }
-                    />
-                  </View>
-                </Pressable>
-              ))
+              redeemable.map((v) => {
+                const cfg = CAMPAIGN_BADGE_CONFIG[v.campaignType] ?? CAMPAIGN_BADGE_CONFIG[0];
+                const isSelected = selectedId === v.voucherId;
+                return (
+                  <Pressable
+                    key={v.voucherId}
+                    style={({ pressed }) => [
+                      styles.redeemItem,
+                      isSelected && styles.redeemItemSelected,
+                      isSelected && { borderColor: cfg.color, backgroundColor: cfg.color + '10' },
+                      pressed && { opacity: 0.85 },
+                    ]}
+                    onPress={() => setSelectedId(v.voucherId)}
+                  >
+                    {/* Left: accent stripe */}
+                    <View style={[styles.redeemItemAccent, { backgroundColor: cfg.color }]} />
+
+                    {/* Content */}
+                    <View style={styles.redeemItemBody}>
+                      <View style={styles.redeemItemTop}>
+                        <Text style={styles.redeemItemCode}>{v.code}</Text>
+                        <CampaignBadge campaignType={v.campaignType} />
+                      </View>
+                      <View style={styles.redeemItemBottom}>
+                        <Text style={[styles.redeemItemDiscount, { color: cfg.color }]}>
+                          -{formatCurrency(v.discountAmount)}đ
+                        </Text>
+                        {v.minOrderAmount > 0 && (
+                          <Text style={styles.redeemItemMinOrder}>
+                            Tối thiểu {formatCurrency(v.minOrderAmount)}đ
+                          </Text>
+                        )}
+                      </View>
+                    </View>
+
+                    {/* Right: points + checkbox */}
+                    <View style={styles.redeemItemRight}>
+                      <View style={[styles.pointsBadge, { backgroundColor: cfg.color + '18' }]}>
+                        <Feather name="star" size={11} color={cfg.color} />
+                        <Text style={[styles.pointsBadgeText, { color: cfg.color }]}>
+                          {v.pointsRequired.toLocaleString('vi-VN')}
+                        </Text>
+                      </View>
+                      <View style={[
+                        styles.checkbox,
+                        isSelected && { backgroundColor: cfg.color, borderColor: cfg.color },
+                      ]}>
+                        {isSelected && <Feather name="check" size={11} color="#ffffff" />}
+                      </View>
+                    </View>
+                  </Pressable>
+                );
+              })
             )}
           </ScrollView>
 
-          <TouchableOpacity
-            style={[
-              styles.redeemBtn,
-              (!selectedId || redeeming) && styles.redeemBtnDisabled,
-            ]}
-            onPress={handleRedeem}
-            disabled={!selectedId || redeeming}
-          >
-            {redeeming ? (
-              <ActivityIndicator color="#ffffff" size="small" />
-            ) : (
-              <Text style={styles.redeemBtnText}>
-                {selectedId
-                  ? `Đổi voucher (${redeemable.find((v) => v.voucherId === selectedId)?.pointsRequired.toLocaleString('vi-VN')} điểm)`
-                  : 'Chọn voucher'}
-              </Text>
-            )}
-          </TouchableOpacity>
+          <View style={styles.modalFooter}>
+            <TouchableOpacity
+              style={[
+                styles.redeemBtn,
+                (!selectedId || redeeming) && styles.redeemBtnDisabled,
+              ]}
+              onPress={handleRedeem}
+              disabled={!selectedId || redeeming}
+            >
+              {redeeming ? (
+                <ActivityIndicator color="#ffffff" size="small" />
+              ) : selectedId ? (
+                <Text style={styles.redeemBtnText}>
+                  Xác nhận đổi ({redeemable.find((v) => v.voucherId === selectedId)?.pointsRequired.toLocaleString('vi-VN')} điểm)
+                </Text>
+              ) : (
+                <Text style={styles.redeemBtnText}>Chọn voucher để đổi</Text>
+              )}
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
     </Modal>
@@ -435,39 +466,28 @@ export default function VouchersScreen() {
 
         {/* Tab Bar */}
         <View style={styles.tabBar}>
-          {TABS.map((tab) => (
-            <TouchableOpacity
-              key={tab.key}
-              style={[styles.tab, activeTab === tab.key && styles.tabActive]}
-              onPress={() => setActiveTab(tab.key)}
-            >
-              <Text
-                style={[
-                  styles.tabText,
-                  activeTab === tab.key && styles.tabTextActive,
-                ]}
+          {TABS.map((tab) => {
+            const isActive = activeTab === tab.key;
+            return (
+              <TouchableOpacity
+                key={tab.key}
+                style={[styles.tab, isActive && styles.tabActive]}
+                onPress={() => setActiveTab(tab.key)}
+                activeOpacity={0.7}
               >
-                {tab.label}
-              </Text>
-              {tabCounts[tab.key] > 0 && (
-                <View
-                  style={[
-                    styles.tabCount,
-                    activeTab === tab.key && styles.tabCountActive,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.tabCountText,
-                      activeTab === tab.key && styles.tabCountTextActive,
-                    ]}
-                  >
-                    {tabCounts[tab.key]}
-                  </Text>
-                </View>
-              )}
-            </TouchableOpacity>
-          ))}
+                <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
+                  {tab.label}
+                </Text>
+                {tabCounts[tab.key] > 0 && (
+                  <View style={[styles.tabCount, isActive && styles.tabCountActive]}>
+                    <Text style={[styles.tabCountText, isActive && styles.tabCountTextActive]}>
+                      {tabCounts[tab.key]}
+                    </Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            );
+          })}
         </View>
 
         {/* Voucher List */}
@@ -527,11 +547,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: LuxeSpacing.md,
+    paddingHorizontal: LuxeSpacing.lg,
     paddingVertical: LuxeSpacing.md,
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
     borderBottomWidth: 1,
-    borderBottomColor: LuxeColors.outlineVariant + '20',
+    borderBottomColor: LuxeColors.outlineVariant + '30',
   },
   backBtn: {
     width: 40,
@@ -541,75 +561,77 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: '700',
     color: LuxeColors.onSurface,
+    letterSpacing: -0.3,
   },
   redeemPointsBtn: {
     width: 40,
     height: 40,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: LuxeColors.primaryContainer + '20',
+    borderRadius: LuxeBorderRadius.full,
   },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingBottom: 100,
-  },
+  scrollView: { flex: 1 },
+  scrollContent: { paddingBottom: 100 },
+
+  /* ─── Points Banner ─── */
   pointsBanner: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: LuxeColors.primaryContainer,
+    backgroundColor: LuxeColors.primary,
     marginHorizontal: LuxeSpacing.lg,
     marginTop: LuxeSpacing.lg,
     borderRadius: LuxeBorderRadius.xl,
-    padding: LuxeSpacing.xl,
+    paddingVertical: LuxeSpacing.xl,
+    paddingHorizontal: LuxeSpacing.xl,
     ...LuxeShadows.lg,
   },
-  pointsBannerLeft: {
-    flex: 1,
-  },
+  pointsBannerLeft: { flex: 1 },
   pointsLabel: {
-    fontSize: 13,
-    color: LuxeColors.onPrimaryContainer,
-    opacity: 0.8,
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.7)',
     fontWeight: '500',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 2,
   },
   pointsValue: {
-    fontSize: 32,
-    fontWeight: '700',
-    color: LuxeColors.onPrimaryContainer,
-    marginVertical: 2,
+    fontSize: 36,
+    fontWeight: '800',
+    color: '#ffffff',
+    letterSpacing: -1,
   },
   pointsUnit: {
-    fontSize: 14,
-    color: LuxeColors.onPrimaryContainer,
-    opacity: 0.8,
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.7)',
+    fontWeight: '500',
+    marginTop: 2,
   },
   pointsBannerRight: {
-    paddingLeft: LuxeSpacing.md,
+    paddingLeft: LuxeSpacing.lg,
   },
+
+  /* ─── Tab Bar ─── */
   tabBar: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    backgroundColor: '#ffffff',
     marginHorizontal: LuxeSpacing.lg,
     marginTop: LuxeSpacing.lg,
     borderRadius: LuxeBorderRadius.lg,
-    padding: 4,
+    padding: 3,
     ...LuxeShadows.sm,
   },
   tab: {
     flex: 1,
-    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 10,
+    paddingVertical: 9,
     borderRadius: LuxeBorderRadius.md,
     gap: 4,
   },
   tabActive: {
-    backgroundColor: LuxeColors.primaryContainer,
+    backgroundColor: LuxeColors.primary,
   },
   tabText: {
     fontSize: 12,
@@ -618,17 +640,19 @@ const styles = StyleSheet.create({
   },
   tabTextActive: {
     color: '#ffffff',
+    fontWeight: '700',
   },
   tabCount: {
     backgroundColor: LuxeColors.surfaceVariant,
-    borderRadius: 10,
-    paddingHorizontal: 6,
-    paddingVertical: 1,
-    minWidth: 20,
+    borderRadius: LuxeBorderRadius.full,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    minWidth: 22,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   tabCountActive: {
-    backgroundColor: 'rgba(255,255,255,0.25)',
+    backgroundColor: 'rgba(255,255,255,0.22)',
   },
   tabCountText: {
     fontSize: 10,
@@ -638,10 +662,12 @@ const styles = StyleSheet.create({
   tabCountTextActive: {
     color: '#ffffff',
   },
+
+  /* ─── Loading / Empty ─── */
   loadingContainer: {
     alignItems: 'center',
-    paddingVertical: 60,
-    gap: 12,
+    paddingVertical: 80,
+    gap: 14,
   },
   loadingText: {
     fontSize: 14,
@@ -649,8 +675,8 @@ const styles = StyleSheet.create({
   },
   emptyContainer: {
     alignItems: 'center',
-    paddingVertical: 60,
-    paddingHorizontal: 40,
+    paddingVertical: 80,
+    paddingHorizontal: 48,
   },
   emptyTitle: {
     fontSize: 16,
@@ -666,54 +692,87 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 20,
   },
+
+  /* ─── Voucher List ─── */
   voucherList: {
     paddingHorizontal: LuxeSpacing.lg,
     paddingTop: LuxeSpacing.lg,
     gap: LuxeSpacing.md,
   },
+
+  /* ─── Voucher Card ─── */
   voucherCard: {
     backgroundColor: '#ffffff',
     borderRadius: LuxeBorderRadius.xl,
     overflow: 'hidden',
     ...LuxeShadows.md,
   },
-  voucherCardUsed: {
-    opacity: 0.6,
-  },
-  voucherCardExpired: {
-    opacity: 0.7,
-  },
+  voucherCardUsed: { opacity: 0.55 },
+  voucherCardExpired: { opacity: 0.65 },
   voucherCardPressed: {
     opacity: 0.9,
-    transform: [{ scale: 0.98 }],
-  },
-  voucherImage: {
-    width: '100%',
-    height: 80,
-    backgroundColor: LuxeColors.surfaceVariant,
+    transform: [{ scale: 0.985 }],
   },
   cardAccent: {
     height: 4,
   },
-  cardContent: {
-    padding: LuxeSpacing.md,
+  cardBody: {
+    flexDirection: 'row',
+    minHeight: 130,
   },
-  cardTopRow: {
+  discountPanel: {
+    width: 100,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: LuxeSpacing.md,
+  },
+  discountAmount: {
+    fontSize: 18,
+    fontWeight: '800',
+    letterSpacing: -0.5,
+  },
+  discountLabel: {
+    fontSize: 9,
+    fontWeight: '700',
+    letterSpacing: 1,
+    marginTop: 2,
+  },
+  pointsChip: {
+    marginTop: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: LuxeBorderRadius.full,
+  },
+  pointsChipText: {
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  cardDivider: {
+    width: 1,
+    alignSelf: 'stretch',
+    marginVertical: LuxeSpacing.md,
+  },
+  infoPanel: {
+    flex: 1,
+    padding: LuxeSpacing.md,
+    paddingLeft: LuxeSpacing.sm,
+  },
+  badgeRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    marginBottom: 8,
+    gap: 5,
+    marginBottom: 6,
   },
   campaignBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 8,
+    gap: 3,
+    paddingHorizontal: 7,
     paddingVertical: 3,
-    borderRadius: 12,
+    borderRadius: LuxeBorderRadius.full,
   },
   campaignBadgeText: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 0.3,
@@ -723,59 +782,52 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 3,
     backgroundColor: LuxeColors.surfaceVariant,
-    paddingHorizontal: 8,
+    paddingHorizontal: 7,
     paddingVertical: 3,
-    borderRadius: 12,
+    borderRadius: LuxeBorderRadius.full,
   },
   tierBadgeText: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: '600',
     color: LuxeColors.onSurfaceVariant,
   },
-  discountRow: {
+  codeRow: {
     flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: 8,
-    marginBottom: 4,
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 3,
   },
-  discountAmount: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: LuxeColors.primaryContainer,
-  },
-  textMuted: {
+  codeLabel: {
+    fontSize: 9,
+    fontWeight: '700',
     color: LuxeColors.onSurfaceVariant,
-  },
-  pointsCost: {
-    fontSize: 12,
-    color: LuxeColors.primaryContainer,
-    fontWeight: '600',
-    backgroundColor: LuxeColors.primaryContainer + '15',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 8,
+    letterSpacing: 0.5,
+    backgroundColor: LuxeColors.surfaceVariant,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 3,
   },
   voucherCode: {
-    fontSize: 12,
-    color: LuxeColors.onSurfaceVariant,
+    fontSize: 13,
+    fontWeight: '700',
+    color: LuxeColors.onSurface,
     fontFamily: Platform.OS === 'web' ? 'monospace' : undefined,
     letterSpacing: 1,
-    marginBottom: 4,
   },
   minOrder: {
-    fontSize: 12,
+    fontSize: 11,
     color: LuxeColors.onSurfaceVariant,
-    marginBottom: 8,
+    marginBottom: 5,
   },
   usageRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginBottom: 8,
+    marginBottom: 4,
   },
   usageBar: {
     flex: 1,
-    height: 4,
+    height: 3,
     backgroundColor: LuxeColors.surfaceVariant,
     borderRadius: 2,
     overflow: 'hidden',
@@ -785,75 +837,57 @@ const styles = StyleSheet.create({
     borderRadius: 2,
   },
   usageText: {
-    fontSize: 11,
+    fontSize: 10,
     color: LuxeColors.onSurfaceVariant,
-    fontWeight: '500',
-    minWidth: 40,
+    fontWeight: '600',
+    minWidth: 32,
     textAlign: 'right',
   },
   timeWindow: {
-    fontSize: 11,
+    fontSize: 10,
     color: LuxeColors.tertiary,
-    fontStyle: 'italic',
-    marginBottom: 6,
+    fontWeight: '500',
+    marginBottom: 4,
   },
-  cardBottomRow: {
+  statusRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginTop: 2,
   },
-  usedBadge: {
+  statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: LuxeBorderRadius.full,
+  },
+  statusUsed: {
     backgroundColor: LuxeColors.surfaceVariant,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
   },
-  usedBadgeText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: LuxeColors.onSurfaceVariant,
-  },
-  expiredBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
+  statusExpired: {
     backgroundColor: LuxeColors.errorContainer,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
   },
-  expiredBadgeText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: LuxeColors.error,
-  },
-  expirySoonBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
+  statusSoon: {
     backgroundColor: '#FEF3C7',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
   },
-  expirySoonText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#D97706',
+  statusBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
   },
   expiryText: {
-    fontSize: 12,
+    fontSize: 11,
     color: LuxeColors.onSurfaceVariant,
     fontWeight: '500',
   },
   remainingText: {
-    fontSize: 11,
-    color: LuxeColors.primaryContainer,
+    fontSize: 10,
     fontWeight: '600',
+    color: LuxeColors.primaryContainer,
   },
+
+  /* ─── Redeem Modal ─── */
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
@@ -863,91 +897,155 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    maxHeight: '80%',
+    maxHeight: '82%',
     paddingBottom: Platform.OS === 'ios' ? 34 : 24,
+  },
+  modalDragHandle: {
+    width: 40,
+    height: 4,
+    backgroundColor: LuxeColors.outlineVariant,
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginTop: 12,
+    marginBottom: 4,
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20,
+    alignItems: 'flex-start',
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: LuxeColors.outlineVariant + '30',
+    borderBottomColor: LuxeColors.outlineVariant + '20',
   },
   modalTitle: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 20,
+    fontWeight: '800',
     color: LuxeColors.onSurface,
+    letterSpacing: -0.3,
   },
   modalSubtitle: {
     fontSize: 13,
     color: LuxeColors.onSurfaceVariant,
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 8,
+    marginTop: 4,
+  },
+  modalCloseBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: LuxeBorderRadius.full,
+    backgroundColor: LuxeColors.surfaceVariant,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   modalList: {
-    paddingHorizontal: 20,
-    maxHeight: 400,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    maxHeight: 420,
   },
-  emptyModalText: {
-    fontSize: 14,
+  emptyModalState: {
+    alignItems: 'center',
+    paddingVertical: 48,
+    gap: 10,
+  },
+  emptyModalTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: LuxeColors.onSurface,
+  },
+  emptyModalDesc: {
+    fontSize: 13,
     color: LuxeColors.onSurfaceVariant,
     textAlign: 'center',
-    paddingVertical: 40,
   },
   redeemItem: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 12,
-    marginVertical: 4,
+    marginBottom: 10,
     borderRadius: LuxeBorderRadius.lg,
-    backgroundColor: LuxeColors.background,
+    backgroundColor: LuxeColors.surfaceContainerLow,
     borderWidth: 1.5,
     borderColor: 'transparent',
+    overflow: 'hidden',
   },
   redeemItemSelected: {
-    borderColor: LuxeColors.primaryContainer,
-    backgroundColor: LuxeColors.primaryContainer + '10',
+    borderWidth: 1.5,
   },
-  redeemItemInfo: {
+  redeemItemAccent: {
+    width: 4,
+    alignSelf: 'stretch',
+  },
+  redeemItemBody: {
     flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
   },
-  redeemItemCode: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: LuxeColors.onSurface,
-    fontFamily: Platform.OS === 'web' ? 'monospace' : undefined,
-  },
-  redeemItemDiscount: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: LuxeColors.primaryContainer,
-    marginTop: 2,
-  },
-  redeemItemRight: {
+  redeemItemTop: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    marginBottom: 4,
   },
-  redeemItemPoints: {
-    fontSize: 12,
-    color: LuxeColors.primaryContainer,
-    fontWeight: '600',
+  redeemItemCode: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: LuxeColors.onSurface,
+    fontFamily: Platform.OS === 'web' ? 'monospace' : undefined,
+    letterSpacing: 0.5,
+  },
+  redeemItemBottom: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  redeemItemDiscount: {
+    fontSize: 15,
+    fontWeight: '800',
+    letterSpacing: -0.3,
+  },
+  redeemItemMinOrder: {
+    fontSize: 11,
+    color: LuxeColors.onSurfaceVariant,
+  },
+  redeemItemRight: {
+    alignItems: 'center',
+    gap: 10,
+    paddingRight: 14,
+  },
+  pointsBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: LuxeBorderRadius.full,
+  },
+  pointsBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 22,
+    borderWidth: 1.5,
+    borderColor: LuxeColors.outlineVariant,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalFooter: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
   },
   redeemBtn: {
-    backgroundColor: LuxeColors.primaryContainer,
-    marginHorizontal: 20,
-    marginTop: 16,
+    backgroundColor: LuxeColors.primary,
     borderRadius: LuxeBorderRadius.lg,
     paddingVertical: 16,
     alignItems: 'center',
     ...LuxeShadows.primary,
   },
   redeemBtnDisabled: {
-    opacity: 0.6,
+    opacity: 0.5,
   },
   redeemBtnText: {
     color: '#ffffff',
