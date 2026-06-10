@@ -22,6 +22,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function VehiclesScreen() {
   const router = useRouter();
@@ -45,7 +46,7 @@ export default function VehiclesScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={["top"]}>
       <Header
         title="Xe của tôi"
         onBack={() => {
@@ -170,14 +171,14 @@ export default function VehiclesScreen() {
           </View>
         )}
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: LuxeColors.background },
   scrollView: { flex: 1 },
-  scrollContent: { padding: 20, paddingBottom: 40 },
+  scrollContent: { padding: 20, paddingBottom: 100 },
   addBtn: {
     flexDirection: "row",
     alignItems: "center",

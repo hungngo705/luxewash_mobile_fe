@@ -31,6 +31,7 @@ export function BookingSuccessScreen() {
   const date = params.date as string;
   const timeSlot = params.timeSlot as string;
   const finalAmount = params.finalAmount as string;
+  const voucherDiscount = parseInt(params.voucherDiscount as string) || 0;
   const branchName = (params.branchName as string) || 'LuxeWash';
 
   const formattedDate = date
@@ -127,6 +128,18 @@ export function BookingSuccessScreen() {
 
             <View style={styles.totalDivider} />
 
+            {voucherDiscount > 0 && (
+              <>
+                <View style={styles.totalRow}>
+                  <Text style={styles.voucherLabelRow}>Giảm từ voucher</Text>
+                  <Text style={styles.voucherDiscountRow}>
+                    -{voucherDiscount.toLocaleString("vi-VN")}đ
+                  </Text>
+                </View>
+                <View style={styles.totalDivider} />
+              </>
+            )}
+
             <View style={styles.totalRow}>
               <Text style={styles.totalLabel}>Tổng thanh toán</Text>
               <Text style={styles.totalValue}>
@@ -200,6 +213,8 @@ const styles = StyleSheet.create({
   totalRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 6 },
   totalLabel: { fontSize: 16, fontWeight: "800", color: LuxeColors.onSurface },
   totalValue: { fontSize: 22, fontWeight: "800", color: LuxeColors.primaryContainer },
+  voucherLabelRow: { fontSize: 14, color: LuxeColors.primaryContainer, fontWeight: "600" },
+  voucherDiscountRow: { fontSize: 14, fontWeight: "700", color: LuxeColors.primaryContainer },
   infoBox: { flexDirection: "row", backgroundColor: LuxeColors.primaryContainer + '10', borderRadius: 16, padding: 16, gap: 12, marginBottom: 16, ...LuxeShadows.sm },
   infoIconWrap: { width: 36, height: 36, borderRadius: 12, backgroundColor: '#ffffff', alignItems: "center", justifyContent: "center", flexShrink: 0 },
   infoText: { flex: 1, fontSize: 13, color: LuxeColors.onSurfaceVariant, lineHeight: 20 },

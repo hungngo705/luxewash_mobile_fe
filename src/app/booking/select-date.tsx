@@ -58,6 +58,7 @@ export default function SelectDateScreen() {
   const servicePriceParam = parseInt(params.servicePrice as string) || 0;
   const membershipDiscountParam = parseFloat(params.membershipDiscount as string) || 0;
   const vehicleIdParam = (params.vehicleId as string) || '';
+  const vehicleDbIdParam = (params.vehicleDbId as string) || '';
   const vehicleTypeIdParam = parseInt(params.vehicleTypeId as string) || 1;
   const vehicleBrandParam = (params.vehicleBrand as string) || '';
   const branchIdParam = parseInt(params.branchId as string) || 1;
@@ -162,6 +163,7 @@ export default function SelectDateScreen() {
         servicePrice: String(servicePriceParam),
         membershipDiscount: String(membershipDiscountParam),
         vehicleId: vehicleIdParam,
+        vehicleDbId: vehicleDbIdParam,
         vehicleTypeId: String(vehicleTypeIdParam),
         vehicleBrand: vehicleBrandParam,
         date: toLocalDateString(selectedDate),

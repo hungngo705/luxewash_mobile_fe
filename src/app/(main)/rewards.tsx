@@ -3,29 +3,36 @@
  * Shows loyalty points and available rewards
  */
 
-import React, { useEffect, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
+  LuxeBorderRadius,
+  LuxeColors,
+  LuxeSpacing,
+  MembershipConfig,
+} from "@/constants/luxeTheme";
+import { useAuth } from "@/contexts/AuthContext";
+import { loyaltyService, type Tier, type Voucher } from "@/services/api";
+import { Feather } from "@expo/vector-icons";
+import { useRouter, type RelativePathString } from "expo-router";
+import React, { useEffect, useState } from "react";
+import {
   ActivityIndicator,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Feather } from '@expo/vector-icons';
-import { useRouter, type RelativePathString } from 'expo-router';
-import { LuxeColors, LuxeSpacing, LuxeBorderRadius, MembershipConfig } from '@/constants/luxeTheme';
-import { useAuth } from '@/contexts/AuthContext';
-import { loyaltyService, type Tier, type Voucher } from '@/services/api';
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function RewardsScreen() {
   const router = useRouter();
   const { user } = useAuth();
-  const membershipInfo = user ? MembershipConfig[user.membershipTier] : MembershipConfig.standard;
+  const membershipInfo = user
+    ? MembershipConfig[user.membershipTier]
+    : MembershipConfig.standard;
 
   const formatCurrency = (amount: number): string => {
-    return new Intl.NumberFormat('vi-VN').format(amount);
+    return new Intl.NumberFormat("vi-VN").format(amount);
   };
 
   const [tiers, setTiers] = useState<Tier[]>([]);
@@ -40,13 +47,16 @@ export default function RewardsScreen() {
           loyaltyService.getTiers(),
           loyaltyService.getMyVouchers(),
         ]);
-        if (tiersRes.statusCode === 200 && tiersRes.data) setTiers(tiersRes.data);
+        if (tiersRes.statusCode === 200 && tiersRes.data)
+          setTiers(tiersRes.data);
         if (vouchersRes.statusCode === 200 && vouchersRes.data) {
-          const available = vouchersRes.data.filter((v) => !v.isUsed && v.remainingUsage > 0);
+          const available = vouchersRes.data.filter(
+            (v) => !v.isUsed && v.remainingUsage > 0,
+          );
           setVouchers(available);
         }
       } catch (e) {
-        console.error('Failed to load loyalty data:', e);
+        console.error("Failed to load loyalty data:", e);
       }
       setLoading(false);
     };
@@ -55,7 +65,7 @@ export default function RewardsScreen() {
 
   return (
     <View style={styles.container}>
-      <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <SafeAreaView style={styles.safeArea} edges={["top"]}>
         <ScrollView
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
@@ -67,13 +77,25 @@ export default function RewardsScreen() {
               <Text style={styles.pointsLabel}>Số dư hiện tại</Text>
             </View>
             <View style={styles.pointsDisplay}>
-              <Text style={styles.pointsValue}>{user?.loyaltyPoints?.toLocaleString('vi-VN') || '0'}</Text>
+              <Text style={styles.pointsValue}>
+                {user?.loyaltyPoints?.toLocaleString("vi-VN") || "0"}
+              </Text>
               <Text style={styles.pointsUnit}>Điểm</Text>
             </View>
             <View style={styles.membershipInfo}>
               <Text style={styles.membershipLabel}>Cấp độ thành viên</Text>
-              <View style={[styles.membershipBadge, { backgroundColor: membershipInfo.color + '20' }]}>
-                <Text style={[styles.membershipBadgeText, { color: membershipInfo.color }]}>
+              <View
+                style={[
+                  styles.membershipBadge,
+                  { backgroundColor: membershipInfo.color + "20" },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.membershipBadgeText,
+                    { color: membershipInfo.color },
+                  ]}
+                >
                   {membershipInfo.nameVi}
                 </Text>
               </View>
@@ -86,9 +108,17 @@ export default function RewardsScreen() {
             <View style={styles.benefitsGrid}>
               {membershipInfo.benefits.map((benefit, index) => (
                 <View key={index} style={styles.benefitCard}>
-                    <View style={styles.benefitIcon}>
+                  <View style={styles.benefitIcon}>
                     <Feather
-                      name={index === 0 ? 'tag' : index === 1 ? 'check-circle' : index === 2 ? 'trending-up' : 'gift'}
+                      name={
+                        index === 0
+                          ? "tag"
+                          : index === 1
+                            ? "check-circle"
+                            : index === 2
+                              ? "trending-up"
+                              : "gift"
+                      }
                       size={20}
                       color={LuxeColors.primaryContainer}
                     />
@@ -103,7 +133,9 @@ export default function RewardsScreen() {
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Đổi phần thưởng</Text>
-              <TouchableOpacity onPress={() => router.push('/vouchers' as RelativePathString)}>
+              <TouchableOpacity
+                onPress={() => router.push("/vouchers" as RelativePathString)}
+              >
                 <Text style={styles.seeAllText}>Xem tất cả →</Text>
               </TouchableOpacity>
             </View>
@@ -114,7 +146,7 @@ export default function RewardsScreen() {
                 <TouchableOpacity
                   key={voucher.voucherId}
                   style={styles.rewardCard}
-                  onPress={() => router.push('/vouchers' as RelativePathString)}
+                  onPress={() => router.push("/vouchers" as RelativePathString)}
                 >
                   <View style={styles.rewardContent}>
                     <Text style={styles.rewardTitle}>{voucher.code}</Text>
@@ -136,9 +168,11 @@ export default function RewardsScreen() {
             ) : (
               <TouchableOpacity
                 style={styles.emptyCard}
-                onPress={() => router.push('/vouchers' as RelativePathString)}
+                onPress={() => router.push("/vouchers" as RelativePathString)}
               >
-                <Text style={styles.emptyText}>Chưa có voucher - Nhận ngay!</Text>
+                <Text style={styles.emptyText}>
+                  Chưa có voucher - Nhận ngay!
+                </Text>
                 <Text style={styles.emptyAction}>→ Đến kho voucher</Text>
               </TouchableOpacity>
             )}
@@ -149,30 +183,21 @@ export default function RewardsScreen() {
             <Text style={styles.sectionTitle}>Cách tích điểm</Text>
             <View style={styles.earnCard}>
               <View style={styles.earnItem}>
-                <View style={[styles.earnIconContainer, { backgroundColor: LuxeColors.primaryContainer + '20' }]}>
-                  <Feather name="settings" size={20} color={LuxeColors.primaryContainer} />
+                <View
+                  style={[
+                    styles.earnIconContainer,
+                    { backgroundColor: LuxeColors.primaryContainer + "20" },
+                  ]}
+                >
+                  <Feather
+                    name="settings"
+                    size={20}
+                    color={LuxeColors.primaryContainer}
+                  />
                 </View>
                 <View style={styles.earnInfo}>
                   <Text style={styles.earnTitle}>Sử dụng dịch vụ</Text>
                   <Text style={styles.earnDesc}>1 điểm/1.000đ thanh toán</Text>
-                </View>
-              </View>
-              <View style={styles.earnItem}>
-                <View style={[styles.earnIconContainer, { backgroundColor: '#F59E0B20' }]}>
-                  <Feather name="star" size={20} color="#F59E0B" />
-                </View>
-                <View style={styles.earnInfo}>
-                  <Text style={styles.earnTitle}>Đánh giá dịch vụ</Text>
-                  <Text style={styles.earnDesc}>+50 điểm/đánh giá</Text>
-                </View>
-              </View>
-              <View style={styles.earnItem}>
-                <View style={[styles.earnIconContainer, { backgroundColor: '#EC407A20' }]}>
-                  <Feather name="gift" size={20} color="#EC407A" />
-                </View>
-                <View style={styles.earnInfo}>
-                  <Text style={styles.earnTitle}>Sinh nhật</Text>
-                  <Text style={styles.earnDesc}>+200 điểm vào ngày sinh nhật</Text>
                 </View>
               </View>
             </View>
@@ -200,10 +225,10 @@ const styles = StyleSheet.create({
     paddingBottom: 100,
   },
   pointsCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.85)',
+    backgroundColor: "rgba(255, 255, 255, 0.85)",
     borderRadius: LuxeBorderRadius.xl,
     padding: LuxeSpacing.xl,
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: LuxeSpacing.xl,
     shadowColor: LuxeColors.primaryContainer,
     shadowOffset: { width: 0, height: 10 },
@@ -216,30 +241,30 @@ const styles = StyleSheet.create({
   },
   pointsLabel: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
     color: LuxeColors.onSurfaceVariant,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
     letterSpacing: 2,
   },
   pointsDisplay: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
+    flexDirection: "row",
+    alignItems: "baseline",
     marginBottom: LuxeSpacing.md,
   },
   pointsValue: {
     fontSize: 48,
-    fontWeight: '700',
+    fontWeight: "700",
     color: LuxeColors.onSurface,
   },
   pointsUnit: {
     fontSize: 18,
-    fontWeight: '500',
+    fontWeight: "500",
     color: LuxeColors.primaryContainer,
     marginLeft: 8,
   },
   membershipInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 12,
   },
   membershipLabel: {
@@ -253,66 +278,66 @@ const styles = StyleSheet.create({
   },
   membershipBadgeText: {
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   section: {
     marginBottom: LuxeSpacing.xl,
   },
   sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: LuxeSpacing.md,
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: "600",
     color: LuxeColors.onSurface,
   },
   seeAllText: {
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: "600",
     color: LuxeColors.primaryContainer,
   },
   benefitsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: LuxeSpacing.md,
   },
   benefitCard: {
-    width: '48%',
-    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    width: "48%",
+    backgroundColor: "rgba(255, 255, 255, 0.8)",
     borderRadius: LuxeBorderRadius.lg,
     padding: LuxeSpacing.md,
-    alignItems: 'center',
+    alignItems: "center",
     borderWidth: 1,
-    borderColor: LuxeColors.outlineVariant + '30',
+    borderColor: LuxeColors.outlineVariant + "30",
   },
   benefitIcon: {
     marginBottom: 8,
   },
   benefitText: {
     fontSize: 13,
-    fontWeight: '500',
+    fontWeight: "500",
     color: LuxeColors.onSurface,
-    textAlign: 'center',
+    textAlign: "center",
   },
   rewardCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    backgroundColor: "rgba(255, 255, 255, 0.8)",
     borderRadius: LuxeBorderRadius.xl,
     padding: LuxeSpacing.md,
     marginBottom: LuxeSpacing.md,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     borderWidth: 1,
-    borderColor: LuxeColors.outlineVariant + '30',
+    borderColor: LuxeColors.outlineVariant + "30",
   },
   rewardContent: {
     flex: 1,
   },
   rewardTitle: {
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: "600",
     color: LuxeColors.onSurface,
     marginBottom: 4,
   },
@@ -322,16 +347,16 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   rewardAction: {
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
+    alignItems: "flex-end",
+    justifyContent: "space-between",
   },
   rewardPoints: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
     color: LuxeColors.primaryContainer,
   },
   redeemBtn: {
-    backgroundColor: LuxeColors.primaryContainer + '20',
+    backgroundColor: LuxeColors.primaryContainer + "20",
     paddingHorizontal: 16,
     paddingVertical: 6,
     borderRadius: LuxeBorderRadius.md,
@@ -339,7 +364,7 @@ const styles = StyleSheet.create({
   },
   redeemBtnText: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: "600",
     color: LuxeColors.primaryContainer,
   },
   usedTag: {
@@ -350,17 +375,17 @@ const styles = StyleSheet.create({
   },
   usedTagText: {
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: "600",
     color: LuxeColors.onSurfaceVariant,
   },
   emptyCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.6)',
+    backgroundColor: "rgba(255, 255, 255, 0.6)",
     borderRadius: LuxeBorderRadius.xl,
     padding: LuxeSpacing.lg,
-    alignItems: 'center',
+    alignItems: "center",
     borderWidth: 1,
-    borderColor: LuxeColors.outlineVariant + '30',
-    borderStyle: 'dashed',
+    borderColor: LuxeColors.outlineVariant + "30",
+    borderStyle: "dashed",
   },
   emptyText: {
     fontSize: 14,
@@ -369,33 +394,33 @@ const styles = StyleSheet.create({
   },
   emptyAction: {
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: "600",
     color: LuxeColors.primaryContainer,
   },
   earnCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    backgroundColor: "rgba(255, 255, 255, 0.8)",
     borderRadius: LuxeBorderRadius.xl,
     padding: LuxeSpacing.md,
     gap: LuxeSpacing.md,
   },
   earnItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: LuxeSpacing.md,
   },
   earnIconContainer: {
     width: 40,
     height: 40,
     borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   earnInfo: {
     flex: 1,
   },
   earnTitle: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
     color: LuxeColors.onSurface,
   },
   earnDesc: {

@@ -10,11 +10,11 @@ import {
     LuxeShadows,
 } from "@/constants/luxeTheme";
 import { useAuth } from "@/contexts/AuthContext";
-import { bookingService } from "@/services/api";
+import { bookingService, loyaltyService, type Voucher } from "@/services/api";
 import { branchHistoryService } from "@/services/branchHistoryService";
 import { Feather } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
     ActivityIndicator,
     ScrollView,
@@ -28,6 +28,7 @@ import { vndToPoints, formatVnd } from "@/utils/format";
 import { Header } from "@/components/ui/Header";
 import { ProgressSteps } from "@/components/ui/ProgressSteps";
 import { BottomActionBar } from "@/components/ui/BottomActionBar";
+import { VoucherSelectionModal } from "@/components/booking/VoucherSelectionModal";
 
 export default function BookingConfirmationScreen() {
   const router = useRouter();
@@ -42,17 +43,27 @@ export default function BookingConfirmationScreen() {
   const slotIdParam = parseInt(params.slotId as string) || 0;
   const timeRangeParam = (params.timeRange as string) || "";
   const vehicleIdParam = (params.vehicleId as string) || "";
+  const vehicleDbIdParam = (params.vehicleDbId as string) || "";
+  const vehicleIdNumericParam = parseInt(vehicleDbIdParam) || 0;
   const vehicleTypeIdParam = parseInt(params.vehicleTypeId as string) || 1;
   const vehicleBrandParam = (params.vehicleBrand as string) || "";
   const branchIdParam = parseInt(params.branchId as string) || 1;
   const branchNameParam = (params.branchName as string) || "LuxeWash";
 
-  const subtotal = servicePriceParam;
-  const membershipDiscountAmount = Math.round(subtotal * membershipDiscountParam);
-  const finalPrice = Math.max(0, subtotal - membershipDiscountAmount);
-
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<"wallet" | "bank">("wallet");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [vouchers, setVouchers] = useState<Voucher[]>([]);
+  const [selectedVoucher, setSelectedVoucher] = useState<Voucher | null>(null);
+  const [showVoucherModal, setShowVoucherModal] = useState(false);
+  const [loadingVouchers, setLoadingVouchers] = useState(false);
+
+  const subtotal = servicePriceParam;
+  const membershipDiscountAmount = Math.round(subtotal * membershipDiscountParam);
+  const priceAfterMembership = subtotal - membershipDiscountAmount;
+  const voucherDiscountAmount = selectedVoucher
+    ? Math.min(selectedVoucher.discountAmount, priceAfterMembership)
+    : 0;
+  const finalPrice = Math.max(0, priceAfterMembership - voucherDiscountAmount);
 
   const formatDateDisplay = (dateStr: string): string => {
     if (!dateStr) return "";
@@ -65,6 +76,31 @@ export default function BookingConfirmationScreen() {
       year: "numeric",
     });
   };
+
+  const loadVouchers = useCallback(async () => {
+    setLoadingVouchers(true);
+    try {
+      const res = await loyaltyService.getMyVouchers();
+      if (res.statusCode === 200 && res.data) {
+        const usable = (res.data as Voucher[]).filter(
+          (v) =>
+            v.voucherType === 0 &&
+            !v.isUsed &&
+            v.remainingUsage > 0 &&
+            new Date(v.expiryDate) > new Date(),
+        );
+        setVouchers(usable);
+      }
+    } catch {
+      // silently fail — vouchers are optional
+    } finally {
+      setLoadingVouchers(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadVouchers();
+  }, [loadVouchers]);
 
   const handleConfirmBooking = async () => {
     if (selectedPaymentMethod === "wallet" && walletBalance < finalPrice) {
@@ -82,12 +118,14 @@ export default function BookingConfirmationScreen() {
 
       const res = await bookingService.createBooking({
         branchId: branchIdParam,
+        vehicleId: vehicleIdNumericParam || undefined,
         licensePlate: vehicleIdParam,
         serviceIds: [serviceIdParam],
         scheduledDate,
         slotId: slotIdParam,
         pointsToUse: 0,
-        voucherId: null,
+        voucherId: selectedVoucher?.voucherId ?? null,
+        paymentMethod: selectedPaymentMethod === "wallet" ? "Wallet" : "QR",
       });
 
       if (res.statusCode === 200 || res.statusCode === 201) {
@@ -109,6 +147,7 @@ export default function BookingConfirmationScreen() {
             timeSlot: timeRangeParam,
             finalAmount: String(finalPrice),
             branchName: branchNameParam,
+            voucherDiscount: String(voucherDiscountAmount),
           },
         });
       } else {
@@ -255,6 +294,54 @@ export default function BookingConfirmationScreen() {
             </TouchableOpacity>
           </View>
 
+          {/* Voucher Selection */}
+          <TouchableOpacity
+            style={styles.voucherSelectCard}
+            onPress={() => setShowVoucherModal(true)}
+            activeOpacity={0.7}
+          >
+            <View style={styles.voucherSelectLeft}>
+              <View style={styles.voucherSelectIconWrap}>
+                {loadingVouchers ? (
+                  <ActivityIndicator size="small" color={LuxeColors.primaryContainer} />
+                ) : (
+                  <Feather name="tag" size={20} color={LuxeColors.primaryContainer} />
+                )}
+              </View>
+              <View style={styles.voucherSelectInfo}>
+                <Text style={styles.voucherSelectTitle}>Voucher giảm giá</Text>
+                {selectedVoucher ? (
+                  <Text style={styles.voucherSelectValue}>
+                    -{selectedVoucher.discountAmount.toLocaleString("vi-VN")}đ
+                    {" · "}
+                    {selectedVoucher.code}
+                  </Text>
+                ) : (
+                  <Text style={styles.voucherSelectPlaceholder}>
+                    {vouchers.length > 0
+                      ? `${vouchers.length} voucher khả dụng`
+                      : "Chưa chọn voucher"}
+                  </Text>
+                )}
+              </View>
+            </View>
+            <View style={styles.voucherSelectRight}>
+              {selectedVoucher ? (
+                <TouchableOpacity
+                  hitSlop={10}
+                  onPress={(e) => {
+                    e.stopPropagation?.();
+                    setSelectedVoucher(null);
+                  }}
+                >
+                  <Feather name="x-circle" size={22} color={LuxeColors.error} />
+                </TouchableOpacity>
+              ) : (
+                <Feather name="chevron-right" size={20} color={LuxeColors.onSurfaceVariant} />
+              )}
+            </View>
+          </TouchableOpacity>
+
           {/* Billing Details */}
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Chi tiết thanh toán</Text>
@@ -274,6 +361,17 @@ export default function BookingConfirmationScreen() {
                   </Text>
                 </View>
                 <Text style={styles.billingDiscount}>-{membershipDiscountAmount.toLocaleString("vi-VN")}đ</Text>
+              </View>
+            )}
+            {voucherDiscountAmount > 0 && (
+              <View style={styles.billingRow}>
+                <View style={styles.discountLabelWrap}>
+                  <Feather name="percent" size={14} color={LuxeColors.primaryContainer} />
+                  <Text style={[styles.billingLabel, styles.billingDiscountLabel]}>
+                    Giảm từ voucher
+                  </Text>
+                </View>
+                <Text style={styles.billingDiscount}>-{voucherDiscountAmount.toLocaleString("vi-VN")}đ</Text>
               </View>
             )}
             <View style={styles.billingDivider} />
@@ -299,6 +397,19 @@ export default function BookingConfirmationScreen() {
           loading={isSubmitting}
           disabled={isSubmitting}
           icon="check-circle"
+        />
+
+        <VoucherSelectionModal
+          visible={showVoucherModal}
+          vouchers={vouchers}
+          selectedVoucher={selectedVoucher}
+          orderAmount={priceAfterMembership}
+          loading={loadingVouchers}
+          onSelect={(v) => {
+            setSelectedVoucher(v);
+            setShowVoucherModal(false);
+          }}
+          onClose={() => setShowVoucherModal(false)}
         />
       </SafeAreaView>
     </View>
@@ -352,4 +463,29 @@ const styles = StyleSheet.create({
   billingTotalValue: { fontSize: 22, fontWeight: '800', color: LuxeColors.primaryContainer },
   termsText: { fontSize: 12, color: LuxeColors.onSurfaceVariant, textAlign: 'center', lineHeight: 18, paddingHorizontal: 8 },
   termsLink: { color: LuxeColors.primaryContainer, fontWeight: '600' },
+  voucherSelectCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 16,
+    borderWidth: 1.5,
+    borderColor: LuxeColors.primaryContainer + '40',
+    ...LuxeShadows.sm,
+  },
+  voucherSelectLeft: { flexDirection: 'row', alignItems: 'center', flex: 1, gap: 12 },
+  voucherSelectIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: LuxeColors.primaryContainer + '18',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  voucherSelectInfo: { flex: 1 },
+  voucherSelectTitle: { fontSize: 13, fontWeight: '700', color: LuxeColors.onSurface, marginBottom: 2 },
+  voucherSelectValue: { fontSize: 13, fontWeight: '600', color: LuxeColors.primaryContainer },
+  voucherSelectPlaceholder: { fontSize: 13, color: LuxeColors.onSurfaceVariant },
+  voucherSelectRight: { marginLeft: 8 },
 });
