@@ -20,7 +20,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 
 const CAMPAIGN_BADGE_CONFIG: Record<number, { label: string; bg: string; color: string; icon: string }> = {
   0: { label: 'Đổi điểm', bg: '#E0E7FF', color: '#4F46E5', icon: 'tag' },
@@ -178,12 +178,9 @@ export function VoucherSelectionModal({
       onRequestClose={onClose}
     >
       <Pressable style={styles.overlay} onPress={onClose}>
-        <Pressable
-          style={[
-            styles.sheet,
-            { paddingBottom: Math.max(insets.bottom, 24) },
-          ]}
-          onPress={(e) => e.stopPropagation()}
+        <SafeAreaView
+          style={styles.sheet}
+          edges={['top', 'bottom']}
         >
           {/* Handle bar */}
           <View style={[styles.handleBar, { marginTop: insets.top > 0 ? 4 : 12 }]} />
@@ -258,7 +255,7 @@ export function VoucherSelectionModal({
               </Text>
             </TouchableOpacity>
           </View>
-        </Pressable>
+        </SafeAreaView>
       </Pressable>
     </Modal>
   );
@@ -276,6 +273,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     marginTop: 'auto',
+    paddingBottom: 24,
     ...LuxeShadows.xl,
   },
   handleBar: {
