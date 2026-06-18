@@ -519,7 +519,7 @@ export default function AddVehicleScreen() {
             )}
             {!loadingModels && !isOtherModelFreeText && (
               <Text style={styles.hint}>
-                Chọn mẫu xe từ danh sách. Nếu không có, chọn "Khác" và nhập mẫu
+                Chọn mẫu xe từ danh sách. Nếu không có, chọn &quot;Khác&quot; và nhập mẫu
                 xe.
               </Text>
             )}

@@ -12,6 +12,7 @@ import {
 } from "@/constants/luxeTheme";
 import { useAuth } from "@/contexts/AuthContext";
 import {
+    ApiError,
     bookingService,
     type BookingDetailResponse,
 } from "@/services/api";
@@ -67,6 +68,19 @@ const InfoRow: React.FC<{ label: string; value: string | React.ReactNode; last?:
     </View>
 );
 
+const getErrorMessage = (error: unknown, fallback: string): string => {
+    if (error instanceof ApiError && error.message) {
+        return error.message;
+    }
+    if (error && typeof error === "object" && "message" in error) {
+        const message = (error as { message?: unknown }).message;
+        if (typeof message === "string" && message.trim()) {
+            return message;
+        }
+    }
+    return fallback;
+};
+
 export default function BookingDetailScreen() {
     const router = useRouter();
     const { id } = useLocalSearchParams<{ id: string }>();
@@ -103,7 +117,7 @@ export default function BookingDetailScreen() {
     const handleCancel = () => {
         confirm({
             title: "Hủy lịch hẹn",
-            message: "Bạn có chắc muốn hủy lịch hẹn này? Tiền và điểm sẽ được hoàn lại.",
+            message: "Bạn có chắc muốn hủy lịch hẹn này? Điều kiện hoàn tiền sẽ được hệ thống kiểm tra tự động.",
             confirmText: "Hủy lịch",
             destructive: true,
             onConfirm: async () => {
@@ -116,7 +130,7 @@ export default function BookingDetailScreen() {
                         setTimeout(() => {
                             confirm({
                                 title: "Hủy thành công",
-                                message: "Lịch hẹn đã được hủy thành công. Tiền và điểm sẽ được hoàn lại.",
+                                message: "Lịch hẹn đã được hủy thành công. Nếu đủ điều kiện, tiền và điểm sẽ được hoàn lại.",
                                 confirmText: "Đã hiểu",
                                 showCancel: false,
                                 destructive: false,
@@ -132,8 +146,8 @@ export default function BookingDetailScreen() {
                     } else {
                         alert(res.message || "Không thể hủy lịch. Vui lòng thử lại.");
                     }
-                } catch {
-                    alert("Không thể hủy lịch. Vui lòng thử lại.");
+                } catch (e: unknown) {
+                    alert(getErrorMessage(e, "Không thể hủy lịch. Vui lòng thử lại."));
                 } finally {
                     setCancelling(false);
                 }
@@ -153,10 +167,20 @@ export default function BookingDetailScreen() {
     );
     const vehicleImage = userVehicle?.imageUrl;
 
-    const isCancellable = booking?.status === "Pending" || booking?.status === "CheckedIn";
+    const isCancellable = booking?.status === "Pending";
+    const isReschedulable = booking?.status === "Pending" || booking?.status === "Confirmed";
+    const hasActions = isCancellable || isReschedulable;
 
     const scheduledDate = booking?.scheduledTime ? formatDate(booking.scheduledTime) : null;
     const scheduledTime = booking?.scheduledTime ? formatTime(booking.scheduledTime) : null;
+
+    const handleReschedule = () => {
+        if (!booking) return;
+        router.push({
+            pathname: "/booking/reschedule",
+            params: { bookingId: String(booking.bookingId) },
+        });
+    };
 
     return (
         <View style={styles.container}>
@@ -308,24 +332,36 @@ export default function BookingDetailScreen() {
                         <View style={styles.bottomSpacer} />
                     </ScrollView>
 
-                    {/* Cancel Button */}
-                    {isCancellable && (
+                    {/* Booking Actions */}
+                    {hasActions && (
                         <SafeAreaView edges={["bottom"]} style={styles.bottomBar}>
-                            <TouchableOpacity
-                                style={styles.cancelBtn}
-                                onPress={handleCancel}
-                                disabled={cancelling}
-                                activeOpacity={0.75}
-                            >
-                                {cancelling ? (
-                                    <ActivityIndicator size="small" color="#DC2626" />
-                                ) : (
-                                    <>
-                                        <Feather name="x-circle" size={18} color="#DC2626" />
-                                        <Text style={styles.cancelBtnText}>Hủy lịch hẹn</Text>
-                                    </>
-                                )}
-                            </TouchableOpacity>
+                            {isReschedulable && (
+                                <TouchableOpacity
+                                    style={styles.rescheduleBtn}
+                                    onPress={handleReschedule}
+                                    activeOpacity={0.75}
+                                >
+                                    <Feather name="calendar" size={18} color="#ffffff" />
+                                    <Text style={styles.rescheduleBtnText}>Đổi lịch hẹn</Text>
+                                </TouchableOpacity>
+                            )}
+                            {isCancellable && (
+                                <TouchableOpacity
+                                    style={styles.cancelBtn}
+                                    onPress={handleCancel}
+                                    disabled={cancelling}
+                                    activeOpacity={0.75}
+                                >
+                                    {cancelling ? (
+                                        <ActivityIndicator size="small" color="#DC2626" />
+                                    ) : (
+                                        <>
+                                            <Feather name="x-circle" size={18} color="#DC2626" />
+                                            <Text style={styles.cancelBtnText}>Hủy lịch hẹn</Text>
+                                        </>
+                                    )}
+                                </TouchableOpacity>
+                            )}
                         </SafeAreaView>
                     )}
                 </>
@@ -393,7 +429,7 @@ const styles = StyleSheet.create({
         ...LuxeShadows.sm,
     },
     mt10: { marginTop: 10 },
-    bottomSpacer: { height: 100 },
+    bottomSpacer: { height: 156 },
 
     // Section title
     sectionTitle: {
@@ -460,10 +496,22 @@ const styles = StyleSheet.create({
         backgroundColor: "#ffffff",
         paddingHorizontal: 16,
         paddingTop: 12,
+        gap: 10,
         borderTopWidth: 1,
         borderTopColor: LuxeColors.outlineVariant + "20",
         ...LuxeShadows.lg,
     },
+    rescheduleBtn: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 8,
+        paddingVertical: 14,
+        borderRadius: LuxeBorderRadius.lg,
+        backgroundColor: LuxeColors.primaryContainer,
+        ...LuxeShadows.primary,
+    },
+    rescheduleBtnText: { fontSize: 15, fontWeight: "700", color: "#ffffff" },
     cancelBtn: {
         flexDirection: "row",
         alignItems: "center",

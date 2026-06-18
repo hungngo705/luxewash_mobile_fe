@@ -11,7 +11,8 @@ export type {
 export { bookingService } from "./bookingService";
 export type {
     BookingDetail, BookingDetailResponse, BookingDetailVehicle, BookingRequest,
-    CompatibilityDTO, CreateBookingResponse, GetMyBookingsParams, MyBookingItem, Service,
+    CompatibilityDTO, CreateBookingResponse, GetMyBookingsParams, MyBookingItem,
+    RescheduleBookingRequest, Service,
     ServicePrice, TimeSlot
 } from "./bookingService";
 export { branchService } from "./branchService";
@@ -35,4 +36,3 @@ export type {
     TopUpRequest,
     Transaction, TransactionStatus, TransactionType, WalletBalance
 } from "./walletService";
-

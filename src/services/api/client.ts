@@ -172,7 +172,7 @@ async function request<T>(
               await setTokens(data.data.token, data.data.refreshToken);
               processQueue(null);
               isRefreshing = false;
-              return request<T>(method, finalEndpoint, undefined, true);
+              return request<T>(method, endpoint, body, true);
             }
           }
         }

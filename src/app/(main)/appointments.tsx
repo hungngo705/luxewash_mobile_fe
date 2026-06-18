@@ -20,8 +20,8 @@ import {
     getGreeting,
 } from "@/utils/format";
 import { Feather } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useFocusEffect, useRouter } from "expo-router";
+import React, { useCallback, useMemo, useState } from "react";
 import {
     ActivityIndicator,
     Dimensions,
@@ -112,19 +112,29 @@ export default function AppointmentsScreen() {
       } else {
         setBookings([]);
       }
-    } catch (e) {
+    } catch {
       setBookings([]);
     }
   }, []);
 
-  useEffect(() => {
-    const doLoad = async () => {
-      setLoading(true);
-      await loadBookings();
-      setLoading(false);
-    };
-    doLoad();
-  }, [loadBookings]);
+  useFocusEffect(
+    useCallback(() => {
+      let isActive = true;
+
+      const doLoad = async () => {
+        setLoading(true);
+        await loadBookings();
+        if (isActive) {
+          setLoading(false);
+        }
+      };
+
+      doLoad();
+      return () => {
+        isActive = false;
+      };
+    }, [loadBookings]),
+  );
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);

@@ -420,11 +420,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: LuxeColors.primaryContainer,
   },
-  resendLink: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: LuxeColors.primaryContainer,
-  },
   footer: {
     textAlign: "center",
     fontSize: 12,
