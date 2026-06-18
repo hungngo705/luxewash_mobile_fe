@@ -88,6 +88,11 @@ export interface CreateBookingResponse {
   bookingId: number;
 }
 
+export interface RescheduleBookingRequest {
+  newScheduledDate: string;
+  newSlotId: number;
+}
+
 export interface MyBookingItem {
   bookingId: number;
   licensePlate: string;
@@ -158,5 +163,12 @@ export const bookingService = {
 
   getBookingDetail: async (bookingId: number): Promise<ApiResponse<BookingDetailResponse>> => {
     return apiClient.get<BookingDetailResponse>(`/bookings/${bookingId}`);
+  },
+
+  rescheduleBooking: async (
+    bookingId: number,
+    data: RescheduleBookingRequest,
+  ): Promise<ApiResponse<BookingDetailResponse>> => {
+    return apiClient.put<BookingDetailResponse>(`/bookings/${bookingId}/reschedule`, data);
   },
 };

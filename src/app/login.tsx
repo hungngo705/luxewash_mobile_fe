@@ -473,12 +473,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: LuxeColors.onSurface,
   },
-  emailInputError: {
-    fontSize: 12,
-    color: "#DC2626",
-    fontWeight: "500",
-    marginBottom: 12,
-  },
   modalSendBtn: {
     flexDirection: "row",
     alignItems: "center",
