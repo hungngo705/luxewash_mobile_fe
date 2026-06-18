@@ -24,6 +24,12 @@ export interface VehicleResponse {
   carModel: string | null;
 }
 
+export interface RequestCarModelPayload {
+  brand: string;
+  name: string;
+  vehicleTypeId?: number | null;
+}
+
 export const vehicleService = {
   getVehicleTypes: async (): Promise<ApiResponse<VehicleType[]>> => {
     return apiClient.get<VehicleType[]>('/admin/vehicle-types');
@@ -31,6 +37,17 @@ export const vehicleService = {
 
   getCarModels: async (): Promise<ApiResponse<CarModel[]>> => {
     return apiClient.get<CarModel[]>('/carModels');
+  },
+
+  /**
+   * Request a new car model (crowdsourcing).
+   * POST /api/v1/carmodels/request
+   * Returns the new CarModelId.
+   */
+  requestCarModel: async (
+    payload: RequestCarModelPayload,
+  ): Promise<ApiResponse<number>> => {
+    return apiClient.post<number>('/carModels/request', payload);
   },
 
   getMyVehicles: async (): Promise<ApiResponse<VehicleResponse[]>> => {

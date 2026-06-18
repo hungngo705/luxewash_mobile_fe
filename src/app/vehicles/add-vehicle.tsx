@@ -61,6 +61,7 @@ export default function AddVehicleScreen() {
   const [loadingTypes, setLoadingTypes] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showTypePicker, setShowTypePicker] = useState(false);
+  const [userNote, setUserNote] = useState("");
 
   // Car model dropdown state
   const [carModels, setCarModels] = useState<CarModel[]>([]);
@@ -71,7 +72,8 @@ export default function AddVehicleScreen() {
   const [showModelPicker, setShowModelPicker] = useState(false);
   const [modelSearchQuery, setModelSearchQuery] = useState("");
   // Free-text car model when user selects "Khác" in mẫu xe dropdown
-  const [otherCarModelText, setOtherCarModelText] = useState("");
+  const [otherBrand, setOtherBrand] = useState("");
+  const [otherModelName, setOtherModelName] = useState("");
   const [isOtherModelFreeText, setIsOtherModelFreeText] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -102,9 +104,13 @@ export default function AddVehicleScreen() {
       try {
         const res = await vehicleService.getVehicleTypes();
         if (res.statusCode === 200 && res.data) {
-          setVehicleTypes(res.data);
-          if (res.data.length > 0) {
-            setSelectedTypeId(res.data[0].id);
+          const types = [...res.data];
+          if (!types.some((t) => t.name.toLowerCase() === "khác" || t.name.toLowerCase() === "other")) {
+            types.push({ id: 9999, name: "Khác" });
+          }
+          setVehicleTypes(types);
+          if (types.length > 0) {
+            setSelectedTypeId(types[0].id);
           }
         }
       } catch (e) {
@@ -113,6 +119,7 @@ export default function AddVehicleScreen() {
           { id: 1, name: "Sedan" },
           { id: 2, name: "SUV" },
           { id: 3, name: "Pickup" },
+          { id: 9999, name: "Khác" },
         ];
         setVehicleTypes(fallback);
         setSelectedTypeId(1);
@@ -128,14 +135,17 @@ export default function AddVehicleScreen() {
     setShowModelPicker(false);
     setSelectedCarModel(null);
     setModelSearchQuery("");
-    setOtherCarModelText("");
+    setOtherBrand("");
+    setOtherModelName("");
+    setUserNote("");
     setIsOtherModelFreeText(false);
   }, [selectedTypeId]);
 
   // Reset free-text car model when dropdown selection changes
   useEffect(() => {
     if (selectedCarModel) {
-      setOtherCarModelText("");
+      setOtherBrand("");
+      setOtherModelName("");
       setIsOtherModelFreeText(false);
     }
   }, [selectedCarModel]);
@@ -239,8 +249,16 @@ export default function AddVehicleScreen() {
       alert("Vui lòng chọn mẫu xe");
       return;
     }
+    if (isOtherModelFreeText && (!otherBrand.trim() || !otherModelName.trim())) {
+      alert("Vui lòng nhập đầy đủ hãng xe và tên mẫu xe");
+      return;
+    }
     if (!selectedTypeId) {
       alert("Vui lòng chọn loại xe");
+      return;
+    }
+    if (isOtherVehicleType && !userNote.trim()) {
+      alert("Vui lòng nhập tên loại xe thực tế của bạn");
       return;
     }
     if (!registrationPhoto) {
@@ -251,14 +269,34 @@ export default function AddVehicleScreen() {
     setIsSubmitting(true);
 
     try {
+      let carModelId: number | undefined;
+
+      if (isOtherModelFreeText) {
+        const requestRes = await vehicleService.requestCarModel({
+          brand: otherBrand.trim(),
+          name: otherModelName.trim(),
+          vehicleTypeId: selectedTypeId,
+        });
+        if (requestRes.statusCode === 200 && requestRes.data != null) {
+          carModelId = requestRes.data;
+        } else {
+          alert(requestRes.message || "Không thể gửi yêu cầu thêm mẫu xe.");
+          return;
+        }
+      } else if (selectedCarModel) {
+        carModelId = selectedCarModel.id;
+      }
+
       const formData = new FormData();
       formData.append("licensePlate", licensePlate);
       formData.append("vehicleTypeId", String(selectedTypeId!));
 
-      if (isOtherModelFreeText) {
-        formData.append("carModel", otherCarModelText.trim());
-      } else if (selectedCarModel) {
-        formData.append("carModelId", String(selectedCarModel.id));
+      if (carModelId != null) {
+        formData.append("carModelId", String(carModelId));
+      }
+
+      if (isOtherVehicleType && userNote.trim()) {
+        formData.append("userNote", userNote.trim());
       }
 
       const file = getFileObject();
@@ -272,9 +310,12 @@ export default function AddVehicleScreen() {
       });
 
       if (response.ok) {
+        const successMessage = isOtherModelFreeText
+          ? "Xe đã được thêm vào tài khoản. Mẫu xe mới của bạn đang chờ duyệt."
+          : "Xe đã được thêm vào tài khoản";
         confirm({
           title: "Thành công",
-          message: "Xe đã được thêm vào tài khoản",
+          message: successMessage,
           confirmText: "Xác nhận",
           showCancel: false,
           onConfirm: async () => {
@@ -302,12 +343,16 @@ export default function AddVehicleScreen() {
     }
   };
 
+  const isOtherVehicleType = selectedType?.name === "Khác" || selectedType?.name === "Other";
+
   const isSubmitDisabled =
     isSubmitting ||
     loadingTypes ||
     !licensePlate.trim() ||
     (!selectedCarModel && !isOtherModelFreeText) ||
+    (isOtherModelFreeText && (!otherBrand.trim() || !otherModelName.trim())) ||
     !selectedTypeId ||
+    (isOtherVehicleType && !userNote.trim()) ||
     !registrationPhoto;
 
   return (
@@ -474,7 +519,8 @@ export default function AddVehicleScreen() {
                               ]}
                               onPress={() => {
                                 setSelectedCarModel(null);
-                                setOtherCarModelText("");
+                                setOtherBrand("");
+                                setOtherModelName("");
                                 setIsOtherModelFreeText(true);
                                 setShowModelPicker(false);
                                 setModelSearchQuery("");
@@ -505,15 +551,38 @@ export default function AddVehicleScreen() {
                   </View>
                 )}
                 {isOtherModelFreeText && (
-                  <TextInput
-                    style={styles.inputModel}
-                    value={otherCarModelText}
-                    onChangeText={setOtherCarModelText}
-                    placeholder="VD: Toyota Camry, Mazda 3, Ford Everest"
-                    placeholderTextColor={LuxeColors.onSurfaceVariant}
-                    maxLength={100}
-                    autoCapitalize="words"
-                  />
+                  <View style={styles.otherModelFields}>
+                    <View style={styles.dongXeInfoBanner}>
+                      <Feather
+                        name="info"
+                        size={14}
+                        color={LuxeColors.primaryContainer}
+                      />
+                      <Text style={styles.dongXeInfoText}>
+                        Mẫu xe mới sẽ được gửi chờ duyệt. Bạn vẫn có thể thêm xe ngay.
+                      </Text>
+                    </View>
+                    <Text style={styles.otherFieldLabel}>Hãng xe *</Text>
+                    <TextInput
+                      style={styles.inputModel}
+                      value={otherBrand}
+                      onChangeText={setOtherBrand}
+                      placeholder="VD: Toyota, Honda, VinFast..."
+                      placeholderTextColor={LuxeColors.onSurfaceVariant}
+                      maxLength={50}
+                      autoCapitalize="words"
+                    />
+                    <Text style={styles.otherFieldLabel}>Tên mẫu xe *</Text>
+                    <TextInput
+                      style={styles.inputModel}
+                      value={otherModelName}
+                      onChangeText={setOtherModelName}
+                      placeholder="VD: Camry, Civic, VF9..."
+                      placeholderTextColor={LuxeColors.onSurfaceVariant}
+                      maxLength={50}
+                      autoCapitalize="words"
+                    />
+                  </View>
                 )}
               </>
             )}
@@ -567,44 +636,130 @@ export default function AddVehicleScreen() {
                 </TouchableOpacity>
                 {showTypePicker && (
                   <View style={styles.pickerList}>
-                    {vehicleTypes.map((type) => (
-                      <TouchableOpacity
-                        key={type.id}
-                        style={[
-                          styles.pickerItem,
-                          selectedTypeId === type.id &&
-                            styles.pickerItemSelected,
-                        ]}
-                        onPress={() => {
-                          setSelectedTypeId(type.id);
-                          setShowTypePicker(false);
-                        }}
-                      >
-                        <Feather
-                          name={
-                            (VEHICLE_TYPE_ICONS[type.name] as any) || "truck"
-                          }
-                          size={16}
-                          color={LuxeColors.primaryContainer}
-                        />
-                        <Text
+                    {vehicleTypes
+                      .filter(
+                        (t) =>
+                          t.name.toLowerCase() !== "khác" &&
+                          t.name.toLowerCase() !== "other",
+                      )
+                      .map((type) => (
+                        <TouchableOpacity
+                          key={type.id}
                           style={[
-                            styles.pickerItemText,
+                            styles.pickerItem,
                             selectedTypeId === type.id &&
-                              styles.pickerItemTextSelected,
+                              styles.pickerItemSelected,
                           ]}
+                          onPress={() => {
+                            setSelectedTypeId(type.id);
+                            setShowTypePicker(false);
+                          }}
                         >
-                          {type.name}
-                        </Text>
-                        {selectedTypeId === type.id && (
                           <Feather
-                            name="check"
+                            name={
+                              (VEHICLE_TYPE_ICONS[type.name] as any) || "truck"
+                            }
                             size={16}
                             color={LuxeColors.primaryContainer}
                           />
-                        )}
-                      </TouchableOpacity>
-                    ))}
+                          <Text
+                            style={[
+                              styles.pickerItemText,
+                              selectedTypeId === type.id &&
+                                styles.pickerItemTextSelected,
+                            ]}
+                          >
+                            {type.name}
+                          </Text>
+                          {selectedTypeId === type.id && (
+                            <Feather
+                              name="check"
+                              size={16}
+                              color={LuxeColors.primaryContainer}
+                            />
+                          )}
+                        </TouchableOpacity>
+                      ))}
+                    {(() => {
+                      const otherType = vehicleTypes.find(
+                        (t) =>
+                          t.name.toLowerCase() === "khác" ||
+                          t.name.toLowerCase() === "other",
+                      );
+                      if (otherType) {
+                        return (
+                          <View>
+                            <View style={styles.khacDivider}>
+                              <View style={styles.khacDividerLine} />
+                              <Text style={styles.khacDividerText}>Khác</Text>
+                              <View style={styles.khacDividerLine} />
+                            </View>
+                            <TouchableOpacity
+                              style={[
+                                styles.pickerItem,
+                                selectedTypeId === otherType.id &&
+                                  styles.pickerItemSelected,
+                              ]}
+                              onPress={() => {
+                                setSelectedTypeId(otherType.id);
+                                setShowTypePicker(false);
+                              }}
+                            >
+                              <Feather
+                                name={
+                                  (VEHICLE_TYPE_ICONS[
+                                    otherType.name
+                                  ] as any) || "truck"
+                                }
+                                size={16}
+                                color={LuxeColors.primaryContainer}
+                              />
+                              <Text
+                                style={[
+                                  styles.pickerItemText,
+                                  selectedTypeId === otherType.id &&
+                                    styles.pickerItemTextSelected,
+                                ]}
+                              >
+                                {otherType.name}
+                              </Text>
+                              {selectedTypeId === otherType.id && (
+                                <Feather
+                                  name="check"
+                                  size={16}
+                                  color={LuxeColors.primaryContainer}
+                                />
+                              )}
+                            </TouchableOpacity>
+                          </View>
+                        );
+                      }
+                      return null;
+                    })()}
+                  </View>
+                )}
+                {isOtherVehicleType && (
+                  <View style={styles.otherModelFields}>
+                    <View style={styles.dongXeInfoBanner}>
+                      <Feather
+                        name="info"
+                        size={14}
+                        color={LuxeColors.primaryContainer}
+                      />
+                      <Text style={styles.dongXeInfoText}>
+                        Vui lòng nhập tên loại xe để chúng tôi cập nhật vào hệ thống.
+                      </Text>
+                    </View>
+                    <Text style={styles.otherFieldLabel}>Tên loại xe *</Text>
+                    <TextInput
+                      style={styles.inputModel}
+                      value={userNote}
+                      onChangeText={setUserNote}
+                      placeholder="VD: Xe tải, Xe bồn..."
+                      placeholderTextColor={LuxeColors.onSurfaceVariant}
+                      maxLength={100}
+                      autoCapitalize="words"
+                    />
                   </View>
                 )}
               </>
@@ -987,5 +1142,15 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#ffffff",
     letterSpacing: 1,
+  },
+  otherModelFields: {
+    gap: LuxeSpacing.sm,
+    marginTop: LuxeSpacing.xs,
+  },
+  otherFieldLabel: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: LuxeColors.onSurfaceVariant,
+    marginTop: LuxeSpacing.xs,
   },
 });
