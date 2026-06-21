@@ -134,18 +134,18 @@ export default function VehiclesScreen() {
                     </View>
                   </View>
                   <Text style={styles.vehicleCarModel}>
-                    {vehicle.model || vehicle.brand}
+                    {vehicle.model || vehicle.brand || "Chưa có thông tin"}
                   </Text>
-                  {vehicle.model && (
+                  {vehicle.brand && vehicle.model ? (
                     <Text style={styles.vehicleBrand}>{vehicle.brand}</Text>
-                  )}
+                  ) : null}
                   <View style={styles.vehicleTypeBadge}>
                     <Feather
                       name="tag"
                       size={12}
                       color={LuxeColors.primaryContainer}
                     />
-                    <Text style={styles.vehicleTypeText}>{vehicle.brand}</Text>
+                    <Text style={styles.vehicleTypeText}>{vehicle.vehicleType || "N/A"}</Text>
                   </View>
                 </View>
               </View>

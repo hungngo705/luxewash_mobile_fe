@@ -9,7 +9,7 @@ import { useRouter, usePathname, Stack, useNavigationContainerRef } from 'expo-r
 import { DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, ActivityIndicator, StyleSheet, Text } from 'react-native';
 import { useFonts } from 'expo-font';
 
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';

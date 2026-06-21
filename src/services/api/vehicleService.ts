@@ -14,6 +14,7 @@ export interface CarModel {
   id: number;
   brand: string;
   name: string;
+  vehicleTypeId?: number | null;
 }
 
 export interface VehicleResponse {
@@ -22,11 +23,15 @@ export interface VehicleResponse {
   vehicleType: string;
   registrationPhotoUrl: string | null;
   carModel: string | null;
+  brand: string | null;
+  userNote: string | null;
 }
 
 export interface RequestCarModelPayload {
   brand: string;
   name: string;
+  year?: number | null;
+  version?: string | null;
   vehicleTypeId?: number | null;
 }
 
@@ -61,7 +66,7 @@ export const vehicleService = {
    */
   addVehicle: async (data: {
     licensePlate: string;
-    vehicleTypeId: number;
+    vehicleTypeId?: number | null;
     carModel?: string;
     carModelId?: number;
     registrationPhotoUrl?: string;
@@ -70,7 +75,9 @@ export const vehicleService = {
   }): Promise<ApiResponse<void>> => {
     const formData = new FormData();
     formData.append('licensePlate', data.licensePlate);
-    formData.append('vehicleTypeId', String(data.vehicleTypeId));
+    if (data.vehicleTypeId != null && data.vehicleTypeId > 0) {
+      formData.append('vehicleTypeId', String(data.vehicleTypeId));
+    }
     if (data.carModelId != null) {
       formData.append('carModelId', String(data.carModelId));
     } else if (data.carModel) {

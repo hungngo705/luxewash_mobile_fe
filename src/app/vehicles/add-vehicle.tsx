@@ -36,6 +36,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+
 const VEHICLE_TYPE_ICONS: Record<string, string> = {
   Sedan: "truck",
   SUV: "truck",
@@ -130,16 +131,7 @@ export default function AddVehicleScreen() {
     loadTypes();
   }, []);
 
-  // Reset car model selection when vehicle type changes
-  useEffect(() => {
-    setShowModelPicker(false);
-    setSelectedCarModel(null);
-    setModelSearchQuery("");
-    setOtherBrand("");
-    setOtherModelName("");
-    setUserNote("");
-    setIsOtherModelFreeText(false);
-  }, [selectedTypeId]);
+  const isVehicleTypeLocked = selectedCarModel != null;
 
   // Reset free-text car model when dropdown selection changes
   useEffect(() => {
@@ -275,7 +267,7 @@ export default function AddVehicleScreen() {
         const requestRes = await vehicleService.requestCarModel({
           brand: otherBrand.trim(),
           name: otherModelName.trim(),
-          vehicleTypeId: selectedTypeId,
+          vehicleTypeId: isOtherVehicleType ? null : selectedTypeId,
         });
         if (requestRes.statusCode === 200 && requestRes.data != null) {
           carModelId = requestRes.data;
@@ -289,7 +281,12 @@ export default function AddVehicleScreen() {
 
       const formData = new FormData();
       formData.append("licensePlate", licensePlate);
-      formData.append("vehicleTypeId", String(selectedTypeId!));
+
+      // When "Khác" is selected, don't send vehicleTypeId (null).
+      // Backend will auto-assign from userNote.
+      if (!isOtherVehicleType && selectedTypeId) {
+        formData.append("vehicleTypeId", String(selectedTypeId));
+      }
 
       if (carModelId != null) {
         formData.append("carModelId", String(carModelId));
@@ -479,6 +476,9 @@ export default function AddVehicleScreen() {
                                     ]}
                                     onPress={() => {
                                       setSelectedCarModel(model);
+                                      if (model.vehicleTypeId) {
+                                        setSelectedTypeId(model.vehicleTypeId);
+                                      }
                                       setShowModelPicker(false);
                                       setModelSearchQuery("");
                                     }}
@@ -607,8 +607,11 @@ export default function AddVehicleScreen() {
             ) : (
               <>
                 <TouchableOpacity
-                  style={styles.picker}
-                  onPress={() => setShowTypePicker(!showTypePicker)}
+                  style={[styles.picker, isVehicleTypeLocked && { backgroundColor: LuxeColors.surfaceContainer }]}
+                  onPress={() => {
+                    if (!isVehicleTypeLocked) setShowTypePicker(!showTypePicker);
+                  }}
+                  activeOpacity={isVehicleTypeLocked ? 1 : 0.2}
                 >
                   <View style={styles.pickerLeft}>
                     <Feather

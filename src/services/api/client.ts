@@ -87,13 +87,10 @@ export class ApiError extends Error {
 }
 
 let isRefreshing = false;
-let refreshQueue: Array<() => void> = [];
+let refreshQueue: Array<(error: ApiError | null) => void> = [];
 
 const processQueue = (error: ApiError | null) => {
-  refreshQueue.forEach(promise => {
-    if (error) promise();
-    else promise();
-  });
+  refreshQueue.forEach(cb => cb(error));
   refreshQueue = [];
 };
 
@@ -179,18 +176,27 @@ async function request<T>(
 
         await clearTokens();
         if (onSessionExpired) onSessionExpired();
-        processQueue(new ApiError(401, 'Session expired. Please login again.', null));
-      } catch {
+        const err = new ApiError(401, 'Session expired. Please login again.', null);
+        processQueue(err);
+        isRefreshing = false;
+        throw err;
+      } catch (error) {
         await clearTokens();
         if (onSessionExpired) onSessionExpired();
-        processQueue(new ApiError(401, 'Session expired. Please login again.', null));
+        const err = new ApiError(401, 'Session expired. Please login again.', null);
+        processQueue(err);
+        isRefreshing = false;
+        throw err;
       }
-      isRefreshing = false;
     }
 
-    return new Promise(resolve => {
-      refreshQueue.push(() => {
-        resolve(request<T>(method, endpoint, body, true));
+    return new Promise((resolve, reject) => {
+      refreshQueue.push((err) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(request<T>(method, endpoint, body, true));
+        }
       });
     });
   }
@@ -279,18 +285,27 @@ async function requestFormData<T>(
 
         await clearTokens();
         if (onSessionExpired) onSessionExpired();
-        processQueue(new ApiError(401, 'Session expired. Please login again.', null));
-      } catch {
+        const err = new ApiError(401, 'Session expired. Please login again.', null);
+        processQueue(err);
+        isRefreshing = false;
+        throw err;
+      } catch (error) {
         await clearTokens();
         if (onSessionExpired) onSessionExpired();
-        processQueue(new ApiError(401, 'Session expired. Please login again.', null));
+        const err = new ApiError(401, 'Session expired. Please login again.', null);
+        processQueue(err);
+        isRefreshing = false;
+        throw err;
       }
-      isRefreshing = false;
     }
 
-    return new Promise(resolve => {
-      refreshQueue.push(() => {
-        resolve(requestFormData<T>(method, endpoint, formData, true));
+    return new Promise((resolve, reject) => {
+      refreshQueue.push((err) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(requestFormData<T>(method, endpoint, formData, true));
+        }
       });
     });
   }
