@@ -24,6 +24,8 @@ export interface Vehicle {
   model: string;
   color: string;
   vehicleTypeId?: number;
+  vehicleType?: string;
+  userNote?: string;
   imageUrl?: string;
   userId: string;
   createdAt: Date;
@@ -104,10 +106,12 @@ function mapVehicleApiToVehicle(
   return {
     id: v.licensePlate,
     licensePlate: v.licensePlate,
-    brand: v.vehicleType,
+    brand: v.brand || "",
     model: v.carModel || "",
     color: "",
     vehicleTypeId: v.vehicleTypeId,
+    vehicleType: v.vehicleType || "",
+    userNote: v.userNote || "",
     imageUrl: v.registrationPhotoUrl ?? undefined,
     userId,
     createdAt: new Date(),

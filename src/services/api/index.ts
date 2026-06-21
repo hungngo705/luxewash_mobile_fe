@@ -30,7 +30,7 @@ export {
     CAMPAIGN_BADGE_CONFIG,
 } from "./loyaltyService";
 export { vehicleService } from "./vehicleService";
-export type { CarModel, VehicleResponse } from "./vehicleService";
+export type { CarModel, RequestCarModelPayload, VehicleResponse } from "./vehicleService";
 export { walletService } from "./walletService";
 export type {
     TopUpRequest,
