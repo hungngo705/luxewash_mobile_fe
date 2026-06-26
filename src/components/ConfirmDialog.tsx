@@ -11,6 +11,7 @@ import {
   TouchableOpacity,
   StyleSheet,
 } from "react-native";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 import { LuxeColors, LuxeSpacing, LuxeBorderRadius } from "@/constants/luxeTheme";
 
 interface ConfirmDialogOptions {
@@ -129,37 +130,42 @@ function ConfirmDialog({
       animationType="fade"
       onRequestClose={onCancel}
     >
-      <View style={styles.overlay}>
-        <View style={[styles.dialog, !showCancel && styles.dialogSingleBtn]}>
-          <Text style={styles.title}>{title}</Text>
-          <Text style={styles.message}>{message}</Text>
-          <View style={[styles.buttons, !showCancel && styles.buttonsSingle]}>
-            {showCancel && (
+      <SafeAreaProvider style={styles.modalProvider}>
+        <View style={styles.overlay}>
+          <View style={[styles.dialog, !showCancel && styles.dialogSingleBtn]}>
+            <Text style={styles.title}>{title}</Text>
+            <Text style={styles.message}>{message}</Text>
+            <View style={[styles.buttons, !showCancel && styles.buttonsSingle]}>
+              {showCancel && (
+                <TouchableOpacity
+                  style={[styles.btn, styles.cancelBtn]}
+                  onPress={onCancel}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.cancelText}>{cancelText}</Text>
+                </TouchableOpacity>
+              )}
               <TouchableOpacity
-                style={[styles.btn, styles.cancelBtn]}
-                onPress={onCancel}
+                style={[styles.btn, destructive ? styles.destructiveBtn : styles.confirmBtn, !showCancel && styles.confirmBtnFull]}
+                onPress={onConfirm}
                 activeOpacity={0.7}
               >
-                <Text style={styles.cancelText}>{cancelText}</Text>
+                <Text style={[styles.confirmText, destructive && styles.destructiveText]}>
+                  {confirmText}
+                </Text>
               </TouchableOpacity>
-            )}
-            <TouchableOpacity
-              style={[styles.btn, destructive ? styles.destructiveBtn : styles.confirmBtn, !showCancel && styles.confirmBtnFull]}
-              onPress={onConfirm}
-              activeOpacity={0.7}
-            >
-              <Text style={[styles.confirmText, destructive && styles.destructiveText]}>
-                {confirmText}
-              </Text>
-            </TouchableOpacity>
+            </View>
           </View>
         </View>
-      </View>
+      </SafeAreaProvider>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
+  modalProvider: {
+    flex: 1,
+  },
   overlay: {
     flex: 1,
     backgroundColor: "rgba(0, 0, 0, 0.5)",

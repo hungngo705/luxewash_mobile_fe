@@ -215,7 +215,14 @@ const styles = StyleSheet.create({
   totalValue: { fontSize: 22, fontWeight: "800", color: LuxeColors.primaryContainer },
   voucherLabelRow: { fontSize: 14, color: LuxeColors.primaryContainer, fontWeight: "600" },
   voucherDiscountRow: { fontSize: 14, fontWeight: "700", color: LuxeColors.primaryContainer },
-  infoBox: { flexDirection: "row", backgroundColor: LuxeColors.primaryContainer + '10', borderRadius: 16, padding: 16, gap: 12, marginBottom: 16, ...LuxeShadows.sm },
+  infoBox: {
+    flexDirection: "row",
+    backgroundColor: "#DDF3FB",
+    borderRadius: 16,
+    padding: 16,
+    gap: 12,
+    marginBottom: 16,
+  },
   infoIconWrap: { width: 36, height: 36, borderRadius: 12, backgroundColor: '#ffffff', alignItems: "center", justifyContent: "center", flexShrink: 0 },
   infoText: { flex: 1, fontSize: 13, color: LuxeColors.onSurfaceVariant, lineHeight: 20 },
   actions: {

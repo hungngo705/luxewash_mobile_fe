@@ -51,6 +51,11 @@ export interface RefreshTokenResponse {
   refreshToken: string;
 }
 
+export interface RefreshTokenRequest {
+  accessToken: string;
+  refreshToken: string;
+}
+
 export interface ChangePasswordRequest {
   oldPassword: string;
   newPassword: string;
@@ -96,8 +101,8 @@ export const authService = {
     return apiClient.get<UserProfile>('/users/me');
   },
 
-  refreshToken: async (refresh: string): Promise<ApiResponse<RefreshTokenResponse>> => {
-    return apiClient.post<RefreshTokenResponse>('/auth/refresh-token', { refreshToken: refresh });
+  refreshToken: async (data: RefreshTokenRequest): Promise<ApiResponse<RefreshTokenResponse>> => {
+    return apiClient.post<RefreshTokenResponse>('/auth/refresh-token', data);
   },
 
   logout: async () => {

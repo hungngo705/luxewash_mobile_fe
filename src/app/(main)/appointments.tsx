@@ -36,7 +36,7 @@ import {
     View,
 } from "react-native";
 import { Calendar, DateData } from "react-native-calendars";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 
 type TabType = "all" | "pending" | "completed" | "cancelled";
 
@@ -520,80 +520,84 @@ export default function AppointmentsScreen() {
 
       {/* Start Date Picker */}
       <Modal visible={showStartPicker} transparent animationType="fade">
-        <Pressable
-          style={styles.modalOverlay}
-          onPress={() => setShowStartPicker(false)}
-        >
-          <View style={styles.pickerCard}>
-            <Calendar
-              current={startDate || undefined}
-              onDayPress={(d) => handleApplyDateFilter(d, true)}
-              markedDates={
-                startDate
-                  ? {
-                      [startDate]: {
-                        selected: true,
-                        selectedColor: LuxeColors.primary,
-                      },
-                    }
-                  : {}
-              }
-              markingType="dot"
-              theme={{
-                backgroundColor: "#fff",
-                calendarBackground: "#fff",
-                selectedDayBackgroundColor: LuxeColors.primary,
-                selectedDayTextColor: "#fff",
-                todayTextColor: LuxeColors.primaryContainer,
-                dayTextColor: LuxeColors.onSurface,
-                textDisabledColor: LuxeColors.outlineVariant,
-                arrowColor: LuxeColors.primary,
-                monthTextColor: LuxeColors.onSurface,
-                textDayFontSize: 14,
-                textMonthFontSize: 15,
-              }}
-            />
-          </View>
-        </Pressable>
+        <SafeAreaProvider style={styles.modalProvider}>
+          <Pressable
+            style={styles.modalOverlay}
+            onPress={() => setShowStartPicker(false)}
+          >
+            <View style={styles.pickerCard}>
+              <Calendar
+                current={startDate || undefined}
+                onDayPress={(d) => handleApplyDateFilter(d, true)}
+                markedDates={
+                  startDate
+                    ? {
+                        [startDate]: {
+                          selected: true,
+                          selectedColor: LuxeColors.primary,
+                        },
+                      }
+                    : {}
+                }
+                markingType="dot"
+                theme={{
+                  backgroundColor: "#fff",
+                  calendarBackground: "#fff",
+                  selectedDayBackgroundColor: LuxeColors.primary,
+                  selectedDayTextColor: "#fff",
+                  todayTextColor: LuxeColors.primaryContainer,
+                  dayTextColor: LuxeColors.onSurface,
+                  textDisabledColor: LuxeColors.outlineVariant,
+                  arrowColor: LuxeColors.primary,
+                  monthTextColor: LuxeColors.onSurface,
+                  textDayFontSize: 14,
+                  textMonthFontSize: 15,
+                }}
+              />
+            </View>
+          </Pressable>
+        </SafeAreaProvider>
       </Modal>
 
       {/* End Date Picker */}
       <Modal visible={showEndPicker} transparent animationType="fade">
-        <Pressable
-          style={styles.modalOverlay}
-          onPress={() => setShowEndPicker(false)}
-        >
-          <View style={styles.pickerCard}>
-            <Calendar
-              current={endDate || undefined}
-              onDayPress={(d) => handleApplyDateFilter(d, false)}
-              markedDates={
-                endDate
-                  ? {
-                      [endDate]: {
-                        selected: true,
-                        selectedColor: LuxeColors.primary,
-                      },
-                    }
-                  : {}
-              }
-              markingType="dot"
-              theme={{
-                backgroundColor: "#fff",
-                calendarBackground: "#fff",
-                selectedDayBackgroundColor: LuxeColors.primary,
-                selectedDayTextColor: "#fff",
-                todayTextColor: LuxeColors.primaryContainer,
-                dayTextColor: LuxeColors.onSurface,
-                textDisabledColor: LuxeColors.outlineVariant,
-                arrowColor: LuxeColors.primary,
-                monthTextColor: LuxeColors.onSurface,
-                textDayFontSize: 14,
-                textMonthFontSize: 15,
-              }}
-            />
-          </View>
-        </Pressable>
+        <SafeAreaProvider style={styles.modalProvider}>
+          <Pressable
+            style={styles.modalOverlay}
+            onPress={() => setShowEndPicker(false)}
+          >
+            <View style={styles.pickerCard}>
+              <Calendar
+                current={endDate || undefined}
+                onDayPress={(d) => handleApplyDateFilter(d, false)}
+                markedDates={
+                  endDate
+                    ? {
+                        [endDate]: {
+                          selected: true,
+                          selectedColor: LuxeColors.primary,
+                        },
+                      }
+                    : {}
+                }
+                markingType="dot"
+                theme={{
+                  backgroundColor: "#fff",
+                  calendarBackground: "#fff",
+                  selectedDayBackgroundColor: LuxeColors.primary,
+                  selectedDayTextColor: "#fff",
+                  todayTextColor: LuxeColors.primaryContainer,
+                  dayTextColor: LuxeColors.onSurface,
+                  textDisabledColor: LuxeColors.outlineVariant,
+                  arrowColor: LuxeColors.primary,
+                  monthTextColor: LuxeColors.onSurface,
+                  textDayFontSize: 14,
+                  textMonthFontSize: 15,
+                }}
+              />
+            </View>
+          </Pressable>
+        </SafeAreaProvider>
       </Modal>
     </View>
   );
@@ -602,6 +606,7 @@ export default function AppointmentsScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: LuxeColors.background },
   safeArea: { flex: 1 },
+  modalProvider: { flex: 1 },
   header: {
     paddingHorizontal: 20,
     paddingVertical: 16,

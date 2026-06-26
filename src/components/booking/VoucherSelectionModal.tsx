@@ -20,7 +20,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 const CAMPAIGN_BADGE_CONFIG: Record<number, { label: string; bg: string; color: string; icon: string }> = {
   0: { label: 'Đổi điểm', bg: '#E0E7FF', color: '#4F46E5', icon: 'tag' },
@@ -168,8 +168,6 @@ export function VoucherSelectionModal({
   onSelect,
   onClose,
 }: VoucherSelectionModalProps) {
-  const insets = useSafeAreaInsets();
-
   return (
     <Modal
       visible={visible}
@@ -177,13 +175,18 @@ export function VoucherSelectionModal({
       animationType="slide"
       onRequestClose={onClose}
     >
-      <Pressable style={styles.overlay} onPress={onClose}>
-        <SafeAreaView
-          style={styles.sheet}
-          edges={['top', 'bottom']}
-        >
+      <SafeAreaProvider style={styles.modalProvider}>
+        <Pressable style={styles.overlay} onPress={onClose}>
+          <Pressable
+            style={styles.sheet}
+            onPress={(event) => event.stopPropagation()}
+          >
+            <SafeAreaView
+              style={styles.sheetContent}
+              edges={['top', 'bottom']}
+            >
           {/* Handle bar */}
-          <View style={[styles.handleBar, { marginTop: insets.top > 0 ? 4 : 12 }]} />
+              <View style={styles.handleBar} />
 
           {/* Header */}
           <View style={styles.modalHeader}>
@@ -255,13 +258,18 @@ export function VoucherSelectionModal({
               </Text>
             </TouchableOpacity>
           </View>
-        </SafeAreaView>
-      </Pressable>
+            </SafeAreaView>
+          </Pressable>
+        </Pressable>
+      </SafeAreaProvider>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
+  modalProvider: {
+    flex: 1,
+  },
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
@@ -276,12 +284,16 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
     ...LuxeShadows.xl,
   },
+  sheetContent: {
+    flex: 1,
+  },
   handleBar: {
     width: 40,
     height: 4,
     backgroundColor: LuxeColors.outlineVariant,
     borderRadius: 2,
     alignSelf: 'center',
+    marginTop: 12,
     marginBottom: 8,
   },
   modalHeader: {

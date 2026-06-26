@@ -13,8 +13,9 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { vndToPoints } from "@/utils/format";
 import { useRouter } from "expo-router";
-import React from "react";
+import React, { useCallback, useState } from "react";
 import {
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -27,8 +28,9 @@ import { useConfirmDialog } from "@/components/ConfirmDialog";
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { user, walletBalance, logout } = useAuth();
+  const { user, walletBalance, logout, refreshProfile, refreshWallet } = useAuth();
   const { confirm } = useConfirmDialog();
+  const [refreshing, setRefreshing] = useState(false);
 
   const currentUser = user;
   const membershipInfo = currentUser
@@ -94,6 +96,15 @@ export default function ProfileScreen() {
     });
   };
 
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([refreshProfile(), refreshWallet()]);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refreshProfile, refreshWallet]);
+
   return (
     <View style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={["top"]}>
@@ -101,6 +112,14 @@ export default function ProfileScreen() {
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor={LuxeColors.primaryContainer}
+              colors={[LuxeColors.primaryContainer]}
+            />
+          }
         >
           {/* Profile Header Card */}
           <View style={styles.profileCard}>

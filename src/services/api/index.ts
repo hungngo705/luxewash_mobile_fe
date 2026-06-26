@@ -6,7 +6,7 @@
 export { authService } from "./authService";
 export type {
     ChangePasswordRequest, LoginRequest,
-    LoginResponse, RefreshTokenResponse, RegisterRequest, UpdateProfileRequest, UserProfile
+    LoginResponse, RefreshTokenRequest, RefreshTokenResponse, RegisterRequest, UpdateProfileRequest, UserProfile
 } from "./authService";
 export { bookingService } from "./bookingService";
 export type {

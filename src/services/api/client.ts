@@ -155,7 +155,7 @@ async function request<T>(
         const refreshResponse = await fetch(`${BASE_URL}/auth/refresh-token`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ refreshToken }),
+          body: JSON.stringify({ accessToken, refreshToken }),
         });
 
         if (refreshResponse.ok) {
@@ -264,7 +264,7 @@ async function requestFormData<T>(
         const refreshResponse = await fetch(`${BASE_URL}/auth/refresh-token`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ refreshToken }),
+          body: JSON.stringify({ accessToken, refreshToken }),
         });
 
         if (refreshResponse.ok) {

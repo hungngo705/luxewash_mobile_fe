@@ -23,7 +23,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 
 const PHONE_REGEX = /^(0[3|5|7|8|9])+([0-9]{8})$/;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -468,11 +468,12 @@ export default function ProfileEditScreen() {
         animationType="fade"
         onRequestClose={() => setShowCalendar(false)}
       >
-        <Pressable
-          style={styles.modalOverlay}
-          onPress={() => setShowCalendar(false)}
-        >
-          <Pressable style={styles.calendarModal} onPress={() => {}}>
+        <SafeAreaProvider style={styles.modalProvider}>
+          <Pressable
+            style={styles.modalOverlay}
+            onPress={() => setShowCalendar(false)}
+          >
+            <Pressable style={styles.calendarModal} onPress={() => {}}>
             {/* Header */}
             <View style={styles.calendarHeader}>
               <Text style={styles.calendarTitle}>Chọn ngày sinh</Text>
@@ -666,8 +667,9 @@ export default function ProfileEditScreen() {
                 </View>
               </>
             )}
+            </Pressable>
           </Pressable>
-        </Pressable>
+        </SafeAreaProvider>
       </Modal>
     </SafeAreaView>
   );
@@ -675,6 +677,7 @@ export default function ProfileEditScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: LuxeColors.background },
+  modalProvider: { flex: 1 },
   keyboardView: { flex: 1 },
   scrollView: { flex: 1 },
   scrollContent: { padding: 20, paddingTop: 16 },
