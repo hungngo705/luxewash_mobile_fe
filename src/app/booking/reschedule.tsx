@@ -5,41 +5,41 @@
 import { BottomActionBar } from "@/components/ui/BottomActionBar";
 import { Header } from "@/components/ui/Header";
 import {
-  LuxeBorderRadius,
-  LuxeColors,
-  LuxeShadows,
-  MembershipConfig,
+    LuxeBorderRadius,
+    LuxeColors,
+    LuxeShadows,
+    MembershipConfig,
 } from "@/constants/luxeTheme";
 import { useAuth } from "@/contexts/AuthContext";
 import {
-  ApiError,
-  bookingService,
-  branchService,
-  type BookingDetailResponse,
-  type BranchDTO,
-  type Service,
-  type TimeSlot,
+    ApiError,
+    bookingService,
+    branchService,
+    type BookingDetailResponse,
+    type BranchDTO,
+    type Service,
+    type TimeSlot,
 } from "@/services/api";
 import { formatDate, formatTime } from "@/utils/format";
 import { Feather } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const DAYS_OF_WEEK = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
 const PERIOD_LABEL: Record<string, string> = {
-  morning: "Sáng",
-  afternoon: "Chiều",
-  evening: "Tối",
+  morning: "SÃ¡ng",
+  afternoon: "Chiá»u",
+  evening: "Tá»‘i",
 };
 const RESCHEDULABLE_STATUSES = ["Pending", "Confirmed"];
 
@@ -50,7 +50,9 @@ interface DayCell {
 }
 
 const toUTCMidnight = (date: Date): string => {
-  const utc = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const utc = new Date(
+    Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()),
+  );
   return utc.toISOString();
 };
 
@@ -61,8 +63,8 @@ const normalizeServiceName = (value: string): string =>
   value
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
-    .replace(/đ/g, "d")
-    .replace(/Đ/g, "D")
+    .replace(/Ä‘/g, "d")
+    .replace(/Ä/g, "D")
     .replace(/\s+/g, " ")
     .trim()
     .toLowerCase();
@@ -89,7 +91,10 @@ const getFirstOfMonth = (date: Date): Date => {
 
 function matchServiceIds(serviceNames: string[], services: Service[]) {
   const serviceByName = new Map(
-    services.map((service) => [normalizeServiceName(service.serviceName), service]),
+    services.map((service) => [
+      normalizeServiceName(service.serviceName),
+      service,
+    ]),
   );
   const missing: string[] = [];
   const ids = serviceNames
@@ -136,7 +141,11 @@ export default function RescheduleBookingScreen() {
   const userVehicle = useMemo(() => {
     if (!booking || !user?.vehicles) return null;
     const bookingPlate = normalizePlate(booking.licensePlate);
-    return user.vehicles.find((vehicle) => normalizePlate(vehicle.licensePlate) === bookingPlate) ?? null;
+    return (
+      user.vehicles.find(
+        (vehicle) => normalizePlate(vehicle.licensePlate) === bookingPlate,
+      ) ?? null
+    );
   }, [booking, user?.vehicles]);
 
   const hoursUntilOldSchedule = useMemo(() => {
@@ -149,23 +158,23 @@ export default function RescheduleBookingScreen() {
   const hardBlocker = useMemo(() => {
     if (!booking) return null;
     if (!RESCHEDULABLE_STATUSES.includes(booking.status)) {
-      return "Chỉ có thể thay đổi lịch hẹn ở trạng thái Pending hoặc Confirmed.";
+      return "Chá»‰ cÃ³ thá»ƒ thay Ä‘á»•i lá»‹ch háº¹n á»Ÿ tráº¡ng thÃ¡i Pending hoáº·c Confirmed.";
     }
     if (hoursUntilOldSchedule != null && hoursUntilOldSchedule < 2) {
-      return "Chỉ có thể thay đổi lịch hẹn trước 2 tiếng so với giờ bắt đầu.";
+      return "Chá»‰ cÃ³ thá»ƒ thay Ä‘á»•i lá»‹ch háº¹n trÆ°á»›c 2 tiáº¿ng so vá»›i giá» báº¯t Ä‘áº§u.";
     }
     if (!userVehicle) {
-      return "Không tìm thấy xe này trong hồ sơ của bạn.";
+      return "KhÃ´ng tÃ¬m tháº¥y xe nÃ y trong há»“ sÆ¡ cá»§a báº¡n.";
     }
     if (!userVehicle.vehicleTypeId) {
-      return "Không xác định được loại xe để kiểm tra lịch trống.";
+      return "KhÃ´ng xÃ¡c Ä‘á»‹nh Ä‘Æ°á»£c loáº¡i xe Ä‘á»ƒ kiá»ƒm tra lá»‹ch trá»‘ng.";
     }
     return null;
   }, [booking, hoursUntilOldSchedule, userVehicle]);
 
   const loadInitialData = useCallback(async () => {
     if (!bookingId) {
-      setError("Không tìm thấy mã lịch hẹn.");
+      setError("KhÃ´ng tÃ¬m tháº¥y mÃ£ lá»‹ch háº¹n.");
       setLoading(false);
       return;
     }
@@ -180,7 +189,7 @@ export default function RescheduleBookingScreen() {
       setBooking(bookingRes.data);
       setBranches(Array.isArray(branchRes.data) ? branchRes.data : []);
     } catch (e: unknown) {
-      setError(getErrorMessage(e, "Không thể tải thông tin đổi lịch."));
+      setError(getErrorMessage(e, "KhÃ´ng thá»ƒ táº£i thÃ´ng tin Ä‘á»•i lá»‹ch."));
     } finally {
       setLoading(false);
     }
@@ -218,11 +227,27 @@ export default function RescheduleBookingScreen() {
       });
     }
 
+    while (days.length % 7 !== 0) {
+      days.push({ date: null, isPast: false, isLocked: false });
+    }
+
     return days;
   }, [currentMonth, maxAdvanceDays]);
 
+  const calendarWeeks = useMemo(() => {
+    const weeks: DayCell[][] = [];
+    for (let i = 0; i < calendarDays.length; i += 7) {
+      weeks.push(calendarDays.slice(i, i + 7));
+    }
+    return weeks;
+  }, [calendarDays]);
+
   const groupedSlots = useMemo(() => {
-    const groups: Record<string, TimeSlot[]> = { morning: [], afternoon: [], evening: [] };
+    const groups: Record<string, TimeSlot[]> = {
+      morning: [],
+      afternoon: [],
+      evening: [],
+    };
     for (const slot of slots) {
       const hour = parseInt((slot.timeRange || "00:00").split(":")[0], 10);
       if (hour < 12) groups.morning.push(slot);
@@ -233,7 +258,12 @@ export default function RescheduleBookingScreen() {
   }, [slots]);
 
   const loadSlots = async (date: Date) => {
-    if (!selectedBranch || !userVehicle?.vehicleTypeId || serviceIds.length === 0) return;
+    if (
+      !selectedBranch ||
+      !userVehicle?.vehicleTypeId ||
+      serviceIds.length === 0
+    )
+      return;
 
     setLoadingSlots(true);
     setSlotError(null);
@@ -248,7 +278,7 @@ export default function RescheduleBookingScreen() {
       );
       setSlots(Array.isArray(res.data) ? res.data : []);
     } catch (e: unknown) {
-      setSlotError(getErrorMessage(e, "Không thể tải lịch trống."));
+      setSlotError(getErrorMessage(e, "KhÃ´ng thá»ƒ táº£i lá»‹ch trá»‘ng."));
     } finally {
       setLoadingSlots(false);
     }
@@ -267,21 +297,35 @@ export default function RescheduleBookingScreen() {
 
     try {
       const res = await bookingService.getServices(branch.branchId);
-      const { ids, missing } = matchServiceIds(booking.serviceNames ?? [], res.data ?? []);
+      const { ids, missing } = matchServiceIds(
+        booking.serviceNames ?? [],
+        res.data ?? [],
+      );
       if (missing.length > 0 || ids.length === 0) {
-        setServiceError(`Không tìm thấy dịch vụ đã đặt tại chi nhánh này: ${missing.join(", ") || "dịch vụ đã đặt"}.`);
+        setServiceError(
+          `KhÃ´ng tÃ¬m tháº¥y dá»‹ch vá»¥ Ä‘Ã£ Ä‘áº·t táº¡i chi nhÃ¡nh nÃ y: ${missing.join(", ") || "dá»‹ch vá»¥ Ä‘Ã£ Ä‘áº·t"}.`,
+        );
         return;
       }
       setServiceIds(ids);
     } catch (e: unknown) {
-      setServiceError(getErrorMessage(e, "Không thể tải dịch vụ của chi nhánh."));
+      setServiceError(
+        getErrorMessage(e, "KhÃ´ng thá»ƒ táº£i dá»‹ch vá»¥ cá»§a chi nhÃ¡nh."),
+      );
     } finally {
       setLoadingServices(false);
     }
   };
 
   const handleDateSelect = (day: DayCell) => {
-    if (!day.date || day.isPast || day.isLocked || hardBlocker || serviceError || loadingServices) {
+    if (
+      !day.date ||
+      day.isPast ||
+      day.isLocked ||
+      hardBlocker ||
+      serviceError ||
+      loadingServices
+    ) {
       return;
     }
     setSelectedDate(day.date);
@@ -308,7 +352,7 @@ export default function RescheduleBookingScreen() {
     if (!booking || !selectedDate || !selectedSlot) return;
     const blocker = hardBlocker || serviceError;
     if (blocker) {
-      Alert.alert("Không thể đổi lịch", blocker);
+      Alert.alert("KhÃ´ng thá»ƒ Ä‘á»•i lá»‹ch", blocker);
       return;
     }
 
@@ -318,15 +362,18 @@ export default function RescheduleBookingScreen() {
         newScheduledDate: toUTCMidnight(selectedDate),
         newSlotId: selectedSlot.slotId,
       });
-      const message = res.message || "Đã thay đổi lịch hẹn thành công.";
-      Alert.alert("Đổi lịch thành công", message, [
+      const message = res.message || "ÄÃ£ thay Ä‘á»•i lá»‹ch háº¹n thÃ nh cÃ´ng.";
+      Alert.alert("Äá»•i lá»‹ch thÃ nh cÃ´ng", message, [
         {
-          text: "Đã hiểu",
+          text: "ÄÃ£ hiá»ƒu",
           onPress: () => router.replace(`/booking/${booking.bookingId}` as any),
         },
       ]);
     } catch (e: unknown) {
-      Alert.alert("Không thể đổi lịch", getErrorMessage(e, "Vui lòng thử lại."));
+      Alert.alert(
+        "KhÃ´ng thá»ƒ Ä‘á»•i lá»‹ch",
+        getErrorMessage(e, "Vui lÃ²ng thá»­ láº¡i."),
+      );
     } finally {
       setSubmitting(false);
     }
@@ -357,19 +404,22 @@ export default function RescheduleBookingScreen() {
   return (
     <View style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={["top"]}>
-        <Header title="Đổi lịch hẹn" onBack={() => router.back()} />
+        <Header title="Äá»•i lá»‹ch háº¹n" onBack={() => router.back()} />
 
         {loading ? (
           <View style={styles.centerState}>
-            <ActivityIndicator size="large" color={LuxeColors.primaryContainer} />
-            <Text style={styles.centerText}>Đang tải...</Text>
+            <ActivityIndicator
+              size="large"
+              color={LuxeColors.primaryContainer}
+            />
+            <Text style={styles.centerText}>Äang táº£i...</Text>
           </View>
         ) : error ? (
           <View style={styles.centerState}>
             <Feather name="alert-circle" size={48} color={LuxeColors.outline} />
             <Text style={styles.errorText}>{error}</Text>
             <TouchableOpacity style={styles.retryBtn} onPress={loadInitialData}>
-              <Text style={styles.retryBtnText}>Thử lại</Text>
+              <Text style={styles.retryBtnText}>Thá»­ láº¡i</Text>
             </TouchableOpacity>
           </View>
         ) : booking ? (
@@ -382,7 +432,7 @@ export default function RescheduleBookingScreen() {
               <View style={styles.summaryCard}>
                 <View style={styles.summaryTop}>
                   <View>
-                    <Text style={styles.summaryLabel}>Mã lịch hẹn</Text>
+                    <Text style={styles.summaryLabel}>MÃ£ lá»‹ch háº¹n</Text>
                     <Text style={styles.summaryId}>#{booking.bookingId}</Text>
                   </View>
                   <View style={styles.plateBadge}>
@@ -392,42 +442,71 @@ export default function RescheduleBookingScreen() {
                 <View style={styles.summaryDivider} />
                 <View style={styles.summaryMeta}>
                   <View style={styles.summaryMetaItem}>
-                    <Feather name="calendar" size={14} color={LuxeColors.onSurfaceVariant} />
-                    <Text style={styles.summaryMetaText}>{formatDate(booking.scheduledTime)}</Text>
+                    <Feather
+                      name="calendar"
+                      size={14}
+                      color={LuxeColors.onSurfaceVariant}
+                    />
+                    <Text style={styles.summaryMetaText}>
+                      {formatDate(booking.scheduledTime)}
+                    </Text>
                   </View>
                   <View style={styles.summaryMetaItem}>
-                    <Feather name="clock" size={14} color={LuxeColors.onSurfaceVariant} />
-                    <Text style={styles.summaryMetaText}>{formatTime(booking.scheduledTime)}</Text>
+                    <Feather
+                      name="clock"
+                      size={14}
+                      color={LuxeColors.onSurfaceVariant}
+                    />
+                    <Text style={styles.summaryMetaText}>
+                      {formatTime(booking.scheduledTime)}
+                    </Text>
                   </View>
                 </View>
               </View>
 
               {hardBlocker ? (
                 <View style={styles.noticeError}>
-                  <Feather name="alert-triangle" size={18} color={LuxeColors.error} />
+                  <Feather
+                    name="alert-triangle"
+                    size={18}
+                    color={LuxeColors.error}
+                  />
                   <Text style={styles.noticeErrorText}>{hardBlocker}</Text>
                 </View>
               ) : (
                 <>
-                  <Text style={styles.sectionTitle}>Chi nhánh đã đặt</Text>
+                  <Text style={styles.sectionTitle}>Chi nhÃ¡nh Ä‘Ã£ Ä‘áº·t</Text>
                   <View style={styles.branchList}>
                     {branches.map((branch) => {
-                      const isSelected = selectedBranch?.branchId === branch.branchId;
+                      const isSelected =
+                        selectedBranch?.branchId === branch.branchId;
                       return (
                         <TouchableOpacity
                           key={branch.branchId}
-                          style={[styles.branchCard, isSelected && styles.branchCardSelected]}
+                          style={[
+                            styles.branchCard,
+                            isSelected && styles.branchCardSelected,
+                          ]}
                           onPress={() => handleBranchSelect(branch)}
                           activeOpacity={0.8}
                         >
-                          <View style={[styles.radio, isSelected && styles.radioSelected]}>
+                          <View
+                            style={[
+                              styles.radio,
+                              isSelected && styles.radioSelected,
+                            ]}
+                          >
                             {isSelected && <View style={styles.radioInner} />}
                           </View>
                           <View style={styles.branchIconWrap}>
                             <Feather
                               name="map-pin"
                               size={20}
-                              color={isSelected ? LuxeColors.primaryContainer : LuxeColors.onSurfaceVariant}
+                              color={
+                                isSelected
+                                  ? LuxeColors.primaryContainer
+                                  : LuxeColors.onSurfaceVariant
+                              }
                             />
                           </View>
                           <View style={styles.branchInfo}>
@@ -435,7 +514,10 @@ export default function RescheduleBookingScreen() {
                               {branch.name}
                             </Text>
                             {!!branch.address && (
-                              <Text style={styles.branchAddress} numberOfLines={2}>
+                              <Text
+                                style={styles.branchAddress}
+                                numberOfLines={2}
+                              >
                                 {branch.address}
                               </Text>
                             )}
@@ -447,158 +529,261 @@ export default function RescheduleBookingScreen() {
 
                   {loadingServices && (
                     <View style={styles.inlineLoading}>
-                      <ActivityIndicator size="small" color={LuxeColors.primaryContainer} />
-                      <Text style={styles.centerText}>Đang tải dịch vụ...</Text>
+                      <ActivityIndicator
+                        size="small"
+                        color={LuxeColors.primaryContainer}
+                      />
+                      <Text style={styles.centerText}>Äang táº£i dá»‹ch vá»¥...</Text>
                     </View>
                   )}
 
                   {serviceError && (
                     <View style={styles.noticeError}>
-                      <Feather name="alert-triangle" size={18} color={LuxeColors.error} />
+                      <Feather
+                        name="alert-triangle"
+                        size={18}
+                        color={LuxeColors.error}
+                      />
                       <Text style={styles.noticeErrorText}>{serviceError}</Text>
                     </View>
                   )}
 
-                  {selectedBranch && !loadingServices && !serviceError && serviceIds.length > 0 && (
-                    <View style={styles.recoveredCard}>
-                      <View style={styles.recoveredRow}>
-                        <Feather name="truck" size={15} color={LuxeColors.primaryContainer} />
-                        <Text style={styles.recoveredText}>{userVehicle?.brand} {userVehicle?.model}</Text>
-                      </View>
-                      <View style={styles.recoveredRow}>
-                        <Feather name="droplet" size={15} color={LuxeColors.primaryContainer} />
-                        <Text style={styles.recoveredText}>{booking.serviceNames.join(", ")}</Text>
-                      </View>
-                    </View>
-                  )}
-
-                  {selectedBranch && !loadingServices && !serviceError && serviceIds.length > 0 && (
-                    <>
-                      <View style={styles.calendarCard}>
-                        <Text style={styles.sectionTitle}>Ngày mới</Text>
-                        <View style={styles.monthNav}>
-                          <TouchableOpacity style={styles.navBtn} onPress={handlePrevMonth}>
-                            <Feather name="chevron-left" size={20} color={LuxeColors.onSurface} />
-                          </TouchableOpacity>
-                          <Text style={styles.monthTitle}>{monthYearDisplay}</Text>
-                          <TouchableOpacity style={styles.navBtn} onPress={handleNextMonth}>
-                            <Feather name="chevron-right" size={20} color={LuxeColors.onSurface} />
-                          </TouchableOpacity>
+                  {selectedBranch &&
+                    !loadingServices &&
+                    !serviceError &&
+                    serviceIds.length > 0 && (
+                      <View style={styles.recoveredCard}>
+                        <View style={styles.recoveredRow}>
+                          <Feather
+                            name="truck"
+                            size={15}
+                            color={LuxeColors.primaryContainer}
+                          />
+                          <Text style={styles.recoveredText}>
+                            {userVehicle?.brand} {userVehicle?.model}
+                          </Text>
                         </View>
-
-                        <View style={styles.daysOfWeek}>
-                          {DAYS_OF_WEEK.map((day) => (
-                            <View key={day} style={styles.dayOfWeekCell}>
-                              <Text style={styles.dayOfWeekText}>{day}</Text>
-                            </View>
-                          ))}
-                        </View>
-
-                        <View style={styles.calendarGrid}>
-                          {calendarDays.map((day, index) => {
-                            if (!day.date) return <View key={index} style={styles.dayCell} />;
-                            const isToday = day.date.toDateString() === new Date().toDateString();
-                            const isSelected = selectedDate?.toDateString() === day.date.toDateString();
-                            return (
-                              <TouchableOpacity
-                                key={index}
-                                style={[
-                                  styles.dayCell,
-                                  day.isPast && styles.dayCellPast,
-                                  day.isLocked && styles.dayCellLocked,
-                                  isToday && !isSelected && styles.dayCellToday,
-                                  isSelected && styles.dayCellSelected,
-                                ]}
-                                onPress={() => handleDateSelect(day)}
-                                disabled={day.isPast || day.isLocked}
-                              >
-                                <Text
-                                  style={[
-                                    styles.dayNumber,
-                                    (day.isPast || day.isLocked) && styles.dayTextMuted,
-                                    isToday && !isSelected && styles.dayTextToday,
-                                    isSelected && styles.dayTextSelected,
-                                  ]}
-                                >
-                                  {day.date.getDate()}
-                                </Text>
-                              </TouchableOpacity>
-                            );
-                          })}
+                        <View style={styles.recoveredRow}>
+                          <Feather
+                            name="droplet"
+                            size={15}
+                            color={LuxeColors.primaryContainer}
+                          />
+                          <Text style={styles.recoveredText}>
+                            {booking.serviceNames.join(", ")}
+                          </Text>
                         </View>
                       </View>
+                    )}
 
-                      {selectedDate && (
-                        <View style={styles.slotsSection}>
-                          <View style={styles.slotsHeader}>
-                            <Text style={styles.sectionTitle}>Giờ mới</Text>
-                            <Text style={styles.selectedDateLabel}>{selectedDateDisplay}</Text>
+                  {selectedBranch &&
+                    !loadingServices &&
+                    !serviceError &&
+                    serviceIds.length > 0 && (
+                      <>
+                        <View style={styles.calendarCard}>
+                          <Text style={styles.sectionTitle}>NgÃ y má»›i</Text>
+                          <View style={styles.monthNav}>
+                            <TouchableOpacity
+                              style={styles.navBtn}
+                              onPress={handlePrevMonth}
+                            >
+                              <Feather
+                                name="chevron-left"
+                                size={20}
+                                color={LuxeColors.onSurface}
+                              />
+                            </TouchableOpacity>
+                            <Text style={styles.monthTitle}>
+                              {monthYearDisplay}
+                            </Text>
+                            <TouchableOpacity
+                              style={styles.navBtn}
+                              onPress={handleNextMonth}
+                            >
+                              <Feather
+                                name="chevron-right"
+                                size={20}
+                                color={LuxeColors.onSurface}
+                              />
+                            </TouchableOpacity>
                           </View>
 
-                          {loadingSlots ? (
-                            <View style={styles.inlineLoading}>
-                              <ActivityIndicator size="small" color={LuxeColors.primaryContainer} />
-                              <Text style={styles.centerText}>Đang tải lịch trống...</Text>
+                          <View style={styles.daysOfWeek}>
+                            {DAYS_OF_WEEK.map((day) => (
+                              <View key={day} style={styles.dayOfWeekCell}>
+                                <Text style={styles.dayOfWeekText}>{day}</Text>
+                              </View>
+                            ))}
+                          </View>
+
+                          <View style={styles.calendarGrid}>
+                            {calendarWeeks.map((week, weekIndex) => (
+                              <View key={weekIndex} style={styles.calendarWeek}>
+                                {week.map((day, dayIndex) => {
+                                  const cellKey = `${weekIndex}-${dayIndex}`;
+                                  if (!day.date)
+                                    return (
+                                      <View key={cellKey} style={styles.dayCell} />
+                                    );
+                                  const isToday =
+                                    day.date.toDateString() ===
+                                    new Date().toDateString();
+                                  const isSelected =
+                                    selectedDate?.toDateString() ===
+                                    day.date.toDateString();
+                                  return (
+                                    <TouchableOpacity
+                                      key={cellKey}
+                                      style={[
+                                        styles.dayCell,
+                                        day.isPast && styles.dayCellPast,
+                                        day.isLocked && styles.dayCellLocked,
+                                      ]}
+                                      onPress={() => handleDateSelect(day)}
+                                      disabled={day.isPast || day.isLocked}
+                                    >
+                                      <View
+                                        style={[
+                                          styles.dayPill,
+                                          isSelected && styles.dayPillSelected,
+                                          isToday &&
+                                            !isSelected &&
+                                            styles.dayPillToday,
+                                        ]}
+                                      >
+                                        <Text
+                                          style={[
+                                            styles.dayNumber,
+                                            (day.isPast || day.isLocked) &&
+                                              styles.dayTextMuted,
+                                            isToday &&
+                                              !isSelected &&
+                                              styles.dayTextToday,
+                                            isSelected && styles.dayTextSelected,
+                                          ]}
+                                        >
+                                          {day.date.getDate()}
+                                        </Text>
+                                      </View>
+                                    </TouchableOpacity>
+                                  );
+                                })}
+                              </View>
+                            ))}
+                          </View>
+                        </View>
+
+                        {selectedDate && (
+                          <View style={styles.slotsSection}>
+                            <View style={styles.slotsHeader}>
+                              <Text style={styles.sectionTitle}>GiÃ¡Â»Â mÃ¡Â»â€ºi</Text>
+                              <Text style={styles.selectedDateLabel}>
+                                {selectedDateDisplay}
+                              </Text>
                             </View>
-                          ) : slotError ? (
-                            <View style={styles.noticeError}>
-                              <Feather name="alert-triangle" size={18} color={LuxeColors.error} />
-                              <Text style={styles.noticeErrorText}>{slotError}</Text>
-                            </View>
-                          ) : slots.length === 0 ? (
-                            <View style={styles.emptySlotsCard}>
-                              <Feather name="calendar" size={36} color={LuxeColors.outlineVariant} />
-                              <Text style={styles.emptySlotsTitle}>Không có lịch trống cho ngày này</Text>
-                            </View>
-                          ) : (
-                            <>
-                              <View style={styles.slotsSummary}>
-                                <Feather name="zap" size={16} color="#F59E0B" />
-                                <Text style={styles.slotsSummaryText}>
-                                  {slots.filter((slot) => slot.isAvailable).length} khung giờ trống
+
+                            {loadingSlots ? (
+                              <View style={styles.inlineLoading}>
+                                <ActivityIndicator
+                                  size="small"
+                                  color={LuxeColors.primaryContainer}
+                                />
+                                <Text style={styles.centerText}>
+                                  Äang táº£i lá»‹ch trá»‘ng...
                                 </Text>
                               </View>
+                            ) : slotError ? (
+                              <View style={styles.noticeError}>
+                                <Feather
+                                  name="alert-triangle"
+                                  size={18}
+                                  color={LuxeColors.error}
+                                />
+                                <Text style={styles.noticeErrorText}>
+                                  {slotError}
+                                </Text>
+                              </View>
+                            ) : slots.length === 0 ? (
+                              <View style={styles.emptySlotsCard}>
+                                <Feather
+                                  name="calendar"
+                                  size={36}
+                                  color={LuxeColors.outlineVariant}
+                                />
+                                <Text style={styles.emptySlotsTitle}>
+                                  KhÃ´ng cÃ³ lá»‹ch trá»‘ng
+                                </Text>
+                                <Text style={styles.emptySlotsText}>
+                                  Vui lÃ²ng chá»n ngÃ y khÃ¡c.
+                                </Text>
+                              </View>
+                            ) : (
+                              <>
+                                <View style={styles.slotsSummary}>
+                                  <Feather name="zap" size={16} color="#F59E0B" />
+                                  <Text style={styles.slotsSummaryText}>
+                                    {
+                                      slots.filter((slot) => slot.isAvailable)
+                                        .length
+                                    }{" "}
+                                    khung giá» trá»‘ng
+                                  </Text>
+                                </View>
 
-                              {Object.entries(groupedSlots).map(([period, periodSlots]) =>
-                                periodSlots.length > 0 ? (
-                                  <View key={period} style={styles.timePeriod}>
-                                    <Text style={styles.periodLabel}>{PERIOD_LABEL[period] || period}</Text>
-                                    <View style={styles.timeSlotsGrid}>
-                                      {periodSlots.map((slot) => {
-                                        const isSelected = selectedSlot?.slotId === slot.slotId;
-                                        return (
-                                          <TouchableOpacity
-                                            key={slot.slotId}
-                                            style={[
-                                              styles.timeSlot,
-                                              !slot.isAvailable && styles.timeSlotUnavailable,
-                                              isSelected && styles.timeSlotSelected,
-                                            ]}
-                                            onPress={() => slot.isAvailable && setSelectedSlot(slot)}
-                                            disabled={!slot.isAvailable}
-                                          >
-                                            <Text
-                                              style={[
-                                                styles.timeSlotText,
-                                                !slot.isAvailable && styles.timeSlotTextUnavailable,
-                                                isSelected && styles.timeSlotTextSelected,
-                                              ]}
-                                            >
-                                              {slot.timeRange}
-                                            </Text>
-                                          </TouchableOpacity>
-                                        );
-                                      })}
-                                    </View>
-                                  </View>
-                                ) : null,
-                              )}
-                            </>
-                          )}
-                        </View>
-                      )}
-                    </>
-                  )}
+                                {Object.entries(groupedSlots).map(
+                                  ([period, periodSlots]) =>
+                                    periodSlots.length > 0 ? (
+                                      <View key={period} style={styles.timePeriod}>
+                                        <Text style={styles.periodLabel}>
+                                          {PERIOD_LABEL[period] || period}
+                                        </Text>
+                                        <View style={styles.timeSlotsGrid}>
+                                          {periodSlots.map((slot) => {
+                                            const isSelected =
+                                              selectedSlot?.slotId ===
+                                              slot.slotId;
+                                            return (
+                                              <TouchableOpacity
+                                                key={slot.slotId}
+                                                style={[
+                                                  styles.timeSlot,
+                                                  !slot.isAvailable &&
+                                                    styles.timeSlotUnavailable,
+                                                  isSelected &&
+                                                    styles.timeSlotSelected,
+                                                ]}
+                                                onPress={() =>
+                                                  slot.isAvailable &&
+                                                  setSelectedSlot(slot)
+                                                }
+                                                disabled={!slot.isAvailable}
+                                              >
+                                                <Text
+                                                  style={[
+                                                    styles.timeSlotText,
+                                                    !slot.isAvailable &&
+                                                      styles.timeSlotTextUnavailable,
+                                                    isSelected &&
+                                                      styles.timeSlotTextSelected,
+                                                  ]}
+                                                >
+                                                  {slot.timeRange}
+                                                </Text>
+                                              </TouchableOpacity>
+                                            );
+                                          })}
+                                        </View>
+                                      </View>
+                                    ) : null,
+                                )}
+                              </>
+                            )}
+                          </View>
+                        )}
+                      </>
+                    )}
+
                 </>
               )}
 
@@ -606,7 +791,7 @@ export default function RescheduleBookingScreen() {
             </ScrollView>
 
             <BottomActionBar
-              title="XÁC NHẬN ĐỔI LỊCH"
+              title="XÃC NHáº¬N Äá»”I Lá»ŠCH"
               onPress={handleSubmit}
               loading={submitting}
               disabled={!canSubmit}
@@ -622,7 +807,13 @@ export default function RescheduleBookingScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: LuxeColors.background },
   safeArea: { flex: 1 },
-  centerState: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12, paddingHorizontal: 24 },
+  centerState: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 12,
+    paddingHorizontal: 24,
+  },
   centerText: { fontSize: 14, color: LuxeColors.onSurfaceVariant },
   errorText: { fontSize: 14, color: LuxeColors.error, textAlign: "center" },
   retryBtn: {
@@ -641,8 +832,17 @@ const styles = StyleSheet.create({
     marginBottom: 18,
     ...LuxeShadows.md,
   },
-  summaryTop: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 12 },
-  summaryLabel: { fontSize: 12, color: LuxeColors.onSurfaceVariant, marginBottom: 2 },
+  summaryTop: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  summaryLabel: {
+    fontSize: 12,
+    color: LuxeColors.onSurfaceVariant,
+    marginBottom: 2,
+  },
   summaryId: { fontSize: 26, fontWeight: "800", color: LuxeColors.onSurface },
   plateBadge: {
     paddingHorizontal: 12,
@@ -651,11 +851,24 @@ const styles = StyleSheet.create({
     backgroundColor: LuxeColors.primaryContainer + "16",
   },
   plateText: { fontSize: 13, fontWeight: "800", color: LuxeColors.primary },
-  summaryDivider: { height: 1, backgroundColor: LuxeColors.outlineVariant + "30", marginVertical: 14 },
+  summaryDivider: {
+    height: 1,
+    backgroundColor: LuxeColors.outlineVariant + "30",
+    marginVertical: 14,
+  },
   summaryMeta: { flexDirection: "row", flexWrap: "wrap", gap: 16 },
   summaryMetaItem: { flexDirection: "row", alignItems: "center", gap: 6 },
-  summaryMetaText: { fontSize: 14, fontWeight: "600", color: LuxeColors.onSurface },
-  sectionTitle: { fontSize: 17, fontWeight: "800", color: LuxeColors.onSurface, marginBottom: 12 },
+  summaryMetaText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: LuxeColors.onSurface,
+  },
+  sectionTitle: {
+    fontSize: 17,
+    fontWeight: "800",
+    color: LuxeColors.onSurface,
+    marginBottom: 12,
+  },
   noticeError: {
     flexDirection: "row",
     alignItems: "flex-start",
@@ -665,7 +878,13 @@ const styles = StyleSheet.create({
     padding: 14,
     marginBottom: 16,
   },
-  noticeErrorText: { flex: 1, fontSize: 13, lineHeight: 19, fontWeight: "600", color: LuxeColors.onErrorContainer },
+  noticeErrorText: {
+    flex: 1,
+    fontSize: 13,
+    lineHeight: 19,
+    fontWeight: "600",
+    color: LuxeColors.onErrorContainer,
+  },
   branchList: { gap: 10, marginBottom: 16 },
   branchCard: {
     flexDirection: "row",
@@ -678,7 +897,10 @@ const styles = StyleSheet.create({
     borderColor: "transparent",
     ...LuxeShadows.sm,
   },
-  branchCardSelected: { borderColor: LuxeColors.primaryContainer, backgroundColor: LuxeColors.primaryContainer + "08" },
+  branchCardSelected: {
+    borderColor: LuxeColors.primaryContainer,
+    backgroundColor: LuxeColors.primaryContainer + "08",
+  },
   radio: {
     width: 20,
     height: 20,
@@ -689,7 +911,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   radioSelected: { borderColor: LuxeColors.primaryContainer },
-  radioInner: { width: 10, height: 10, borderRadius: 5, backgroundColor: LuxeColors.primaryContainer },
+  radioInner: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: LuxeColors.primaryContainer,
+  },
   branchIconWrap: {
     width: 40,
     height: 40,
@@ -700,8 +927,19 @@ const styles = StyleSheet.create({
   },
   branchInfo: { flex: 1 },
   branchName: { fontSize: 15, fontWeight: "800", color: LuxeColors.onSurface },
-  branchAddress: { fontSize: 12, lineHeight: 17, color: LuxeColors.onSurfaceVariant, marginTop: 3 },
-  inlineLoading: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, padding: 18 },
+  branchAddress: {
+    fontSize: 12,
+    lineHeight: 17,
+    color: LuxeColors.onSurfaceVariant,
+    marginTop: 3,
+  },
+  inlineLoading: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    padding: 18,
+  },
   recoveredCard: {
     backgroundColor: "#ffffff",
     borderRadius: LuxeBorderRadius.xl,
@@ -711,7 +949,12 @@ const styles = StyleSheet.create({
     ...LuxeShadows.sm,
   },
   recoveredRow: { flexDirection: "row", alignItems: "center", gap: 9 },
-  recoveredText: { flex: 1, fontSize: 13, fontWeight: "600", color: LuxeColors.onSurface },
+  recoveredText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: "600",
+    color: LuxeColors.onSurface,
+  },
   calendarCard: {
     backgroundColor: "#ffffff",
     borderRadius: 20,
@@ -719,7 +962,12 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     ...LuxeShadows.sm,
   },
-  monthNav: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 },
+  monthNav: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+  },
   navBtn: {
     width: 36,
     height: 36,
@@ -731,10 +979,15 @@ const styles = StyleSheet.create({
   monthTitle: { fontSize: 17, fontWeight: "800", color: LuxeColors.onSurface },
   daysOfWeek: { flexDirection: "row", marginBottom: 8 },
   dayOfWeekCell: { flex: 1, alignItems: "center", paddingVertical: 6 },
-  dayOfWeekText: { fontSize: 12, fontWeight: "700", color: LuxeColors.onSurfaceVariant },
-  calendarGrid: { flexDirection: "row", flexWrap: "wrap" },
+  dayOfWeekText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: LuxeColors.onSurfaceVariant,
+  },
+  calendarGrid: { gap: 0 },
+  calendarWeek: { flexDirection: "row" },
   dayCell: {
-    width: `${100 / 7}%`,
+    flex: 1,
     aspectRatio: 1,
     alignItems: "center",
     justifyContent: "center",
@@ -742,15 +995,48 @@ const styles = StyleSheet.create({
   },
   dayCellPast: { opacity: 0.3 },
   dayCellLocked: { opacity: 0.4 },
-  dayCellToday: { backgroundColor: LuxeColors.surfaceContainer, borderWidth: 1, borderColor: LuxeColors.outlineVariant },
-  dayCellSelected: { backgroundColor: LuxeColors.primaryContainer },
-  dayNumber: { fontSize: 15, color: LuxeColors.onSurface },
+  dayPill: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  dayPillToday: {
+    backgroundColor: LuxeColors.surfaceContainer,
+    borderWidth: 1,
+    borderColor: LuxeColors.outlineVariant,
+    borderRadius: 18,
+  },
+  dayPillSelected: {
+    backgroundColor: LuxeColors.primaryContainer,
+    borderRadius: 18,
+  },
+  dayNumber: {
+    fontSize: 15,
+    lineHeight: 18,
+    color: LuxeColors.onSurface,
+    textAlign: "center",
+    includeFontPadding: false,
+  },
   dayTextMuted: { color: LuxeColors.onSurfaceVariant },
   dayTextToday: { color: LuxeColors.primaryContainer, fontWeight: "800" },
   dayTextSelected: { color: "#ffffff", fontWeight: "800" },
   slotsSection: { marginBottom: 16 },
-  slotsHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12, gap: 12 },
-  selectedDateLabel: { flex: 1, textAlign: "right", fontSize: 12, color: LuxeColors.primaryContainer, fontWeight: "700" },
+  slotsHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+    gap: 12,
+  },
+  selectedDateLabel: {
+    flex: 1,
+    textAlign: "right",
+    fontSize: 12,
+    color: LuxeColors.primaryContainer,
+    fontWeight: "700",
+  },
   emptySlotsCard: {
     alignItems: "center",
     padding: 24,
@@ -759,7 +1045,16 @@ const styles = StyleSheet.create({
     gap: 8,
     ...LuxeShadows.sm,
   },
-  emptySlotsTitle: { fontSize: 14, fontWeight: "700", color: LuxeColors.onSurface },
+  emptySlotsTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: LuxeColors.onSurface,
+  },
+  emptySlotsText: {
+    fontSize: 13,
+    color: LuxeColors.onSurfaceVariant,
+    textAlign: "center",
+  },
   slotsSummary: {
     flexDirection: "row",
     alignItems: "center",
@@ -792,10 +1087,23 @@ const styles = StyleSheet.create({
     borderColor: "transparent",
     ...LuxeShadows.sm,
   },
-  timeSlotUnavailable: { backgroundColor: LuxeColors.surfaceContainer, opacity: 0.6 },
-  timeSlotSelected: { backgroundColor: LuxeColors.primaryContainer, borderColor: LuxeColors.primaryContainer },
-  timeSlotText: { fontSize: 14, fontWeight: "800", color: LuxeColors.onSurface },
-  timeSlotTextUnavailable: { color: LuxeColors.onSurfaceVariant, textDecorationLine: "line-through" },
+  timeSlotUnavailable: {
+    backgroundColor: LuxeColors.surfaceContainer,
+    opacity: 0.6,
+  },
+  timeSlotSelected: {
+    backgroundColor: LuxeColors.primaryContainer,
+    borderColor: LuxeColors.primaryContainer,
+  },
+  timeSlotText: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: LuxeColors.onSurface,
+  },
+  timeSlotTextUnavailable: {
+    color: LuxeColors.onSurfaceVariant,
+    textDecorationLine: "line-through",
+  },
   timeSlotTextSelected: { color: "#ffffff" },
   bottomSpacer: { height: 116 },
 });

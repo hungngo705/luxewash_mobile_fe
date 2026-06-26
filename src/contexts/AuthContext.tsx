@@ -12,9 +12,9 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { authService } from "../services/api/authService";
+import { authService, type UserProfile } from "../services/api/authService";
 import { ApiError, getStoredTokens, setSessionExpiredHandler } from "../services/api/client";
-import { vehicleService } from "../services/api/vehicleService";
+import { vehicleService, type VehicleResponse } from "../services/api/vehicleService";
 import { walletService } from "../services/api/walletService";
 
 export interface Vehicle {
@@ -99,19 +99,18 @@ interface AuthContextType extends AuthState {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-function mapVehicleApiToVehicle(
-  v: import("../services/api/vehicleService").VehicleResponse,
-  userId: string,
-): Vehicle {
+type VehicleSource = VehicleResponse | UserProfile["vehicles"][number];
+
+function mapVehicleApiToVehicle(v: VehicleSource, userId: string): Vehicle {
   return {
     id: v.licensePlate,
     licensePlate: v.licensePlate,
-    brand: v.brand || "",
+    brand: "brand" in v ? v.brand || "" : "",
     model: v.carModel || "",
     color: "",
     vehicleTypeId: v.vehicleTypeId,
     vehicleType: v.vehicleType || "",
-    userNote: v.userNote || "",
+    userNote: "userNote" in v ? v.userNote || "" : "",
     imageUrl: v.registrationPhotoUrl ?? undefined,
     userId,
     createdAt: new Date(),

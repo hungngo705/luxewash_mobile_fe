@@ -176,7 +176,6 @@ export default function WalletScreen() {
                 const icon = transactionTypeConfig[txn.transactionType]?.icon ?? 'circle';
                 const status = statusConfig[txn.status] ?? statusConfig['Pending'];
                 const amountColor = isPositive ? '#10b981' : '#ef4444';
-                const arrowIcon = isPositive ? 'arrow-up-right' : 'arrow-down-right';
                 return (
                   <View key={txn.transactionId} style={[styles.txnItem, { borderLeftColor: borderColor }]}>
                     <View style={styles.txnLeft}>
@@ -191,12 +190,9 @@ export default function WalletScreen() {
                       </View>
                     </View>
                     <View style={styles.txnRight}>
-                      <View style={styles.txnAmountRow}>
-                        <Feather name={arrowIcon as any} size={12} color={amountColor} />
-                        <Text style={[styles.txnPoints, { color: amountColor }]}>
-                          {isPositive ? '+' : '-'}{Math.abs(txn.amount).toLocaleString('vi-VN')}
-                        </Text>
-                      </View>
+                      <Text style={[styles.txnPoints, { color: amountColor }]}>
+                        {isPositive ? '+' : '-'}{Math.abs(txn.amount).toLocaleString('vi-VN')}
+                      </Text>
                       <View style={[styles.statusBadge, { backgroundColor: status.bg }]}>
                         <Text style={[styles.statusText, { color: status.text }]}>{status.label}</Text>
                       </View>
@@ -336,7 +332,6 @@ const styles = StyleSheet.create({
   txnLabel: { fontSize: 13, fontWeight: '600', color: LuxeColors.onSurface },
   txnDate: { fontSize: 11, color: LuxeColors.onSurfaceVariant, marginTop: 2 },
   txnRight: { alignItems: 'flex-end', gap: 4 },
-  txnAmountRow: { flexDirection: 'row', alignItems: 'center', gap: 2 },
   txnPoints: { fontSize: 14, fontWeight: '800' },
   txnUnit: { fontSize: 11, color: LuxeColors.onSurfaceVariant },
   statusBadge: {

@@ -111,7 +111,7 @@ function BranchCard({
         {isSelected && <View style={styles.radioInner} />}
       </View>
 
-      <View style={styles.branchIconWrap}>
+      <View style={[styles.branchIconWrap, isSelected && styles.branchIconWrapSelected]}>
         <Feather
           name={showClock ? 'clock' : 'map-pin'}
           size={24}
@@ -697,8 +697,10 @@ const styles = StyleSheet.create({
   },
   branchCardSelected: {
     borderColor: LuxeColors.primaryContainer,
-    backgroundColor: LuxeColors.primaryContainer + '08',
+    backgroundColor: '#DDF3FB',
     ...LuxeShadows.md,
+    elevation: 0,
+    shadowOpacity: 0,
   },
   branchCardNearest: {
     borderColor: LuxeColors.primaryContainer + '40',
@@ -731,6 +733,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 14,
+  },
+  branchIconWrapSelected: {
+    backgroundColor: '#CFEFFA',
   },
   branchInfo: { flex: 1 },
   branchNameRow: {

@@ -25,7 +25,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 
 const formatCurrency = (amount: number): string => {
@@ -237,8 +237,9 @@ function RedeemModal({
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <View style={styles.modalOverlay}>
-        <View style={styles.modalContent}>
+      <SafeAreaProvider style={styles.modalProvider}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
           {/* Drag handle */}
           <View style={styles.modalDragHandle} />
 
@@ -340,8 +341,9 @@ function RedeemModal({
               )}
             </TouchableOpacity>
           </View>
+          </View>
         </View>
-      </View>
+      </SafeAreaProvider>
     </Modal>
   );
 }
@@ -888,6 +890,9 @@ const styles = StyleSheet.create({
   },
 
   /* ─── Redeem Modal ─── */
+  modalProvider: {
+    flex: 1,
+  },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',

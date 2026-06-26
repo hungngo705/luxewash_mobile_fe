@@ -146,7 +146,12 @@ export default function SelectVehiclesScreen() {
                     {isSelected && <View style={styles.radioInner} />}
                   </View>
 
-                  <View style={styles.vehicleImageWrap}>
+                  <View
+                    style={[
+                      styles.vehicleImageWrap,
+                      isSelected && styles.vehicleImageWrapSelected,
+                    ]}
+                  >
                     {vehicle.imageUrl ? (
                       <Image
                         source={{ uri: vehicle.imageUrl }}
@@ -302,8 +307,10 @@ const styles = StyleSheet.create({
   },
   vehicleCardSelected: {
     borderColor: LuxeColors.primaryContainer,
-    backgroundColor: LuxeColors.primaryContainer + "08",
+    backgroundColor: "#DDF3FB",
     ...LuxeShadows.md,
+    elevation: 0,
+    shadowOpacity: 0,
   },
   radio: {
     width: 22,
@@ -331,6 +338,9 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     overflow: "hidden",
     backgroundColor: LuxeColors.surfaceContainer,
+  },
+  vehicleImageWrapSelected: {
+    backgroundColor: "#CFEFFA",
   },
   vehicleImage: { width: "100%", height: "100%" },
   vehicleImagePlaceholder: {

@@ -317,7 +317,7 @@ export default function AddVehicleScreen() {
           showCancel: false,
           onConfirm: async () => {
             await refreshProfile();
-            router.replace("/vehicles");
+            router.dismissTo("/vehicles");
           },
         });
       } else {

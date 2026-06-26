@@ -13,9 +13,10 @@ import { useAuth } from "@/contexts/AuthContext";
 import { loyaltyService, type Tier, type Voucher } from "@/services/api";
 import { Feather } from "@expo/vector-icons";
 import { useRouter, type RelativePathString } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -26,7 +27,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function RewardsScreen() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, refreshProfile } = useAuth();
   const membershipInfo = user
     ? MembershipConfig[user.membershipTier]
     : MembershipConfig.standard;
@@ -38,10 +39,13 @@ export default function RewardsScreen() {
   const [tiers, setTiers] = useState<Tier[]>([]);
   const [vouchers, setVouchers] = useState<Voucher[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    const loadData = async () => {
-      setLoading(true);
+  const loadData = useCallback(
+    async ({ showLoading = true }: { showLoading?: boolean } = {}) => {
+      if (showLoading) {
+        setLoading(true);
+      }
       try {
         const [tiersRes, vouchersRes] = await Promise.all([
           loyaltyService.getTiers(),
@@ -57,11 +61,27 @@ export default function RewardsScreen() {
         }
       } catch (e) {
         console.error("Failed to load loyalty data:", e);
+      } finally {
+        if (showLoading) {
+          setLoading(false);
+        }
       }
-      setLoading(false);
-    };
+    },
+    [],
+  );
+
+  useEffect(() => {
     loadData();
-  }, []);
+  }, [loadData]);
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([refreshProfile(), loadData({ showLoading: false })]);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [loadData, refreshProfile]);
 
   return (
     <View style={styles.container}>
@@ -70,6 +90,14 @@ export default function RewardsScreen() {
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor={LuxeColors.primaryContainer}
+              colors={[LuxeColors.primaryContainer]}
+            />
+          }
         >
           {/* Points Card */}
           <View style={styles.pointsCard}>

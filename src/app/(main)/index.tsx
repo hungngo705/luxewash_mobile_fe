@@ -4,7 +4,7 @@
  * Redirects to login if not authenticated
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Image,
+  RefreshControl,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -30,51 +31,70 @@ const MOCK_SERVICES = [
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { user, walletBalance, isAuthenticated } = useAuth();
+  const { user, walletBalance, isAuthenticated, refreshProfile, refreshWallet } = useAuth();
   const [services, setServices] = useState<Array<{ serviceId: number; serviceName: string; description: string; prices: Array<{ vehicleTypeId: number; vehicleTypeName: string; price: number }> }>>([]);
   const [loadingServices, setLoadingServices] = useState(false);
   const [vouchers, setVouchers] = useState<Voucher[]>([]);
   const [loadingVouchers, setLoadingVouchers] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   const vehicles = user?.vehicles || [];
   const membershipInfo = user ? MembershipConfig[user.membershipTier] : MembershipConfig.standard;
 
-  useEffect(() => {
-    const loadServices = async () => {
-      setLoadingServices(true);
-      try {
-        const res = await bookingService.getServices();
-        if (res.statusCode === 200 && res.data) {
-          setServices(res.data);
-        }
-      } catch (e) {
-        console.error('Failed to load services:', e);
+  const loadServices = useCallback(async () => {
+    setLoadingServices(true);
+    try {
+      const res = await bookingService.getServices();
+      if (res.statusCode === 200 && res.data) {
+        setServices(res.data);
       }
+    } catch (e) {
+      console.error('Failed to load services:', e);
+    } finally {
       setLoadingServices(false);
-    };
+    }
+  }, []);
+
+  const loadVouchers = useCallback(async () => {
+    setLoadingVouchers(true);
+    try {
+      const res = await loyaltyService.getMyVouchers();
+      if (res.statusCode === 200 && res.data) {
+        const unused = res.data.filter(v => v.remainingUsage > 0 && new Date(v.expiryDate) > new Date());
+        setVouchers(unused);
+      }
+    } catch (e) {
+      console.error('Failed to load vouchers:', e);
+    } finally {
+      setLoadingVouchers(false);
+    }
+  }, []);
+
+  useEffect(() => {
     if (isAuthenticated) {
       loadServices();
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, loadServices]);
 
   useEffect(() => {
-    const loadVouchers = async () => {
-      setLoadingVouchers(true);
-      try {
-        const res = await loyaltyService.getMyVouchers();
-        if (res.statusCode === 200 && res.data) {
-          const unused = res.data.filter(v => v.remainingUsage > 0 && new Date(v.expiryDate) > new Date());
-          setVouchers(unused);
-        }
-      } catch (e) {
-        console.error('Failed to load vouchers:', e);
-      }
-      setLoadingVouchers(false);
-    };
     if (isAuthenticated) {
       loadVouchers();
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, loadVouchers]);
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([
+        refreshProfile(),
+        refreshWallet(),
+        loadServices(),
+        loadVouchers(),
+      ]);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [loadServices, loadVouchers, refreshProfile, refreshWallet]);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -98,7 +118,17 @@ export default function HomeScreen() {
   return (
     <View style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top']}>
-        <ScrollView showsVerticalScrollIndicator={false}>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor={LuxeColors.primaryContainer}
+              colors={[LuxeColors.primaryContainer]}
+            />
+          }
+        >
           {/* Header */}
           <View style={styles.header}>
             <View style={styles.headerLeft}>
