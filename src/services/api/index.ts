@@ -11,6 +11,8 @@ export type {
 export { bookingService } from "./bookingService";
 export type {
     BookingDetail, BookingDetailResponse, BookingDetailVehicle, BookingRequest,
+    BookingPaymentLinkRequest, BookingPaymentLinkResponse, BookingPaymentStatus,
+    BookingPaymentStatusResponse,
     CompatibilityDTO, CreateBookingResponse, GetMyBookingsParams, MyBookingItem,
     RescheduleBookingRequest, Service,
     ServicePrice, TimeSlot

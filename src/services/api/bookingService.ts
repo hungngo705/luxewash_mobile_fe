@@ -88,6 +88,34 @@ export interface CreateBookingResponse {
   bookingId: number;
 }
 
+export interface BookingPaymentLinkRequest {
+  cancelUrl: string;
+  returnUrl: string;
+}
+
+export interface BookingPaymentLinkResponse {
+  paymentUrl: string;
+  orderCode: string;
+  bookingId: number;
+  amount: number;
+}
+
+export type BookingPaymentStatus =
+  | "Unpaid"
+  | "Pending"
+  | "Completed"
+  | "Expired"
+  | "Failed";
+
+export interface BookingPaymentStatusResponse {
+  bookingId: number;
+  paymentStatus: BookingPaymentStatus;
+  paymentMethod: string | null;
+  orderCode: string | null;
+  amount: number | null;
+  paidAt: string | null;
+}
+
 export interface RescheduleBookingRequest {
   newScheduledDate: string;
   newSlotId: number;
@@ -143,6 +171,19 @@ export const bookingService = {
 
   createBooking: async (data: BookingRequest): Promise<ApiResponse<CreateBookingResponse>> => {
     return apiClient.post<CreateBookingResponse>('/bookings', data);
+  },
+
+  createPaymentLink: async (
+    bookingId: number,
+    data: BookingPaymentLinkRequest,
+  ): Promise<ApiResponse<BookingPaymentLinkResponse>> => {
+    return apiClient.post<BookingPaymentLinkResponse>(`/bookings/${bookingId}/payment-link`, data);
+  },
+
+  getPaymentStatus: async (
+    bookingId: number,
+  ): Promise<ApiResponse<BookingPaymentStatusResponse>> => {
+    return apiClient.get<BookingPaymentStatusResponse>(`/bookings/${bookingId}/payment-status`);
   },
 
   getMyBookings: async (params?: GetMyBookingsParams): Promise<ApiResponse<MyBookingItem[]>> => {
