@@ -29,6 +29,13 @@ import { Header } from "@/components/ui/Header";
 import { ProgressSteps } from "@/components/ui/ProgressSteps";
 import { BottomActionBar } from "@/components/ui/BottomActionBar";
 import { VoucherSelectionModal } from "@/components/booking/VoucherSelectionModal";
+import * as Linking from "expo-linking";
+import { openBrowserAsync } from "expo-web-browser";
+
+const PAYMENT_POLL_ATTEMPTS = 20;
+const PAYMENT_POLL_INTERVAL_MS = 3000;
+
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export default function BookingConfirmationScreen() {
   const router = useRouter();
@@ -56,6 +63,7 @@ export default function BookingConfirmationScreen() {
   const [selectedVoucher, setSelectedVoucher] = useState<Voucher | null>(null);
   const [showVoucherModal, setShowVoucherModal] = useState(false);
   const [loadingVouchers, setLoadingVouchers] = useState(false);
+  const [bankPaymentMessage, setBankPaymentMessage] = useState<string | null>(null);
 
   const subtotal = servicePriceParam;
   const membershipDiscountAmount = Math.round(subtotal * membershipDiscountParam);
@@ -102,6 +110,86 @@ export default function BookingConfirmationScreen() {
     loadVouchers();
   }, [loadVouchers]);
 
+  const buildPaymentReturnUrl = (bookingId: number) =>
+    Linking.createURL("booking/confirmation", {
+      queryParams: {
+        bookingId: String(bookingId),
+        payment: "return",
+      },
+    });
+
+  const buildPaymentCancelUrl = (bookingId: number) =>
+    Linking.createURL("booking/confirmation", {
+      queryParams: {
+        bookingId: String(bookingId),
+        payment: "cancelled",
+      },
+    });
+
+  const goToSuccess = useCallback(
+    async (bookingId: number) => {
+      await refreshWallet?.();
+      bookingService.triggerEmail(bookingId).catch(() => {});
+      branchHistoryService.addRecentBranch({
+        branchId: branchIdParam,
+        name: branchNameParam,
+        address: '',
+        isActive: true,
+      });
+      router.replace({
+        pathname: "/booking/success",
+        params: {
+          bookingId: String(bookingId),
+          date: dateParam,
+          timeSlot: timeRangeParam,
+          finalAmount: String(finalPrice),
+          branchName: branchNameParam,
+          voucherDiscount: String(voucherDiscountAmount),
+        },
+      });
+    },
+    [
+      branchIdParam,
+      branchNameParam,
+      dateParam,
+      finalPrice,
+      refreshWallet,
+      router,
+      timeRangeParam,
+      voucherDiscountAmount,
+    ],
+  );
+
+  const waitForBookingPayment = async (bookingId: number) => {
+    for (let attempt = 1; attempt <= PAYMENT_POLL_ATTEMPTS; attempt++) {
+      setBankPaymentMessage(
+        `Đang xác nhận chuyển khoản... (${attempt}/${PAYMENT_POLL_ATTEMPTS})`,
+      );
+
+      try {
+        const statusRes = await bookingService.getPaymentStatus(bookingId);
+        const paymentStatus = statusRes.data?.paymentStatus;
+
+        if (paymentStatus === "Completed") {
+          setBankPaymentMessage("Thanh toán đã được xác nhận.");
+          return true;
+        }
+
+        if (paymentStatus === "Expired" || paymentStatus === "Failed") {
+          throw new Error("Giao dịch đã hết hạn hoặc thất bại.");
+        }
+      } catch (error) {
+        if (error instanceof Error && error.message.includes("hết hạn")) {
+          throw error;
+        }
+      }
+
+      await wait(PAYMENT_POLL_INTERVAL_MS);
+    }
+
+    return false;
+  };
+
   const handleConfirmBooking = async () => {
     if (selectedPaymentMethod === "wallet" && walletBalance < finalPrice) {
       alert("Số dư không đủ. Vui lòng nạp thêm tiền vào ví hoặc chọn phương thức thanh toán khác.");
@@ -109,6 +197,7 @@ export default function BookingConfirmationScreen() {
     }
 
     setIsSubmitting(true);
+    setBankPaymentMessage(null);
 
     try {
       const [year, month, day] = dateParam.split("-").map(Number);
@@ -130,6 +219,36 @@ export default function BookingConfirmationScreen() {
 
       if (res.statusCode === 200 || res.statusCode === 201) {
         const bookingId = (res.data as any)?.bookingId || 0;
+
+        if (!bookingId) {
+          throw new Error("Không tìm thấy mã đặt lịch sau khi tạo booking.");
+        }
+
+        if (selectedPaymentMethod === "bank" && finalPrice > 0) {
+          setBankPaymentMessage("Đang tạo mã QR chuyển khoản...");
+          const linkRes = await bookingService.createPaymentLink(bookingId, {
+            returnUrl: buildPaymentReturnUrl(bookingId),
+            cancelUrl: buildPaymentCancelUrl(bookingId),
+          });
+
+          if (linkRes.statusCode !== 200 || !linkRes.data?.paymentUrl) {
+            throw new Error(linkRes.message || "Không thể tạo link thanh toán chuyển khoản.");
+          }
+
+          setBankPaymentMessage("Đang mở cổng thanh toán PayOS...");
+          await openBrowserAsync(linkRes.data.paymentUrl);
+
+          const isPaid = await waitForBookingPayment(bookingId);
+          if (isPaid) {
+            await goToSuccess(bookingId);
+            return;
+          }
+
+          setBankPaymentMessage("Chưa xác nhận được thanh toán. Bạn có thể kiểm tra lại trong lịch hẹn.");
+          alert("Thanh toán đang chờ xác nhận. Vui lòng kiểm tra lại trạng thái trong lịch hẹn sau vài phút.");
+          return;
+        }
+
         await refreshWallet?.();
         bookingService.triggerEmail(bookingId).catch(() => {});
         // Record this branch as recently used for the "Đã đặt" tab
@@ -294,6 +413,13 @@ export default function BookingConfirmationScreen() {
             </TouchableOpacity>
           </View>
 
+          {bankPaymentMessage && (
+            <View style={styles.bankStatusCard}>
+              <ActivityIndicator size="small" color={LuxeColors.primaryContainer} />
+              <Text style={styles.bankStatusText}>{bankPaymentMessage}</Text>
+            </View>
+          )}
+
           {/* Voucher Selection */}
           <TouchableOpacity
             style={styles.voucherSelectCard}
@@ -455,6 +581,23 @@ const styles = StyleSheet.create({
   paymentBalance: { fontSize: 13, color: LuxeColors.onSurfaceVariant, fontWeight: '500' },
   paymentBalanceDanger: { color: LuxeColors.error },
   paymentSubtext: { fontSize: 11, color: LuxeColors.outline, marginTop: 2 },
+  bankStatusCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: LuxeColors.primaryContainer + "15",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: LuxeColors.primaryContainer + "35",
+    padding: 12,
+    marginBottom: 16,
+  },
+  bankStatusText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: "600",
+    color: LuxeColors.onSurface,
+  },
   warningBadge: { backgroundColor: LuxeColors.error + '18', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
   warningText: { fontSize: 11, fontWeight: '700', color: LuxeColors.error },
   billingCard: { backgroundColor: '#ffffff', borderRadius: 16, padding: 16, marginBottom: 16, ...LuxeShadows.sm },
